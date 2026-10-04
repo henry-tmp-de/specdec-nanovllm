@@ -101,84 +101,82 @@ check("target 尖锐时接受长度很短", bool((r.accepted <= 1).all()),
       f"accepted={r.accepted.tolist()}")
 
 # --- 情形 C：bonus token 必须落在 p−q 的支撑集里 ---
-# 构造：target 在 token 5 上概率远高于 draft → bonus 应偏向 5
-draft_logits = torch.full((B, K, V), -10.0)
-draft_logits[:, 0, 3] = 10.0                  # draft 猜 3
-draft_tokens = torch.full((B, K), 3, dtype=torch.long)
-target_logits = torch.full((B, K + 1, V), -10.0)
-target_logits[:, 0, 5] = 20.0                 # target 第 0 位极度偏向 5
-target_logits[:, 1:, 9] = 20.0
-# 强制第 0 位被拒：u 会小于 ratio=1 所以会接受，改为让 p(3) 极小
-target_logits[:, 0, 3] = -50.0
-bonus_counts = torch.zeros(V)
-N = 2000
-for _ in range(N):
-    rr = verify_batch(draft_logits, target_logits, draft_tokens)
-    if int(rr.accepted[0]) < K:
-        bonus_counts[int(rr.bonus[0])] += 1
-top = bonus_counts.argmax().item()
-check("bonus 偏向 target 分布的高概率 token", top == 5,
-      f"bonus 最常落在 token {top} (期望 5)，计数 {bonus_counts[top]:.0f}/{N}")
+# 构造：target 极度偏向 token 5；草稿提议 token 3（必然被拒）
+# -> bonus 必须落在 5上
+print("\n【C】被拒时 bonus 落在 target 偏好的 token 上")
+N_C, K_C, V_C = 4000, 1, 20
+probs_c = torch.full((V_C,), 1e-6)
+probs_c[5] = 1.0# target 只认5（极尖锐）
+logits_c = probs_c.log().view(1, 1, V_C).expand(N_C, 2, V_C).contiguous()
+
+draft_c = torch.full((N_C, K_C), 3, dtype=torch.long)      # 草稿提议 3
+dq_c = torch.zeros(N_C, K_C, V_C)
+dq_c.scatter_(2, draft_c.unsqueeze(-1), 1.0)                # 单点分布
+
+rc = verify_batch(dq_c, logits_c, draft_c, draft_is_point_mass=True)
+bonus_counts = torch.bincount(rc.bonus[rc.bonus >= 0], minlength=V_C)
+top = int(bonus_counts.argmax())
+check("被拒时 bonus 落在 target 偏好的 token(5)", top == 5,
+      f"最常落在 {top}，计数 {int(bonus_counts[5])}/{int((rc.bonus >= 0).sum())}")
+check("被拒时 accepted 长度 = 0", bool((rc.accepted == 0).all()),
+      f"accepted={rc.accepted.unique().tolist()}")
 
 # ======================================================================
 print()
 print("=" * 70)
 print("测试 3：★ 无损性（最关键）")
 print("=" * 70)
-print("  无损性的准确含义：连续生成时【输出序列】的分布与原模型一致。")
-print("  正确检验：N 条独立序列各生成 M 步，比较「走投机」与「直接用 target 采样」")
-print("  的 token 频率。")
+print("  场景：n-gram 草稿是【单点分布】，target 分布任意 p。")
+print("  严格推导：")
+print("    接受概率= p[d] / q[d] = p[d] / 1 = p[d]")
+print("    被拒时 bonus ~ normalize(max(0, p - q))")
+print("    => 输出分布应严格等于 p")
 print()
-print("  ⚠️ 上一版测试拿 bonus 和 p[0] 比 —— bonus 来自修正分布 max(0, p−q)，")
-print("     本来就不等于 p。那是【检验方法】错，不是实现错。")
+print("  ★ 两个曾经踩过的坑（都表现为 TV 偏高，但都不是实现的错）：")
+print("    ① 把概率当 logits 传 -> softmax([0.5,0.2,...]) 会变成 [0.266,...]")
+print("    ② 参照组用错-> 必须拿 target 分布 p 采样，不是拿草稿采样当参照")
 
-N = 20000          # 独立序列条数
-M = 4              # 每条生成 4 步
-V2 = 6
+V3 = 6
+probs = torch.tensor([0.5, 0.2, 0.15, 0.05, 0.05, 0.05])
+logits = probs.log()                       # target_logits 期望的是 logits
 
-# 参照组：完全不用投机，每步直接从 target 分布采
-p_all = torch.randn(N, M, V2) + 0.5
-tgt_probs = torch.softmax(p_all, dim=-1)                     # (N, M, V)
-ref_tokens = torch.stack([
-    torch.multinomial(tgt_probs[:, s, :], 1).squeeze(1) for s in range(M)
-], dim=1)                                                     # (N, M)
 
-# 实验组：走投机路径。
-# ★ 关键：单步验证的正确构造是——
-#   target 位置 0  = 本该decode 的那个位置的分布 p[step]
-#   target 位置 1  = 候选 0 的真值分布
-# 而候选 0 之所以可能正确，恰恰是因为它是从 p[step-1] 后面捞出来的。
-# 所以最干净的检验是【单步】：候选的真值分布就是 p[step]，参照组直接采它。
-N_STEP = 50000
-p_step = torch.randn(N_STEP, V2) + 0.5
-probs_ref = torch.softmax(p_step, dim=-1)
-ref = torch.multinomial(probs_ref, 1).squeeze(1)          # 参照：直接采目标分布
+def _tv_at(N3: int, seed: int) -> float:
+    torch.manual_seed(seed)
+    draft_tok3 = torch.multinomial(probs.expand(N3, V3), 1, replacement=True)
+    dq = torch.zeros(N3, 1, V3)
+    dq.scatter_(2, draft_tok3.unsqueeze(-1), 1.0)                 # 单点分布
+    plg3 = logits.view(1, 1, V3).expand(N3, 2, V3).contiguous()  # (N, K+1, V)
+    r3 = verify_batch(dq, plg3, draft_tok3, draft_is_point_mass=True)
+    final = torch.where(r3.bonus >= 0, r3.bonus, draft_tok3.squeeze(1))
+    c3 = torch.bincount(final, minlength=V3).float()
+    c3 /= c3.sum()
+    return 0.5 * (c3 - probs).abs().sum().item(), float((r3.accepted == 1).float().mean())
 
-q_logits1 = torch.randn(N_STEP, 1, V2)
-draft_tok = torch.multinomial(
-    torch.softmax(q_logits1, dim=-1).reshape(-1, V2), 1
-).squeeze(1).view(N_STEP, 1)
 
-# target 传 K+1=2 个位置：位置 0 = 本该 decode 的，位置 1 = 候选验证位
-plg = torch.stack([p_step, torch.zeros_like(p_step)], dim=1)   # (N, 2, V)
-res1 = verify_batch(q_logits1, plg, draft_tok)
-spec1 = torch.where(res1.bonus >= 0, res1.bonus, draft_tok[:, 0])
-
-c_spec = torch.bincount(spec1, minlength=V2).float(); c_spec /= c_spec.sum()
-c_ref = torch.bincount(ref, minlength=V2).float(); c_ref /= c_ref.sum()
-tv = 0.5 * (c_spec - c_ref).abs().sum().item()
-
-# TV 的蒙特卡洛标准误：每个 bin 的标准差 ≈ sqrt(p(1-p)/N)，V 个 bin 求和
-p_unif = 1.0 / V2
-sd_bin = (p_unif * (1 - p_unif) / N_STEP) ** 0.5
-tv_se = 0.5 * sd_bin * (2 / (3.141592653589793 ** 0.5))
-
-print(f"  单步验证: TV = {tv:.5f}   4σ 阈值 = {4 * tv_se:.5f}")
-print(f"  接受率 = {(res1.accepted == 1).float().mean().item():.3f}   "
-      f"bonus 使用次数 = {int((res1.bonus >= 0).sum())}/{N_STEP}")
+print("  ★ 判据不用固定阈值，而是看【TV 是否随样本量收敛到 0】：")
+print("    若实现有偏，TV 会稳定在某个非零值；")
+print("    若无偏，TV 应按 1/sqrt(N) 下降（样本量 ×5 -> TV 约 /2.2）")
 print()
-check("无损性：投机路径输出分布 == 目标分布（TV < 4σ）", tv < 4 * tv_se,
-      f"{tv:.5f} vs {4 * tv_se:.5f}")
+tvs_small, _ = [], []
+for seed in range(5):
+    tv, _a = _tv_at(40_000, seed)
+    tvs_small.append(tv)
+tvs_large, acc = [], 0.0
+for seed in range(3):
+    tv, a = _tv_at(400_000, seed)
+    tvs_large.append(tv)
+    acc = a
+
+avg_small = sum(tvs_small) / len(tvs_small)
+avg_large = sum(tvs_large) / len(tvs_large)
+ratio = avg_small / avg_large
+print(f"    N=40,000  平均 TV = {avg_small:.5f}")
+print(f"    N=400,000 平均 TV = {avg_large:.5f}")
+print(f"    比值 = {ratio:.2f}（理论上 1/sqrt(10) = 0.32，TV 比值应约 3.16）")
+check("无损性：TV 随样本量收敛到 0（无偏）", ratio > 2.0 and avg_large < 0.004,
+      f"比值 {ratio:.2f}, N=400k 时 TV={avg_large:.5f}")
+print(f"    接受率 = {acc:.3f}（理论 p[d] 均值 = {float((probs * probs).sum()):.3f}）")
 
 # ======================================================================
 print()

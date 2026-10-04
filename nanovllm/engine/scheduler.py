@@ -18,6 +18,12 @@ class Scheduler:
         # ---------- 投机解码 ----------
         self.spec_k = config.spec_k
         self.spec_batch_threshold = config.spec_batch_threshold
+        # n-gram 提议器。由 ModelRunner 注入（引擎建好后才有），
+        # 这样 token_ids 更新后能立刻把新 token 加进索引。
+        self.spec_proposer = None
+
+    def set_spec_proposer(self, proposer):
+        self.spec_proposer = proposer
 
     def is_finished(self):
         return not self.waiting and not self.running
@@ -109,6 +115,11 @@ class Scheduler:
             if is_prefill and seq.num_cached_tokens < seq.num_tokens:
                 continue
             seq.append_token(token_id)
+            # ★ 新生成的 token 必须入 n-gram 索引，否则下一步提不出候选。
+            #   普通 decode 路径也要做 —— 大部分 step 其实走的是这条（候选为空时退回），
+            #   漏了它会让索引永远追不上，导致投机占比恒为 0。
+            if self.spec_proposer is not None:
+                self.spec_proposer.observe(seq.token_ids)
             if (not seq.ignore_eos and token_id == self.eos) or seq.num_completion_tokens == seq.max_tokens:
                 seq.status = SequenceStatus.FINISHED
                 self.block_manager.deallocate(seq)
@@ -139,6 +150,11 @@ class Scheduler:
 
             # ② token_ids 已更新，现在才能安全地做前缀缓存哈希
             self.block_manager.hash_blocks(seq)
+            # ★ 把新生成的 token 增量加入 n-gram 索引，
+            #   否则下一步提不出以这些新 token 结尾的候选
+            #   （必须放在 append_tokens 之后 —— 那之前 token_ids 还没这些 token）
+            if self.spec_proposer is not None:
+                self.spec_proposer.observe(seq.token_ids)
 
             seq.num_scheduled_tokens = 0
 

@@ -272,7 +272,7 @@ class ModelRunner:
         # ★ is_prefill=True —— 让 attention 走 flash_attn_varlen_func(causal=True)，
         #   这正是我们要的因果路径；不能用 decode 那条（它只处理 1 个 query）。
         set_context(True, cu_seqlens_q, cu_seqlens_k, max_seqlen_q, max_seqlen_k,
-                     slot_mapping, None, block_tables)
+                     slot_mapping, None, block_tables, is_spec_verify=True)
         return input_ids, positions
 
     @torch.inference_mode()
@@ -303,9 +303,9 @@ class ModelRunner:
         if is_prefill:
             input_ids, positions = self.prepare_prefill(seqs)
             if self.spec_proposer is not None:
-                # 把 prompt 的 n-gram 建进索引，供后续步骤检索候选
+                # 把 prompt 的 n-gram 建进索引，并同步水位线（后面靠它做增量）
                 for seq in seqs:
-                    self.spec_proposer.add(seq.token_ids)
+                    self.spec_proposer.reset_watermark(seq.token_ids)
         elif self.spec_proposer is not None and any(s.num_scheduled_tokens > 1 for s in seqs):
             # 先提议，再决定走验证还是退回普通 decode。
             # 顺序很重要：必须先填draft_tokens，prepare_verify 才知道实际送几个。
@@ -313,8 +313,6 @@ class ModelRunner:
             for seq in seqs:
                 seq.draft_tokens = (self.spec_proposer.propose(seq.token_ids, k)
                                     if seq.num_scheduled_tokens > 1 else [])
-                # ★ 把新生成的 token 增量入索引，否则下一步提不出以它结尾的候选
-                self.spec_proposer.observe(seq.token_ids)
             # ★ 全部都没捞到候选 -> 干净退回普通 decode。
             #   不退回的话会白白付一次 verify 的多位置 forward 成本，更慢。
             if all(len(s.draft_tokens) == 0 for s in seqs):
@@ -354,7 +352,6 @@ class ModelRunner:
         temperatures = self.prepare_sample(seqs) if self.rank == 0 else None
 
         # ---------- 2. 目标模型一次 forward ----------
-        # logits 形状: (总 token 数, vocab)，按 cu_seqlens_q 切成每序列的 1+k 个位置
         logits = self.run_model(input_ids, positions, True)
         reset_context()
 
@@ -364,6 +361,9 @@ class ModelRunner:
         # ---------- 3. 逐序列做拒绝采样 ----------
         out: list[list[int]] = []
         cu = self._last_cu_seqlens_q
+        # 切分边界自检：cu 的总长应等于 logits 的行数
+        assert cu is not None and cu[-1] == logits.shape[0], (
+            f"cu[-1]={cu[-1] if cu else None} vs logits rows={logits.shape[0]}, cu={cu}")
         for i, seq in enumerate(seqs):
             # ★ 必须和 prepare_verify 里用的是同一个 n，否则切片错位
             n = 1 + len(seq.draft_tokens)

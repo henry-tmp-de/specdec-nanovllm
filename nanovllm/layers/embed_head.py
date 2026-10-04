@@ -55,7 +55,16 @@ class ParallelLMHead(VocabParallelEmbedding):
 
     def forward(self, x: torch.Tensor):
         context = get_context()
-        if context.is_prefill:
+        # ★★ 投机验证阶段【必须保留全部 k+1 个位置的 logits】。
+        #
+        # 正常 prefill 时裁剪掉中间位置是对的 —— 那些位置算完就丢，
+        # 只有每条序列最后一个位置的输出才有用（这是 nano-vllm 的原有优化）。
+        #
+        # 但投机验证【每个候选位置的分布都要用】（拒绝采样要逐位比较 p 和 q），
+        # 裁掉就只剩 1 行，验证无从下手。
+        #
+        # 判据：context.is_spec_verify 为 True 时跳过裁剪。
+        if context.is_prefill and not context.is_spec_verify:
             last_indices = context.cu_seqlens_q[1:] - 1
             x = x[last_indices].contiguous()
         logits = F.linear(x, self.weight)

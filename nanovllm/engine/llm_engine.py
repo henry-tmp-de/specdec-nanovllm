@@ -32,6 +32,10 @@ class LLMEngine:
         self.tokenizer = AutoTokenizer.from_pretrained(config.model, use_fast=True)
         config.eos = self.tokenizer.eos_token_id
         self.scheduler = Scheduler(config)
+        # 把提议器交给 scheduler：token_ids 落地后要立刻入索引，
+        # 否则下一步提不出以新 token 结尾的候选
+        if getattr(self.model_runner, "spec_proposer", None) is not None:
+            self.scheduler.set_spec_proposer(self.model_runner.spec_proposer)
         atexit.register(self.exit)
 
     def exit(self):

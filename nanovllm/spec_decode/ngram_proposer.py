@@ -43,6 +43,8 @@ class NgramProposer:
         self._index: Dict[Tuple[int, ...], Deque[int]] = defaultdict(
             lambda: deque(maxlen=self.window)
         )
+        # 已入索引的位置水位线（observe 靠它做增量）
+        self._indexed_upto = 0
 
     # ------------------------------------------------------------------
     # 建索引
@@ -105,22 +107,35 @@ class NgramProposer:
     def observe(self, token_ids: Sequence[int]) -> None:
         """把【刚刚生成】的 token 增量加入索引。
 
-        ★ 这是 n-gram 投机能不能真正work 的关键：
-          add() 是全量建索引（用于 prompt 和历史输出），
-          但生成出来的 token 如果不入索引，下一步就永远提不出以它结尾的候选。
-          实测：只add(prompt) 时，5-token 的 prompt 提议结果恒为空。
+        ★ 这是 n-gram 投机能不能真正 work 的关键：
+          生成出来的 token 如果不入索引，下一步就永远提不出以它结尾的候选。
 
-        只需要加入「刚好够构成 n-1 元组」的那一小段，避免 O(n²)。
+        ★★ 踩过的坑：早先的实现只取「尾部 n 个 token」建索引，
+          结果每次只新增1~2 条边、且 key 与上次的对不齐，
+          索引里堆满了 (0,0) -> [0,0,...] 这类垃圾，
+          真正的连续链条建不起来 -> 提议恒为空。
+
+        正确做法：用「已建索引到哪里」的水位线（_indexed_upto），
+        每次把 [水位线-n, 当前长度) 这段【全部】补进去。
+        水位线本身落后 n-1 个 token，保证跨越边界的 n-gram 也能被建到。
         """
         n = self.n
-        need = n - 1
-        if len(token_ids) < need:
+        if len(token_ids) < n:
             return
-        # 只取尾部 need 个 token + 它前面的那一个，构成最后一个 key
-        start = len(token_ids) - need - 1
-        if start < 0:
-            start = 0
-        self.add(token_ids[start:])
+
+        start = max(0, self._indexed_upto - (n - 1))
+        end = len(token_ids)
+        if end <= start:
+            return
+
+        # add() 内部会跳过最后不足 n 个的位置，正好是留给下次的
+        self.add(token_ids[start:end])
+        self._indexed_upto = end
+
+    def reset_watermark(self, token_ids: Sequence[int]) -> None:
+        """整段重建索引后，同步水位线（用于 prompt 首次入索引）。"""
+        self.add(token_ids)
+        self._indexed_upto = len(token_ids)
 
     def _walk(self, key: Tuple[int, ...], k: int) -> List[int]:
         """从命中的 key 开始，沿着索引一路往后接。"""
@@ -150,3 +165,4 @@ class NgramProposer:
 
     def clear(self) -> None:
         self._index.clear()
+        self._indexed_upto = 0
