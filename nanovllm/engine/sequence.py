@@ -37,6 +37,10 @@ class Sequence:
         #   → 下次相同前缀会命中【错误缓存】→ 静默输出错误 token。
         #   所以草稿只存在这里，验证通过后才写进 token_ids。
         self.draft_tokens: list[int] = []
+        # draft 路线：候选在 draft 分布下的真实概率 (k, vocab)。
+        # ★ 只有 draft model 路线才有 —— n-gram 没有分布，用不了。
+        #   没有它就退化成单点分布，接受率会掉到 p[draft]。
+        self.draft_probs = None
         # 本步实际落地的 token 数（accepted + bonus），用于统计接受率
         self.last_accepted = 0
 

@@ -134,7 +134,8 @@ class Scheduler:
           ③ EOS 和 max_tokens 要在【每个】落地的 token 上检查，而不是只看最后一个
         """
         for seq, toks in zip(seqs, accepted_tokens):
-            seq.draft_tokens = []          # 草稿用完即弃，绝不进 token_ids
+            seq.draft_tokens = []# 草稿用完即弃，绝不进 token_ids
+            seq.draft_probs = None         # ★ 同理，draft 分布也必须清，否则会串用上一轮
 
             if not toks:
                 # 一个都没接受：把本该 decode 的那个位置也退掉，num_computed 回退

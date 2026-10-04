@@ -192,3 +192,41 @@ if FAILED:
     sys.exit(1)
 else:
     print("✓ 全部通过")
+
+# ======================================================================
+# 测试 4：draft model 路线的接受率（真实分布 vs 单点分布）
+# ======================================================================
+print()
+print("=" * 70)
+print("测试 4：真实分布 vs 单点分布 —— 接受率的差距")
+print("=" * 70)
+print("  n-gram 路线：q 是单点分布 -> 接受概率 = p[draft]")
+print("  draft model 路线：q 是真实分布 -> 接受概率 = min(1, p/q)")
+print()
+
+V4 = 50
+torch.manual_seed(0)
+N4 = 40000
+
+# 模拟：draft 模型和 target 高度相似但不完全相同（这是真实的 draft-target 关系）
+p_logits = torch.randn(N4, V4)
+# draft 的 logits = target + 扰动（越接近，接受率越高）
+for noise in [0.0, 0.5, 1.0, 2.0]:
+    q_logits = p_logits + torch.randn(N4, V4) * noise
+    p = torch.softmax(p_logits, dim=-1)
+    q = torch.softmax(q_logits, dim=-1)
+
+    # draft 采样候选
+    cand = torch.multinomial(q, 1, replacement=True).squeeze(1)
+    # 接受概率 min(1, p[cand]/q[cand])
+    pc = p.gather(1, cand.unsqueeze(1)).squeeze(1)
+    qc = q.gather(1, cand.unsqueeze(1)).squeeze(1)
+    ratio = torch.clamp(pc / qc.clamp_min(1e-10), max=1.0)
+    acc_real = float(ratio.mean())
+
+    # 单点分布情况：接受概率 = p[cand]
+    acc_point = float(pc.mean())
+
+    print(f"  draft 与 target 差异 noise={noise}:")
+    print(f"    真实分布接受率 = {acc_real:.3f}    单点分布接受率 = {acc_point:.3f}"
+          f"    提升 {acc_real/max(acc_point,1e-9):.1f}x")
