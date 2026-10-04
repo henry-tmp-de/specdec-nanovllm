@@ -109,8 +109,14 @@ class Scheduler:
             self.postprocess_spec(seqs, token_ids)
             return
         for seq, token_id in zip(seqs, token_ids):
-            self.block_manager.hash_blocks(seq)
+            # ★ 顺序：必须先推进 num_cached_tokens，再做 hash_blocks。
+            #   hash_blocks 靠 (num_cached_tokens, num_scheduled_tokens) 算出
+            #   哪些 block 已完成；而它内部读到的必须是【更新后】的值，
+            #   否则登记进前缀缓存的哈希对应的是「旧的完成量」——
+            #   下次相同前缀会命中错误的缓存，静默输出错误 token。
+            #   （投机路径对此更敏感：验证阶段的 start 直接取自num_cached_tokens。）
             seq.num_cached_tokens += seq.num_scheduled_tokens
+            self.block_manager.hash_blocks(seq)
             seq.num_scheduled_tokens = 0
             if is_prefill and seq.num_cached_tokens < seq.num_tokens:
                 continue

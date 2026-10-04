@@ -75,10 +75,6 @@ class Attention(nn.Module):
             #   draft 模型每步只算 1 个 token，走的就是后者。
             # 写死 unsqueeze 会让 draft 侧报 "Dimension out of range"。
             q_in = q.unsqueeze(0).unsqueeze(0) if q.dim() == 2 else q.unsqueeze(1)
-            print(f"@@ATN q={tuple(q.shape)} -> q_in={tuple(q_in.shape)} "
-                  f"k_cache={tuple(k_cache.shape)} "
-                  f"seqlens={context.context_lens.tolist() if context.context_lens is not None else None} "
-                  f"bt={tuple(context.block_tables.shape) if context.block_tables is not None else None}")
             o = flash_attn_with_kvcache(q_in, k_cache, v_cache,
                                         cache_seqlens=context.context_lens,
                                         block_table=context.block_tables,
