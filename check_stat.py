@@ -11,14 +11,14 @@ TARGET = os.path.expanduser("~/nano-vllm/models/Qwen3-4B")
 DRAFT  = os.path.expanduser("~/nano-vllm/models/Qwen3-0.6B")
 mode, prompt = sys.argv[1], sys.argv[2]
 k = int(sys.argv[3]) if len(sys.argv) > 3 else 2
-N = 40
+N = 8  # 8条 x 25 token = 375 token，够做频率分布比较
 
 kw = dict(enforce_eager=True, max_num_batched_tokens=16384)
 if mode == "draft":
     kw.update(spec_k=k, spec_method="draft", draft_model=DRAFT, spec_batch_threshold=0)
 torch.manual_seed(42)
 llm = LLM(TARGET, **kw)
-sp = SamplingParams(temperature=1.0, max_tokens=25, ignore_eos=True)
+sp = SamplingParams(temperature=1.0, max_tokens=20, ignore_eos=True)
 
 # N 条独立的短prompt，统计输出 token 分布
 prompts = [f"{prompt}{i}" for i in range(N)]
