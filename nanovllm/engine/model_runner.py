@@ -341,20 +341,13 @@ class ModelRunner:
     def _run_draft_prefill(self, seqs, input_ids, positions):
         """prefill 时也把 draft 模型跑一遍，填它自己的 KV cache。
 
-        ★ draft 与 target 共用【block_table】（逻辑 block i -> 物理块 i），
-          但各自的 cache 是独立的显存区：
-            target: self.kv_cache[i]        位置由 block_table 决定
-            draft : self.draft_kv_cache[i]  同一个 i，落进另一块显存
-          所以这里只需要 set_context 一次（slot_mapping/block_table 完全相同），
-          换模型对象跑就行。
+        ★ 最简实现：直接复用当前 context（prepare_prefill 已经设好了），
+          跑完【不恢复】—— 因为 target 的 prefill 紧接着会自己再
+          set_context 一次（run() 里prepare_prefill 在前、target 前向在后），
+          这里只需要保证 draft 跑到时 context 是对的。
         """
-        set_context(True,
-                     get_context().cu_seqlens_q, get_context().cu_seqlens_k,
-                     get_context().max_seqlen_q, get_context().max_seqlen_k,
-                     get_context().slot_mapping, None, get_context().block_tables)
         with torch.inference_mode():
             self.draft_model(input_ids, positions)
-        reset_context()
 
     @torch.inference_mode()
     def run_model(self, input_ids: torch.Tensor, positions: torch.Tensor, is_prefill: bool):

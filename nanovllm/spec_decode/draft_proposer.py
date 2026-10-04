@@ -61,6 +61,18 @@ class DraftModelProposer:
         return (2 * self.n_layers_bound * self.block_size
                 * n_kv_heads * head_dim * dtype_itemsize)
 
+    def reset_watermark(self, token_ids):
+        """draft 路线不需要 n-gram 索引。
+
+        Scheduler 会对两种提议器统一调用这两个方法（n-gram 需要维护索引，
+        draft 不需要），所以这里给个空实现保持接口一致。
+        """
+        pass
+
+    def observe(self, token_ids):
+        """同上：无索引可维护。"""
+        pass
+
     # ------------------------------------------------------------------
     @torch.inference_mode()
     def propose(
@@ -93,7 +105,13 @@ class DraftModelProposer:
         cand_probs: List[torch.Tensor] = []
 
         cur_token = last_token
-        pos = context_len          # 下一个 token 的位置
+        # ★★ off-by-one 要点：
+        #   last_token 是序列的【最后一个】token，下标是 context_len-1。
+        #   要预测新 token，必须把它喂在它【自己的位置】context_len-1，
+        #   读出来的 logits 才是「下一个 token」的分布。
+        #   写成 context_len 会整体错一位，而且 slot_mapping 会覆盖
+        #   本该留给下一个 token 的槽位 -> cache 逐步损坏。
+        pos = context_len - 1
 
         for step in range(self.k):
             # ---- draft 前向：每步只算1 个 token，走 decode 路径 ----
@@ -110,7 +128,11 @@ class DraftModelProposer:
                 physical = -1
             slot_mapping = torch.tensor([physical], dtype=torch.int32, device=device)
             cache_seqlen = torch.tensor([pos + 1], dtype=torch.int32, device=device)
-            block_tables = torch.tensor([seq_block_table], dtype=torch.int32, device=device)
+            # ★ block_tables 必须带 batch 维：(batch, max_blocks)
+            #   写成 1 维的话 flash_attn_with_kvcache 会报
+            #   "Dimension out of range"，而且形状不对时它不报错、直接算错。
+            _bt = list(seq_block_table) + [-1] * max(0, 1)
+            block_tables = torch.tensor([_bt], dtype=torch.int32, device=device)
 
             set_context(False, slot_mapping=slot_mapping,
                         context_lens=cache_seqlen, block_tables=block_tables)
