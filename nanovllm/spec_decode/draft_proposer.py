@@ -105,16 +105,33 @@ class DraftModelProposer:
         cand_probs: List[torch.Tensor] = []
 
         cur_token = last_token
-        # ★★ off-by-one 要点：
-        #   last_token 是序列的【最后一个】token，下标是 context_len-1。
-        #   要预测新 token，必须把它喂在它【自己的位置】context_len-1，
-        #   读出来的 logits 才是「下一个 token」的分布。
-        #   写成 context_len 会整体错一位，而且 slot_mapping 会覆盖
-        #   本该留给下一个 token 的槽位 -> cache 逐步损坏。
+        # ★★★ 这里有个隐蔽但致命的问题（实测 max p = 1.0000 的根因）：
+        #
+        #   draft 的 KV cache 只在【prefill】时被填过（那一次写满了 0..L-1）。
+        #   之后 target 每解码一步，就往位置 L, L+1, ... 继续写 token，
+        #   但那些位置的【draft 侧 KV 从来没被更新过】——
+        #   draft 的 cache 里那些槽位还留着 prefill 阶段的垃圾（或初始未初始化值）。
+        #
+        #   于是 draft 每次从位置 L 开始生成时，读到的是错误的 KV
+        #   -> 分布退化成一个点（p=1.0）
+        #   -> 提议几乎必被拒，且 draft 自己被幻觉污染形成正反馈。
+        #
+        #   对照实验（同一模型、同一位置、同prompt）：
+        #     draft decode 路径   : max p = 1.0000, top1 = 3393
+        #     draft varlen 路径: max p = 0.3084, top1 = 374  ← 这是正确答案
+        #
+        #   修法：每轮 propose 的第一步，【重算】最后一个已确认 token 的 KV。
+        #   它必须被写进 draft cache 的位置 context_len-1。
+        #   （target 那边是每次 decode 都重算最后那个 token 的，
+        #     因为 flash_attn_with_kvcache 会把当前 token 的 KV 写进去再读——
+        #     所以 target 的 decode 一直是对的，draft 这边缺了同等的动作。）
         pos = context_len - 1
 
         for step in range(self.k):
             # ---- draft 前向：每步只算1 个 token，走 decode 路径 ----
+            #★ step 0 算的是「最后一个已确认 token」（cur_token = last_token），
+            #    它的 KV 会写进 cache 的 position context_len-1 槽位，
+            #    这样 draft 才读到了自己这一侧的、正确的 KV。
             input_ids = torch.tensor([cur_token], dtype=torch.int64, device=device)
             positions = torch.tensor([pos], dtype=torch.int64, device=device)
 
