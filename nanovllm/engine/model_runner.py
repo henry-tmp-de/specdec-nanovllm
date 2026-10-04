@@ -308,11 +308,16 @@ class ModelRunner:
                     self.spec_proposer.reset_watermark(seq.token_ids)
         elif self.spec_proposer is not None and any(s.num_scheduled_tokens > 1 for s in seqs):
             # 先提议，再决定走验证还是退回普通 decode。
-            # 顺序很重要：必须先填draft_tokens，prepare_verify 才知道实际送几个。
             k = self.config.spec_k
             for seq in seqs:
-                seq.draft_tokens = (self.spec_proposer.propose(seq.token_ids, k)
-                                    if seq.num_scheduled_tokens > 1 else [])
+                if seq.num_scheduled_tokens > 1:
+                    chains = self.spec_proposer.propose(seq.token_ids, k)
+                    # 线性链一次 forward 只能验证一条 —— 要同时验证多条就得做树状
+                    # 注意力（需要自定义 mask + 换 SDPA，见 README 的取舍说明）。
+                    # 这里取【最长】的那条：长度直接决定能省几次 forward。
+                    seq.draft_tokens = max(chains, key=len) if chains else []
+                else:
+                    seq.draft_tokens = []
             # ★ 全部都没捞到候选 -> 干净退回普通 decode。
             #   不退回的话会白白付一次 verify 的多位置 forward 成本，更慢。
             if all(len(s.draft_tokens) == 0 for s in seqs):

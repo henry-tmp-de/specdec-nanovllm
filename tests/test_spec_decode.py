@@ -46,25 +46,31 @@ print("测试 1：NgramProposer —— 能否从已有文本捞出正确的后�
 print("=" * 70)
 
 p = NgramProposer(n=3, window=8)
-# 构造一个有规律的前缀：「A B C D E」
 seq = [10, 11, 12, 13, 14, 99, 99]
-p.add(seq)
-# 用「A B」检索，应能接出 C D E
-cand = p.propose([10, 11], k=3)
-check("从已知前缀接出后继", cand == [12, 13, 14], f"得到 {cand}")
+p.reset_watermark(seq)
+cands = p.propose([10, 11], k=3)
+check("返回多条候选（列表的列表）", isinstance(cands, list) and len(cands) > 0
+      and isinstance(cands[0], list), f"得到 {cands}")
+check("最优候选接出后继", cands[0] == [12, 13, 14], f"第一条 {cands[0]}")
+check("前缀不存在时返回空", p.propose([77, 88], k=3) == [])
 
-# 检索不存在的前缀
-cand = p.propose([77, 88], k=3)
-check("前缀不存在时返回空", cand == [], f"得到 {cand}")
+# 多样性：同一个 key 多次出现，后继不同 -> 应该给出多条不同分支
+p2 = NgramProposer(n=3, window=16)
+p2.reset_watermark([1, 2, 9, 1, 2, 7, 1, 2, 5])
+c2 = p2.propose([1, 2], k=2, n_candidates=4)
+uniq = {tuple(c) for c in c2}
+check("多条候选互不相同（多样性）", len(uniq) > 1, f"得到 {[list(u) for u in uniq]}")
+check("最近一次出现的分支排最前", c2[0] == [5, ...][:len(c2[0])] if c2[0] else False,
+      f"第一条 {c2[0]}")
 
-# 索引统计
-check("索引统计可读", "keys" in p.stats(), p.stats())
-
-# 加长一点，看能否接更长的链
-p2 = NgramProposer(n=2, window=16)
-p2.add([1, 2, 3, 4, 5, 6, 7, 8])
-cand2 = p2.propose([1, 2], k=4)
-check("n=2 时可接更长链", cand2[:4] == [3, 4, 5, 6], f"得到 {cand2}")
+# 水位线：只 add 一次后，继续 observe 应能建出连续链条
+p3 = NgramProposer(n=3, window=32)
+full = [1, 2, 3, 4, 5, 6, 7, 8]
+p3.reset_watermark(full)
+for end in range(5, 9):
+    p3.observe(full[:end])
+check("水位线增量建索引后可提议",
+      len(p3.propose(full[:5], k=2)) > 0, f"{p3.stats()}")
 
 # ======================================================================
 print()

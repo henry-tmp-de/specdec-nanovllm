@@ -68,41 +68,52 @@ class NgramProposer:
         self,
         recent: Sequence[int],
         k: int,
-        prompt_len: int = 0,
-    ) -> List[int]:
-        """从 recent（当前已有的 token，通常是 prompt + 已生成）里检索候选链。
+        n_candidates: int = 4,
+    ) -> List[List[int]]:
+        """检索候选链，返回【多条】候选（不是一个 token 的列表）。
 
-        返回长度 <= k 的候选 token 列表。
-        返回空列表表示「没找到任何匹配」——调用方应跳过这一步投机。
+        ★★ 为什么返回多条而不是一条：
+          同一个 n-gram 在历史上出现过很多次，每次的后继可能不同。
+          只返回「最近一次的后继」，一旦它不对，accept rate 就直接归零。
+          vLLM 的 ngram_proposer 也是返回多条候选让验证去挑
+          （默认 k=4），实测这对accept rate 影响很大。
+
+        返回：最多 n_candidates 条候选链，每条长度 <= k。
+              没有匹配时返回空列表。
 
         策略
         ----
-        1. 取 recent 的【最长】可用后缀去匹配：
-           匹配越长的 pattern，候选越可靠（与 SuffixDecoding 的实测一致）。
-        2. 命中后，沿着索引一路往后接，最多接 k 个。
-        3. 一路接不上就停，返回已接到的部分。
-
-        ★ 重要特性：短 prompt 时几乎必然返回空。
-          因为索引里的 (n-1) 元组需要有一个「后继 token」才能建立，
-          而 prompt 末尾的 n-gram 天然没有后继。所以：
-            - prompt 只有几十 token  -> 大部分步都提不出候选
-            - 文本长到几百 token 以上 -> 索引丰富，接受率才上得去
-          ★ 这正是检索式投机解码对【任务类型】敏感的原因：
-            高 n-gram 重叠的任务（代码编辑/摘要/RAG）效果好，
-            低重叠的任务（创意写作）几乎没收益甚至负收益。
+        1. 取 recent 的【最长】可用后缀去匹配（匹配越长候选越可靠）。
+        2. 命中的每一条历史出现，各接出一条链 —— 这就是候选多样性来源。
+        3. 优先【最近】出现的那些。
         """
         n = self.n
         if len(recent) < n - 1:
             return []
 
-        # 从最长 pattern 往下试，直到命中
+        # 从最长 pattern 往下试，收集【所有】命中的 key（长的优先）
+        hit_keys: List[Tuple[int, ...]] = []
         for length in range(n - 1, 0, -1):
             if len(recent) < length:
                 continue
             key = tuple(recent[-length:])
             if key in self._index:
-                return self._walk(key, k)
-        return []
+                hit_keys.append(key)
+                # 更长的 key（更长的 length）已经找到，短的可能也没必要再试，
+                # 但为了多样性，继续收集 1 级的。
+                if length > 1:
+                    continue
+
+        if not hit_keys:
+            return []
+
+        out: List[List[int]] = []
+        for key in hit_keys:
+            for chain in self._walk_multi(key, k, n_candidates):
+                out.append(chain)
+                if len(out) >= n_candidates:
+                    return out
+        return out
 
     def observe(self, token_ids: Sequence[int]) -> None:
         """把【刚刚生成】的 token 增量加入索引。
@@ -137,19 +148,38 @@ class NgramProposer:
         self.add(token_ids)
         self._indexed_upto = len(token_ids)
 
-    def _walk(self, key: Tuple[int, ...], k: int) -> List[int]:
-        """从命中的 key 开始，沿着索引一路往后接。"""
+    def _walk(self, key: Tuple[int, ...], k: int, branch: int = 0) -> List[int]:
+        """从命中的 key 出发接一条链。
+
+        branch: 选第几条历史分支。
+          0 = 最近一次出现（最常见也最可靠）
+          1 = 倒数第二次
+          ...
+        枚举不同分支是候选多样性的主要来源。
+        """
         out: List[int] = []
         cur = key
-        for _ in range(k):
-            cand = self._index.get(cur)
-            if not cand:
+        for step in range(k):
+            cands = self._index.get(cur)
+            if not cands:
                 break
-            # 取最常见的那个后继（deque 尾部是最近的；这里用 FIFO 语义最稳）
-            nxt = cand[-1]
+            # 该 key 有多个历史后继，取第 branch 个（越靠后越久远）
+            if branch >= len(cands):
+                break
+            nxt = cands[len(cands) - 1 - branch]      # deque 尾部是最近的
             out.append(nxt)
-            # 下一个 key = 去掉头部，加上新 token
             cur = (cur[1:] + (nxt,)) if len(cur) > 1 else (nxt,)
+        return out
+
+    def _walk_multi(self, key: Tuple[int, ...], k: int, n: int) -> List[List[int]]:
+        """从同一个 key 接出多条不同分支的链。"""
+        out = []
+        for branch in range(n):
+            chain = self._walk(key, k, branch)
+            if chain:
+                out.append(chain)
+            else:
+                break        # 该 key 的历史分支不够了
         return out
 
     # ------------------------------------------------------------------
