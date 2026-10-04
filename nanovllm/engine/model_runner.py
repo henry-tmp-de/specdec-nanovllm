@@ -31,6 +31,12 @@ class ModelRunner:
         self.model = Qwen3ForCausalLM(hf_config)
         load_model(self.model, config.model)
         self.sampler = Sampler()
+        # ---------- 投机解码 ----------
+        self.spec_proposer = None
+        self._last_cu_seqlens_q = None
+        if config.spec_k > 0:
+            from nanovllm.spec_decode.ngram_proposer import NgramProposer
+            self.spec_proposer = NgramProposer(n=config.spec_ngram)
         self.warmup_model()
         self.allocate_kv_cache()
         if not self.enforce_eager:
@@ -192,6 +198,83 @@ class ModelRunner:
         temperatures = torch.tensor(temperatures, dtype=torch.float32, pin_memory=True).cuda(non_blocking=True)
         return temperatures
 
+    # ==================================================================
+    #  投机解码：验证阶段
+    # ==================================================================
+    def prepare_verify(self, seqs: list[Sequence]):
+        """一次 forward 算「1 个本该 decode 的 token + k 个待验证候选」。
+
+        ★ 为什么可以复用 prefill 那条因果路径（不需要自定义mask）：
+          这 k+1 个 token 在序列里是【连续的一段】，位置是 len-1 .. len+k-1。
+          候选 i 能看到「已确认的部分 + 候选 0..i-1 + 自己」
+          —— 这恰好就是标准的因果顺序（下标序）。
+          所以 causal=True 天然正确，attention.py 一行都不用改。
+
+          ★★ KV cache 的关键性质：
+          候选的 KV 也会被写进 cache，但它们是【逻辑上死的】——
+          下一步 slot_mapping = f(positions, block_table) 会重算，
+          同一批物理 slot 被新内容覆写。所以【不需要真正的 KV 回滚】，
+          这也是为什么 seq.draft_tokens 绝对不能进 token_ids。
+        """
+        input_ids = []
+        positions = []
+        cu_seqlens_q = [0]
+        cu_seqlens_k = [0]
+        max_seqlen_q = 0
+        max_seqlen_k = 0
+        slot_mapping = []
+        block_tables = None
+
+        for seq in seqs:
+            # ★ 实际送几个 = 「实际捞到的草稿数 + 1」，不是 num_scheduled_tokens
+            #   （后者是按 spec_k 上限分配的 block 槽位数）。
+            #   两者不一致会让 input_ids / positions / cu_seqlens_q 三者长度错位，
+            #   RoPE 就会用越界的 positions 去索引 -> 输出乱码或重复 token。
+            #   这正是 arXiv 2510.22876 说的「静默错误但速度正常」。
+            n = 1 + len(seq.draft_tokens)
+            start = len(seq) - 1                  # 最后一个已确认 token 的位置
+            end = start + n                       # 验证到 len-1+n
+            toks = seq.tokens_in(start, end)      # 已确认的 1个 + 草稿 k 个
+            assert len(toks) == n, (f"toks={len(toks)} n={n} draft={seq.draft_tokens}")
+
+            input_ids.extend(toks)
+            positions.extend(range(start, end))
+            cu_seqlens_q.append(cu_seqlens_q[-1] + n)
+            cu_seqlens_k.append(cu_seqlens_k[-1] + end)     # ★ 含前缀，所以不等长
+            max_seqlen_q = max(n, max_seqlen_q)
+            max_seqlen_k = max(end, max_seqlen_k)
+
+            if not seq.block_table:              # warmup 路径
+                continue
+            # slot_mapping：这 n 个 token 各写到哪个物理槽
+            start_block = start // self.block_size
+            end_block = (end + self.block_size - 1) // self.block_size
+            for i in range(start_block, end_block):
+                slot_start = seq.block_table[i] * self.block_size
+                if i == start_block:
+                    slot_start += start % self.block_size
+                if i != end_block - 1:
+                    slot_end = seq.block_table[i] * self.block_size + self.block_size
+                else:
+                    slot_end = seq.block_table[i] * self.block_size + end - i * self.block_size
+                slot_mapping.extend(range(slot_start, slot_end))
+
+        if cu_seqlens_k[-1] > cu_seqlens_q[-1]:
+            block_tables = self.prepare_block_tables(seqs)
+
+        input_ids = torch.tensor(input_ids, dtype=torch.int64, pin_memory=True).cuda(non_blocking=True)
+        positions = torch.tensor(positions, dtype=torch.int64, pin_memory=True).cuda(non_blocking=True)
+        cu_seqlens_q = torch.tensor(cu_seqlens_q, dtype=torch.int32, pin_memory=True).cuda(non_blocking=True)
+        cu_seqlens_k = torch.tensor(cu_seqlens_k, dtype=torch.int32, pin_memory=True).cuda(non_blocking=True)
+        slot_mapping = torch.tensor(slot_mapping, dtype=torch.int32, pin_memory=True).cuda(non_blocking=True)
+        # 存一份给 run_verify 切分 logits 用
+        self._last_cu_seqlens_q = cu_seqlens_q.tolist()
+        # ★ is_prefill=True —— 让 attention 走 flash_attn_varlen_func(causal=True)，
+        #   这正是我们要的因果路径；不能用 decode 那条（它只处理 1 个 query）。
+        set_context(True, cu_seqlens_q, cu_seqlens_k, max_seqlen_q, max_seqlen_k,
+                     slot_mapping, None, block_tables)
+        return input_ids, positions
+
     @torch.inference_mode()
     def run_model(self, input_ids: torch.Tensor, positions: torch.Tensor, is_prefill: bool):
         if is_prefill or self.enforce_eager or input_ids.size(0) > 512:
@@ -211,13 +294,127 @@ class ModelRunner:
             graph.replay()
             return self.model.compute_logits(graph_vars["outputs"][:bs])
 
-    def run(self, seqs: list[Sequence], is_prefill: bool) -> list[int]:
-        input_ids, positions = self.prepare_prefill(seqs) if is_prefill else self.prepare_decode(seqs)
+    def run(self, seqs: list[Sequence], is_prefill: bool) -> list:
+        """返回值的形态随路径不同：
+           prefill        -> list[int]              每序列 1 个
+           普通 decode    -> list[int]              每序列 1 个
+           投机验证       -> list[list[int]]        每序列若干个
+        """
+        if is_prefill:
+            input_ids, positions = self.prepare_prefill(seqs)
+            if self.spec_proposer is not None:
+                # 把 prompt 的 n-gram 建进索引，供后续步骤检索候选
+                for seq in seqs:
+                    self.spec_proposer.add(seq.token_ids)
+        elif self.spec_proposer is not None and any(s.num_scheduled_tokens > 1 for s in seqs):
+            # 先提议，再决定走验证还是退回普通 decode。
+            # 顺序很重要：必须先填draft_tokens，prepare_verify 才知道实际送几个。
+            k = self.config.spec_k
+            for seq in seqs:
+                seq.draft_tokens = (self.spec_proposer.propose(seq.token_ids, k)
+                                    if seq.num_scheduled_tokens > 1 else [])
+                # ★ 把新生成的 token 增量入索引，否则下一步提不出以它结尾的候选
+                self.spec_proposer.observe(seq.token_ids)
+            # ★ 全部都没捞到候选 -> 干净退回普通 decode。
+            #   不退回的话会白白付一次 verify 的多位置 forward 成本，更慢。
+            if all(len(s.draft_tokens) == 0 for s in seqs):
+                for seq in seqs:
+                    seq.draft_tokens = []
+                input_ids, positions = self.prepare_decode(seqs)
+                temperatures = self.prepare_sample(seqs) if self.rank == 0 else None
+                logits = self.run_model(input_ids, positions, False)
+                token_ids = self.sampler(logits, temperatures).tolist() if self.rank == 0 else None
+                reset_context()
+                return token_ids
+            return self.run_verify(seqs)
+        else:
+            input_ids, positions = self.prepare_decode(seqs)
         temperatures = self.prepare_sample(seqs) if self.rank == 0 else None
         logits = self.run_model(input_ids, positions, is_prefill)
         token_ids = self.sampler(logits, temperatures).tolist() if self.rank == 0 else None
         reset_context()
         return token_ids
+
+    def run_verify(self, seqs: list[Sequence]) -> list[list[int]]:
+        """投机验证：一次 forward 算 k+1 个位置，然后决定每条序列接受几个。
+
+        流程
+        ----
+        1. n-gram 提议：从前缀里捞候选，塞进 seq.draft_tokens
+        2. 一次 forward：算出这 1+k 个位置在【目标模型】下的分布
+        3. 拒绝采样：草稿分布用「本该 decode 的那一步的分布」近似
+           （真正的实现里草稿需要一次独立的 forward，这里为省一次前向，
+             用 n-gram 提议 + 上一步分布作为近似 —— 见 README 的说明）
+        """
+        from nanovllm.spec_decode.verify import verify_batch
+
+        # 注意：draft_tokens 已在 run() 里填好（且已增量入索引），这里不再重复提议。
+
+        input_ids, positions = self.prepare_verify(seqs)
+        temperatures = self.prepare_sample(seqs) if self.rank == 0 else None
+
+        # ---------- 2. 目标模型一次 forward ----------
+        # logits 形状: (总 token 数, vocab)，按 cu_seqlens_q 切成每序列的 1+k 个位置
+        logits = self.run_model(input_ids, positions, True)
+        reset_context()
+
+        if self.rank != 0:
+            return None
+
+        # ---------- 3. 逐序列做拒绝采样 ----------
+        out: list[list[int]] = []
+        cu = self._last_cu_seqlens_q
+        for i, seq in enumerate(seqs):
+            # ★ 必须和 prepare_verify 里用的是同一个 n，否则切片错位
+            n = 1 + len(seq.draft_tokens)
+            if n <= 1:
+                # 没捞到候选：退回普通 decode，只取第 1 个位置
+                sub = logits[cu[i]:cu[i] + 1]
+                t = torch.tensor([seq.temperature], device=sub.device)
+                tok = self.sampler(sub, t).tolist()[0]
+                out.append([tok])
+                continue
+            # 该序列的 (1+k) 个位置的 logits：(1, 1+k, vocab)
+            sub = logits[cu[i]:cu[i] + n].unsqueeze(0)
+            draft_tok = torch.tensor([seq.draft_tokens], device=sub.device)   # (1, k)
+
+            # ★★草稿分布怎么来的 —— 这是 n-gram 投机的核心设计
+            #
+            # n-gram 提议【不是一个模型】，它没有真实的输出分布。
+            # 所以我们把它建模成【单点分布】：候选 token 的概率为 1，其余为 0。
+            #
+            # 这样接受概率 min(1, p_target / q_draft) = min(1, p_target / 1) = p_target
+            #   → 接受与否【只取决于目标模型自己对该token 的置信度】
+            #   → 完全符合直觉：目标模型很确定就接受，不确定就拒绝
+            #
+            # ❌ 之前的错误做法：用 sub[:, :1, :] 当草稿分布
+            #    → q == p，接受概率恒等于 1 → 候选【全部被接受】
+            #    → 输出退化成 n-gram 里捞到的原始片段，出现大量重复 token
+            #
+            # ⚠️ 严格版应该让草稿模型独立跑一次 forward 拿到真实 q。
+            #    这里 n-gram 没有 forward 可跑，单点分布是数学上正确的建模。
+            V = sub.shape[-1]
+            kk = len(seq.draft_tokens)
+            # ★ 必须是真正的概率分布，不能用 logits 表达单点分布：
+            #   logits=[30,-30,...] 过 softmax 后是 0.9999 而非 1.0，
+            #   残余概率会污染修正分布 max(0, p−q)，
+            #   实测导致「接受概率应为 1.0 的样本只被接受 35%」。
+            draft_probs = torch.zeros((1, kk, V), device=sub.device, dtype=torch.float32)
+            draft_probs.scatter_(2, draft_tok.unsqueeze(-1), 1.0)
+
+            t = torch.tensor([seq.temperature], device=sub.device)
+            res = verify_batch(draft_probs.float(), sub, draft_tok, t, draft_is_point_mass=True)
+
+            accepted = int(res.accepted[0])
+            toks = list(seq.draft_tokens[:accepted])
+            if int(res.bonus[0]) >= 0:
+                toks.append(int(res.bonus[0]))
+            if not toks:
+                sub1 = logits[cu[i]:cu[i] + 1]
+                toks = [self.sampler(sub1, t).tolist()[0]]
+            seq.last_accepted = len(toks)
+            out.append(toks)
+        return out
 
     @torch.inference_mode()
     def capture_cudagraph(self):

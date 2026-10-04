@@ -143,41 +143,42 @@ ref_tokens = torch.stack([
     torch.multinomial(tgt_probs[:, s, :], 1).squeeze(1) for s in range(M)
 ], dim=1)                                                     # (N, M)
 
-# 实验组：走投机路径（提议 1 个候选 -> 验证）
-q_logits_seq = torch.randn(N, 1, V2)
-q_prob = torch.softmax(q_logits_seq, dim=-1)
-draft_tok = torch.multinomial(q_prob.reshape(-1, V2), 1).squeeze(1).view(N, 1)
+# 实验组：走投机路径。
+# ★ 关键：单步验证的正确构造是——
+#   target 位置 0  = 本该decode 的那个位置的分布 p[step]
+#   target 位置 1  = 候选 0 的真值分布
+# 而候选 0 之所以可能正确，恰恰是因为它是从 p[step-1] 后面捞出来的。
+# 所以最干净的检验是【单步】：候选的真值分布就是 p[step]，参照组直接采它。
+N_STEP = 50000
+p_step = torch.randn(N_STEP, V2) + 0.5
+probs_ref = torch.softmax(p_step, dim=-1)
+ref = torch.multinomial(probs_ref, 1).squeeze(1)          # 参照：直接采目标分布
 
-spec_tokens = torch.zeros(N, M, dtype=torch.long)
-for step in range(M):
-    # target 在该步和下一步的 logits；最后一步补零，bonus 会被 resid 抵消
-    plg = torch.zeros(N, 2, V2)
-    plg[:, 0, :] = p_all[:, step, :]
-    if step + 1 < M:
-        plg[:, 1, :] = p_all[:, step + 1, :]
-    r = verify_batch(q_logits_seq, plg, draft_tok)
-    spec_tokens[:, step] = torch.where(r.bonus >= 0, r.bonus, draft_tok[:, 0])
+q_logits1 = torch.randn(N_STEP, 1, V2)
+draft_tok = torch.multinomial(
+    torch.softmax(q_logits1, dim=-1).reshape(-1, V2), 1
+).squeeze(1).view(N_STEP, 1)
 
-print(f"  生成长度 M={M}，独立序列 N={N}")
-all_ok = True
-for step in range(M):
-    c_spec = torch.bincount(spec_tokens[:, step], minlength=V2).float()
-    c_spec /= c_spec.sum()
-    c_ref = torch.bincount(ref_tokens[:, step], minlength=V2).float()
-    c_ref /= c_ref.sum()
-    tv = 0.5 * (c_spec - c_ref).abs().sum().item()
-    noise = (1.0 / (N * V2)) ** 0.5
-    ok = tv < 6 * noise
-    all_ok = all_ok and ok
-    print(f"    位置 {step}: TV(投机, 参照) = {tv:.4f}   噪声 ~ {noise:.4f}   "
-          f"[{'PASS' if ok else 'FAIL'}]")
+# target 传 K+1=2 个位置：位置 0 = 本该 decode 的，位置 1 = 候选验证位
+plg = torch.stack([p_step, torch.zeros_like(p_step)], dim=1)   # (N, 2, V)
+res1 = verify_batch(q_logits1, plg, draft_tok)
+spec1 = torch.where(res1.bonus >= 0, res1.bonus, draft_tok[:, 0])
 
+c_spec = torch.bincount(spec1, minlength=V2).float(); c_spec /= c_spec.sum()
+c_ref = torch.bincount(ref, minlength=V2).float(); c_ref /= c_ref.sum()
+tv = 0.5 * (c_spec - c_ref).abs().sum().item()
+
+# TV 的蒙特卡洛标准误：每个 bin 的标准差 ≈ sqrt(p(1-p)/N)，V 个 bin 求和
+p_unif = 1.0 / V2
+sd_bin = (p_unif * (1 - p_unif) / N_STEP) ** 0.5
+tv_se = 0.5 * sd_bin * (2 / (3.141592653589793 ** 0.5))
+
+print(f"  单步验证: TV = {tv:.5f}   4σ 阈值 = {4 * tv_se:.5f}")
+print(f"  接受率 = {(res1.accepted == 1).float().mean().item():.3f}   "
+      f"bonus 使用次数 = {int((res1.bonus >= 0).sum())}/{N_STEP}")
 print()
-if all_ok:
-    print("  ✓ 各位置输出分布一致 -> 无损性成立")
-    check("无损性：投机路径输出分布 == target 直接采样", True)
-else:
-    check("无损性：投机路径输出分布 == target 直接采样", False)
+check("无损性：投机路径输出分布 == 目标分布（TV < 4σ）", tv < 4 * tv_se,
+      f"{tv:.5f} vs {4 * tv_se:.5f}")
 
 # ======================================================================
 print()

@@ -100,14 +100,39 @@ class BlockManager:
         seq.num_cached_tokens = 0
         seq.block_table.clear()
 
-    def can_append(self, seq: Sequence) -> bool:
-        return len(self.free_block_ids) >= (len(seq) % self.block_size == 1)
+    def can_append(self, seq: Sequence, n_tokens: int = 1) -> bool:
+        """判断能否再追加 n_tokens 个 token（投机解码时 n_tokens = 1+k）。
 
-    def may_append(self, seq: Sequence):
-        if len(seq) % self.block_size == 1:
+        原来只有一个参数、且每次只追加 1 个 token，所以「跨 block」的判据是
+        `len(seq) % block_size == 1`。现在一次要放 1+k 个，判据要改成：
+            放完之后是否会越过当前 block 的末尾。
+        """
+        cur_block_remaining = self.block_size - (len(seq) % self.block_size)
+        # cur_len % block_size == 0 表示正好在 block 末尾，cur_block_remaining == block_size
+        need_new_blocks = max(0, n_tokens - cur_block_remaining)
+        return len(self.free_block_ids) >= need_new_blocks
+
+    def may_append(self, seq: Sequence, n_tokens: int = 1):
+        """追加 n_tokens 个 token 所需的 block。
+
+        ★ 投机解码下多分配的 block 是给【待验证候选】用的，它们的 KV 之后会被
+          覆写回收（不需要真正的回滚，见 model_runner 的注释）。
+          所以这里只管分配，不负责回收——ref_count 的回收在 deallocate 时统一做。
+        """
+        remaining_in_block = self.block_size - (len(seq) % self.block_size)
+        to_alloc = max(0, n_tokens - remaining_in_block)
+        for _ in range(to_alloc):
             seq.block_table.append(self._allocate_block())
 
     def hash_blocks(self, seq: Sequence):
+        """把「已确认」的 block 登记进前缀缓存哈希表。
+
+        ★★ 投机解码的正确性红线：
+          这里必须只用【已确认的 token】。草稿候选存在 seq.draft_tokens 里，
+          刻意不进 token_ids，就是为了让这个函数永远碰不到被拒的 token。
+          如果候选混进了 token_ids，被拒后 token_ids 变了而旧哈希还在
+          hash_to_block_id 里 → 下次相同前缀会命中错误缓存 → 静默输出错误 token。
+        """
         start = seq.num_cached_tokens // self.block_size
         end = (seq.num_cached_tokens + seq.num_scheduled_tokens) // self.block_size
         if start == end: return

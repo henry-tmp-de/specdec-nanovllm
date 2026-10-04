@@ -79,13 +79,21 @@ class NgramProposer:
            匹配越长的 pattern，候选越可靠（与 SuffixDecoding 的实测一致）。
         2. 命中后，沿着索引一路往后接，最多接 k 个。
         3. 一路接不上就停，返回已接到的部分。
+
+        ★ 重要特性：短 prompt 时几乎必然返回空。
+          因为索引里的 (n-1) 元组需要有一个「后继 token」才能建立，
+          而 prompt 末尾的 n-gram 天然没有后继。所以：
+            - prompt 只有几十 token  -> 大部分步都提不出候选
+            - 文本长到几百 token 以上 -> 索引丰富，接受率才上得去
+          ★ 这正是检索式投机解码对【任务类型】敏感的原因：
+            高 n-gram 重叠的任务（代码编辑/摘要/RAG）效果好，
+            低重叠的任务（创意写作）几乎没收益甚至负收益。
         """
         n = self.n
         if len(recent) < n - 1:
             return []
 
         # 从最长 pattern 往下试，直到命中
-        # (recent 的后 n-1 个 token) → (recent 的后 n-2 个) → ... → (最近 1 个)
         for length in range(n - 1, 0, -1):
             if len(recent) < length:
                 continue
@@ -93,6 +101,26 @@ class NgramProposer:
             if key in self._index:
                 return self._walk(key, k)
         return []
+
+    def observe(self, token_ids: Sequence[int]) -> None:
+        """把【刚刚生成】的 token 增量加入索引。
+
+        ★ 这是 n-gram 投机能不能真正work 的关键：
+          add() 是全量建索引（用于 prompt 和历史输出），
+          但生成出来的 token 如果不入索引，下一步就永远提不出以它结尾的候选。
+          实测：只add(prompt) 时，5-token 的 prompt 提议结果恒为空。
+
+        只需要加入「刚好够构成 n-1 元组」的那一小段，避免 O(n²)。
+        """
+        n = self.n
+        need = n - 1
+        if len(token_ids) < need:
+            return
+        # 只取尾部 need 个 token + 它前面的那一个，构成最后一个 key
+        start = len(token_ids) - need - 1
+        if start < 0:
+            start = 0
+        self.add(token_ids[start:])
 
     def _walk(self, key: Tuple[int, ...], k: int) -> List[int]:
         """从命中的 key 开始，沿着索引一路往后接。"""

@@ -15,6 +15,9 @@ class Scheduler:
         self.block_manager = BlockManager(config.num_kvcache_blocks, config.kvcache_block_size)
         self.waiting: deque[Sequence] = deque()
         self.running: deque[Sequence] = deque()
+        # ---------- 投机解码 ----------
+        self.spec_k = config.spec_k
+        self.spec_batch_threshold = config.spec_batch_threshold
 
     def is_finished(self):
         return not self.waiting and not self.running
@@ -57,20 +60,33 @@ class Scheduler:
         # decode
         while self.running and len(scheduled_seqs) < self.max_num_seqs:
             seq = self.running.popleft()
-            while not self.block_manager.can_append(seq):
+            # ---------- 投机解码：这一步要给 k+1 个 token 分配槽位 ----------
+            # 之所以是 k+1：1 个是本该decode 的 token，k 个是待验证的候选。
+            # 但只有「本该 decode 的那个」的 KV 是最终有效的，
+            # 候选的 KV 写入后靠 slot 覆写回收（见 model_runner.prepare_verify）
+            need = 1 + (self.spec_k if self.spec_enabled() else 0)
+            while not self.block_manager.can_append(seq, need):
                 if self.running:
                     self.preempt(self.running.pop())
                 else:
                     self.preempt(seq)
                     break
             else:
-                seq.num_scheduled_tokens = 1
+                seq.num_scheduled_tokens = need
                 seq.is_prefill = False
-                self.block_manager.may_append(seq)
+                self.block_manager.may_append(seq, need)
                 scheduled_seqs.append(seq)
         assert scheduled_seqs
         self.running.extendleft(reversed(scheduled_seqs))
         return scheduled_seqs, False
+
+    def spec_enabled(self) -> bool:
+        """本步是否启用投机解码（含 batch 门控）。"""
+        if self.spec_k <= 0:
+            return False
+        if self.spec_batch_threshold and len(self.running) > self.spec_batch_threshold:
+            return False
+        return True
 
     def preempt(self, seq: Sequence):
         seq.status = SequenceStatus.WAITING
@@ -78,7 +94,14 @@ class Scheduler:
         self.block_manager.deallocate(seq)
         self.waiting.appendleft(seq)
 
-    def postprocess(self, seqs: list[Sequence], token_ids: list[int], is_prefill: bool):
+    def postprocess(self, seqs: list[Sequence], token_ids: list, is_prefill: bool):
+        """token_ids 的形态：
+           普通 decode   -> [int]          每序列 1 个
+           投机验证       -> list[list[int]] 每序列若干个（已接受的 + bonus）
+        """
+        if not is_prefill and token_ids and isinstance(token_ids[0], list):
+            self.postprocess_spec(seqs, token_ids)
+            return
         for seq, token_id in zip(seqs, token_ids):
             self.block_manager.hash_blocks(seq)
             seq.num_cached_tokens += seq.num_scheduled_tokens
@@ -90,3 +113,46 @@ class Scheduler:
                 seq.status = SequenceStatus.FINISHED
                 self.block_manager.deallocate(seq)
                 self.running.remove(seq)
+
+    def postprocess_spec(self, seqs: list[Sequence], accepted_tokens: list[list[int]]):
+        """投机验证后的收尾：一次落地多个 token。
+
+        ★ 三件事必须做对，漏了任何一条都不会报错，只会静默出错：
+          ① num_cached_tokens 只推进【真正确认的】部分，不能把被拒候选算进去
+          ② hash_blocks 必须在 token_ids 更新【之后】调用，且草稿不在 token_ids 里
+          ③ EOS 和 max_tokens 要在【每个】落地的 token 上检查，而不是只看最后一个
+        """
+        for seq, toks in zip(seqs, accepted_tokens):
+            seq.draft_tokens = []          # 草稿用完即弃，绝不进 token_ids
+
+            if not toks:
+                # 一个都没接受：把本该 decode 的那个位置也退掉，num_computed 回退
+                seq.num_cached_tokens = max(0, seq.num_cached_tokens - seq.num_scheduled_tokens)
+                seq.num_scheduled_tokens = 0
+                continue
+
+            # ① 先记已确认的 token（此刻token_ids 还没变）
+            confirmed = seq.num_tokens
+            seq.append_tokens(toks)
+            # num_scheduled_tokens 是 1+k，只有被接受的那部分对应真实位置
+            seq.num_cached_tokens += len(toks)
+
+            # ② token_ids 已更新，现在才能安全地做前缀缓存哈希
+            self.block_manager.hash_blocks(seq)
+
+            seq.num_scheduled_tokens = 0
+
+            # ③逐个检查终止条件（中途撞 EOS 就截断，后面的候选全部丢弃）
+            newly = toks
+            for i, t in enumerate(newly):
+                if (not seq.ignore_eos and t == self.eos) or seq.num_completion_tokens == seq.max_tokens:
+                    # 截断：把这一步多写的 token 砍掉
+                    extra = len(newly) - i - 1
+                    if extra > 0:
+                        del seq.token_ids[len(seq.token_ids) - extra:]
+                        seq.num_tokens -= extra
+                        seq.last_token = seq.token_ids[-1]
+                    seq.status = SequenceStatus.FINISHED
+                    self.block_manager.deallocate(seq)
+                    self.running.remove(seq)
+                    break
