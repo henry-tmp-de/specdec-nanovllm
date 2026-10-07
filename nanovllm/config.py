@@ -22,6 +22,13 @@ class Config:
     spec_ngram: int = 3          # n-gram 提议器的 n
     spec_method: str = "ngram"   # "ngram" | "draft"
     draft_model: str = ""        # draft 路线的小模型路径（spec_method="draft" 时必填）
+    spec_cuda_graph: bool = True   # 给 draft 前向 / 验证前向也拍 CUDA graph
+    #   ★ 实测（RTX 3090, Qwen3-4B）：同样是「每步一次前向」，
+    #     eager 33.2 ms/步，拍图后 12.8 ms/步 —— 差 2.6 倍，
+    #     而这 20 ms 里没有一个字节是权重读取，全是 kernel launch / Python dispatch。
+    #     0.6B 的 draft 更极端：权重 1.2 GB（理论 1.3 ms），eager 实测 24.8 ms/步。
+    #     draft 要串行跑 k 次，不开图这部分开销会被放大 k 倍，直接吃掉全部收益。
+    #     设为 False 可退回纯 eager（只在排查问题时用）。
     spec_batch_threshold: int = 0  # batch 超过此值就关闭投机，0 = 不限制
     #   ★ 动机：实测 batch 大时投机解码是净亏损（验证要付 B·(k+1) 的 target 算力，
     #     而 n-gram 的接受率随上下文多样性上升而下降）。留 0 = 不限制，

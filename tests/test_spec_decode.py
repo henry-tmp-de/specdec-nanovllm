@@ -154,7 +154,9 @@ def _tv_at(N3: int, seed: int) -> float:
     dq.scatter_(2, draft_tok3.unsqueeze(-1), 1.0)                 # 单点分布
     plg3 = logits.view(1, 1, V3).expand(N3, 2, V3).contiguous()  # (N, K+1, V)
     r3 = verify_batch(dq, plg3, draft_tok3, draft_is_point_mass=True)
-    final = torch.where(r3.bonus >= 0, r3.bonus, draft_tok3.squeeze(1))
+    # 每步的【第一个】token：接受 -> 候选本身；被拒 -> bonus（修正分布）
+    # （bonus 现在每轮都有，全接受时它是第 k 行算出的下一个 token，是额外的）
+    final = torch.where(r3.accepted == 1, draft_tok3.squeeze(1), r3.bonus)
     c3 = torch.bincount(final, minlength=V3).float()
     c3 /= c3.sum()
     return 0.5 * (c3 - probs).abs().sum().item(), float((r3.accepted == 1).float().mean())
@@ -230,3 +232,92 @@ for noise in [0.0, 0.5, 1.0, 2.0]:
     print(f"  draft 与 target 差异 noise={noise}:")
     print(f"    真实分布接受率 = {acc_real:.3f}    单点分布接受率 = {acc_point:.3f}"
           f"    提升 {acc_real/max(acc_point,1e-9):.1f}x")
+
+# ======================================================================
+# 测试 5：draft 侧必须传 logits，不能传概率（真踩过的 bug）
+# ======================================================================
+print()
+print("=" * 70)
+print("测试 5：draft 侧传【概率】会被再 softmax 一次 —— 无损性破裂")
+print("=" * 70)
+print("  最干净的场景：草稿 ≡ 目标（q ≡ p）。")
+print("  此时正确的拒绝采样应当【全部接受】（因为 min(1, p/q) = 1），")
+print("  且输出分布严格等于 p。接受率不是 1 就说明 q 算错了。")
+print()
+print("  verify_batch 内部做的是 q = softmax(draft_side / temperature)，")
+print("  所以 draft_side 必须是【原始 logits】。")
+print("  传 softmax 过的概率 -> q̃ = softmax(q) 会被压成近均匀分布")
+print("  -> 草稿 token 采自 q、验证却用 q̃，一致性前提被破坏。")
+print()
+
+V5, N5 = 6, 200_000
+p5 = torch.tensor([0.5, 0.2, 0.15, 0.05, 0.05, 0.05])
+torch.manual_seed(0)
+cand5 = torch.multinomial(p5.expand(N5, V5), 1, replacement=True)     # (N,1)
+tgt5 = p5.log().view(1, 1, V5).expand(N5, 2, V5).contiguous()
+
+
+def _acc_tv(draft_side):
+    r = verify_batch(draft_side, tgt5, cand5)
+    final = torch.where(r.accepted == 1, cand5.squeeze(1), r.bonus)
+    h = torch.bincount(final, minlength=V5).float()
+    h /= h.sum()
+    return float((r.accepted == 1).float().mean()), 0.5 * (h - p5).abs().sum().item()
+
+
+acc_lg, tv_lg = _acc_tv(p5.log().view(1, 1, V5).expand(N5, 1, V5).contiguous())
+acc_pr, tv_pr = _acc_tv(p5.view(1, 1, V5).expand(N5, 1, V5).contiguous())
+print(f"    传 logits : 接受率 {acc_lg:.4f}   TV {tv_lg:.5f}")
+print(f"    传 概率   : 接受率 {acc_pr:.4f}   TV {tv_pr:.5f}   <- 被再 softmax 一次")
+check("draft 侧传 logits：q≡p 时全部接受", acc_lg > 0.999, f"{acc_lg:.4f}")
+check("draft 侧传 logits：无损（TV 在 1/sqrt(N) 量级）", tv_lg < 0.01, f"{tv_lg:.5f}")
+check("传概率会明显偏离无损（反面对照）", tv_pr > 5 * tv_lg,
+      f"{tv_pr:.5f} vs {tv_lg:.5f}")
+
+# ======================================================================
+# 测试 6：★ 候选 <-> target 行的对齐（现有用例全都测不到）
+# ======================================================================
+print()
+print("=" * 70)
+print("测试 6：候选 j 必须对齐 target 的【第 j 行】")
+print("=" * 70)
+print("  为什么原有用例测不出来：")
+print("  test2-A 用 draft_logits.clone()、test2-B 是整块 -50 加同一个峰、")
+print("  test3 是 logits.expand(N,2,V) —— target 各行【完全相同】，")
+print("  索引偏移多少都测不出差异。这正是错位能活下来的原因。")
+print()
+print("  布局推导：验证时送进 forward 的 k+1 个 token 在位置 len-1..len+k-1，")
+print("  模型第 r 行的输出 = 位置 len+r 的 token 的分布 = 候选 r 的分布。")
+print("  所以候选 j <-> 第 j 行（下标相同、不偏移）；")
+print("  第 accepted 位被拒时 bonus 取第 accepted 行（全部接受时即第 k 行）。")
+print()
+
+K6, V6 = 3, 20
+tl6 = torch.full((1, K6 + 1, V6), -30.0)
+for _j in range(K6 + 1):
+    tl6[0, _j, 10 + _j] = 30.0            # 第 j 行在 token(10+j) 上有尖峰
+dl6 = tl6[:, :K6, :].clone()               # 草稿逐行 == 目标 -> q_j ≡ p_j
+cand6 = torch.tensor([[10 + _j for _j in range(K6)]])
+
+r6 = verify_batch(dl6, tl6, cand6)
+check("q_j ≡ p_j（逐行一致）时必须全部接受", int(r6.accepted[0]) == K6,
+      f"accepted={int(r6.accepted[0])}，期望 {K6}")
+# 全接受时 bonus 取自第 k 行（位置 len+k 的分布）—— 那一行已经算好了，白扔可惜
+check("全接受时 bonus 取自第 k 行（token 13）", int(r6.bonus[0]) == 10 + K6,
+      f"bonus={int(r6.bonus[0])}，期望 {10 + K6}")
+
+# 第 0 位被拒时，bonus 必须落在【第 0 行】的峰上
+tl7 = tl6.clone()
+dl7 = tl7[:, :K6, :].clone()
+dl7[0, 0, 10] = -30.0                      # 草稿第 0 行改推 token 3
+dl7[0, 0, 3] = 30.0
+cand7 = torch.tensor([[3, 11, 12]])
+r7 = verify_batch(dl7, tl7, cand7)
+check("第 0 位不匹配时被拒", int(r7.accepted[0]) == 0, f"accepted={int(r7.accepted[0])}")
+check("被拒后 bonus 取自第 0 行（token 10）", int(r7.bonus[0]) == 10,
+      f"bonus={int(r7.bonus[0])}，期望 10")
+
+if FAILED:
+    print(f"\n✗ {len(FAILED)} 项未通过：{FAILED}")
+    sys.exit(1)
+print("\n✓ 全部通过")

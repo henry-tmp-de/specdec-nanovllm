@@ -36,6 +36,13 @@ class ModelRunner:
         self.draft_model = None
         self.draft_hf_config = None
         self._last_cu_seqlens_q = None
+        # 投机路径的两张静态形状 CUDA graph（见 capture_*_cudagraph）
+        self.draft_graph = None
+        self.draft_graph_vars = None
+        self.verify_graph = None
+        self.verify_graph_vars = None
+        self._verify_n = 0
+        self._verify_extra = None
 
         if config.spec_k > 0 and config.spec_method == "ngram":
             from nanovllm.spec_decode.ngram_proposer import NgramProposer
@@ -61,6 +68,12 @@ class ModelRunner:
         self.allocate_kv_cache()
         if not self.enforce_eager:
             self.capture_cudagraph()
+            # ★ 投机路径的两张图。必须放在 allocate_kv_cache 之后
+            #   —— 图在 capture 时就把 k_cache/v_cache 的显存地址烘进去了。
+            if self.config.spec_cuda_graph and self.spec_proposer is not None:
+                if self.draft_model is not None:
+                    self.capture_draft_cudagraph()
+                self.capture_verify_cudagraph()
         torch.set_default_device("cpu")
         torch.set_default_dtype(default_dtype)
 
@@ -332,6 +345,15 @@ class ModelRunner:
         slot_mapping = torch.tensor(slot_mapping, dtype=torch.int32, pin_memory=True).cuda(non_blocking=True)
         # 存一份给 run_verify 切分 logits 用
         self._last_cu_seqlens_q = cu_seqlens_q.tolist()
+        # 存一份给「验证前向走 CUDA graph」用：
+        #   图有静态缓冲区，这些张量要原样拷进去再 replay。
+        #   ★ 索引怎么算只在这里算一次 —— 图路径和 eager 路径共用同一份计算，
+        #     避免两条路径各算一套导致错位（那就是「不报错但结果错」）。
+        self._verify_extra = dict(
+            n=cu_seqlens_q.numel() - 1,
+            cu_seqlens_q=cu_seqlens_q, cu_seqlens_k=cu_seqlens_k,
+            slot_mapping=slot_mapping, block_tables=block_tables,
+        )
         # ★ is_prefill=True —— 让 attention 走 flash_attn_varlen_func(causal=True)，
         #   这正是我们要的因果路径；不能用 decode 那条（它只处理 1 个 query）。
         set_context(True, cu_seqlens_q, cu_seqlens_k, max_seqlen_q, max_seqlen_k,
@@ -390,11 +412,11 @@ class ModelRunner:
             for seq in seqs:
                 if seq.num_scheduled_tokens > 1:
                     if self.draft_model is not None:
-                        # draft 路线：小模型自回归 k步，产出候选 + 真实概率
-                        chain, probs = self.spec_proposer.propose(
+                        # draft 路线：小模型自回归 k 步，产出候选 + 原始 logits
+                        chain, logits = self.spec_proposer.propose(
                             seq.block_table, len(seq), seq.last_token, seq.temperature)
                         seq.draft_tokens = chain
-                        seq.draft_probs = probs
+                        seq.draft_logits = logits
                     else:
                         chains = self.spec_proposer.propose(seq.token_ids, k)
                         # 线性链一次 forward 只能验证一条 —— 要同时验证多条就得做树状
@@ -442,7 +464,7 @@ class ModelRunner:
         temperatures = self.prepare_sample(seqs) if self.rank == 0 else None
 
         # ---------- 2. 目标模型一次 forward ----------
-        logits = self.run_model(input_ids, positions, True)
+        logits = self.run_verify_forward(input_ids, positions)
         reset_context()
 
         if self.rank != 0:
@@ -486,16 +508,23 @@ class ModelRunner:
             V = sub.shape[-1]
             kk = len(seq.draft_tokens)
 
-            if seq.draft_probs is not None:
+            if seq.draft_logits is not None:
                 # ---------- draft model 路线：真实分布 ----------
                 # ★ 这才是标准投机解码：接受概率 min(1, p_target / q_draft)，
                 #   q 是 draft 模型真实的输出分布。
                 #   实测 n-gram 路线的接受率 <1%，根因就是 q 退化成了单点分布
                 #   （接受概率 = p[draft]，通常 0.001~0.06）。
-                draft_probs = seq.draft_probs.unsqueeze(0).float()   # (1, kk, V)
+                #
+                # ★★ 这里传的是【原始 logits】，不是概率。
+                #   verify_batch 内部会做 q = softmax(logits / temperature)。
+                #   如果传已经 softmax 过的概率，会被再 softmax 一次：
+                #   151936 词表上 q̃ 会被压成近似均匀分布（max 只有 1.2e-5），
+                #   而草稿 token 是从真分布 q 采的 —— 一致性前提被破坏，
+                #   无损性不再成立（实测 q≡p 时 TV 从 0.003 涨到 0.108）。
+                draft_q = seq.draft_logits.unsqueeze(0).float()   # (1, kk, V) 原始 logits
                 t = torch.tensor([seq.temperature], device=sub.device)
                 # draft 已经按 temperature 采过样了，验证时目标侧也要用同一个温度
-                res = verify_batch(draft_probs, sub, draft_tok, t)
+                res = verify_batch(draft_q, sub, draft_tok, t)
             else:
                 # ---------- n-gram 路线：单点分布（无真实分布可用）----------
                 #必须是真正的概率分布，不能用 logits 表达单点分布：
@@ -508,14 +537,116 @@ class ModelRunner:
 
             accepted = int(res.accepted[0])
             toks = list(seq.draft_tokens[:accepted])
-            if int(res.bonus[0]) >= 0:
-                toks.append(int(res.bonus[0]))
+            # ★ bonus 每轮必有：k 个候选全被接受时，它是 target 第 k 行
+            #   已经算好的下一个 token（不取就白算一行，而且每步只能出 k 个 token）。
+            toks.append(int(res.bonus[0]))
             if not toks:
                 sub1 = logits[cu[i]:cu[i] + 1]
                 toks = [self.sampler(sub1, t).tolist()[0]]
             seq.last_accepted = len(toks)
             out.append(toks)
         return out
+
+    # ==================================================================
+    #  投机路径的两张 CUDA graph
+    # ==================================================================
+    @torch.inference_mode()
+    def run_verify_forward(self, input_ids: torch.Tensor, positions: torch.Tensor) -> torch.Tensor:
+        """验证阶段那一次目标模型前向：能进图就进图，否则退回 eager。
+
+        ★ 必须带 @torch.inference_mode()：静态缓冲区是在 inference_mode 里建的
+          （capture 方法带装饰器），属于 inference tensor，
+          在 InferenceMode 之外原地写会直接报错。run_model 也是同样的写法。
+
+        ★ 为什么要单独拍一张图：
+          验证前向走的是 varlen（1+k 个 query 一次算完），而 run_model 里
+          is_prefill=True 会强制走 eager 分支 —— 实测一次 36 ms。
+          但它的【形状其实是固定的】：batch=1、query 数恒等于 1+k、
+          block 表宽度固定。形状固定就能拍图。
+          （对比：同一模型的普通 decode 拍图后是 12.8 ms/步。）
+
+        条件不满足时（batch>1、或草稿数不足 k）自动退回 eager，行为不变。
+        """
+        ex = self._verify_extra
+        if (self.verify_graph is not None and ex is not None
+                and ex["n"] == 1 and input_ids.numel() == self._verify_n):
+            gv = self.verify_graph_vars
+            gv["input_ids"].copy_(input_ids)
+            gv["positions"].copy_(positions)
+            gv["slot_mapping"].copy_(ex["slot_mapping"])
+            gv["cu_seqlens_q"].copy_(ex["cu_seqlens_q"])
+            gv["cu_seqlens_k"].copy_(ex["cu_seqlens_k"])
+            gv["block_tables"].fill_(-1)
+            if ex["block_tables"] is not None:
+                bt = ex["block_tables"]
+                gv["block_tables"][:, :bt.size(1)].copy_(bt)
+            self.verify_graph.replay()
+            # 静态缓冲区，replay 完就是这一步的结果
+            return gv["logits"]
+        return self.run_model(input_ids, positions, True)
+
+    @torch.inference_mode()
+    def capture_draft_cudagraph(self):
+        """draft 模型的 decode 图：batch=1、每次 1 个 token。
+
+        实测收益：eager 24.8 ms/次 -> 拍图后 ~2 ms/次。
+        k 步串行，所以这笔节省要乘以 k。
+        """
+        d_hf = self.draft_hf_config
+        max_num_blocks = (self.config.max_model_len + self.block_size - 1) // self.block_size
+        input_ids = torch.zeros(1, dtype=torch.int64)
+        positions = torch.zeros(1, dtype=torch.int64)
+        slot_mapping = torch.zeros(1, dtype=torch.int32)
+        context_lens = torch.zeros(1, dtype=torch.int32)
+        block_tables = torch.zeros(1, max_num_blocks, dtype=torch.int32)
+        logits = torch.empty(1, d_hf.vocab_size)
+        graph = torch.cuda.CUDAGraph()
+        set_context(False, slot_mapping=slot_mapping, context_lens=context_lens,
+                    block_tables=block_tables)
+        logits.copy_(self.draft_model.compute_logits(self.draft_model(input_ids, positions)))
+        with torch.cuda.graph(graph):
+            logits.copy_(self.draft_model.compute_logits(self.draft_model(input_ids, positions)))
+        reset_context()
+        torch.cuda.synchronize()
+        self.draft_graph = graph
+        self.draft_graph_vars = dict(
+            input_ids=input_ids, positions=positions, slot_mapping=slot_mapping,
+            context_lens=context_lens, block_tables=block_tables, logits=logits)
+        self.spec_proposer.bind_cudagraph(graph, self.draft_graph_vars)
+        print("[spec] draft CUDA graph 就绪 (bs=1, 1 token)")
+
+    @torch.inference_mode()
+    def capture_verify_cudagraph(self):
+        """验证前向的图：batch=1、query 数固定 1+k、走 varlen 路径。"""
+        hf_config = self.config.hf_config
+        n = self.config.spec_k + 1
+        max_num_blocks = (self.config.max_model_len + self.block_size - 1) // self.block_size
+        input_ids = torch.zeros(n, dtype=torch.int64)
+        positions = torch.zeros(n, dtype=torch.int64)
+        slot_mapping = torch.zeros(n, dtype=torch.int32)
+        # capture 时给一组【合法】的 dummy 值（[0, n]），别用全 0
+        # —— varlen 内核拿到 cu_seqlens=[0,0] 会退化成长度 0。
+        cu_seqlens_q = torch.tensor([0, n], dtype=torch.int32)
+        cu_seqlens_k = torch.tensor([0, n], dtype=torch.int32)
+        block_tables = torch.zeros(1, max_num_blocks, dtype=torch.int32)
+        logits = torch.empty(n, hf_config.vocab_size)
+        graph = torch.cuda.CUDAGraph()
+        # ★ max_seqlen_k 在 capture 时就被烘进 kernel 参数了，所以只能给上界。
+        #   它只是给 flash-attn 分块用的提示，给大了不影响正确性。
+        set_context(True, cu_seqlens_q, cu_seqlens_k, n, self.config.max_model_len,
+                    slot_mapping, None, block_tables, is_spec_verify=True)
+        logits.copy_(self.model.compute_logits(self.model(input_ids, positions)))
+        with torch.cuda.graph(graph):
+            logits.copy_(self.model.compute_logits(self.model(input_ids, positions)))
+        reset_context()
+        torch.cuda.synchronize()
+        self.verify_graph = graph
+        self._verify_n = n
+        self.verify_graph_vars = dict(
+            input_ids=input_ids, positions=positions, slot_mapping=slot_mapping,
+            cu_seqlens_q=cu_seqlens_q, cu_seqlens_k=cu_seqlens_k,
+            block_tables=block_tables, logits=logits)
+        print(f"[spec] verify CUDA graph 就绪 (bs=1, {n} query)")
 
     @torch.inference_mode()
     def capture_cudagraph(self):

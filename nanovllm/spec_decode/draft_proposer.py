@@ -37,6 +37,12 @@ class DraftModelProposer:
         self.block_size = block_size
         self.kv_cache: Optional[torch.Tensor] = None
         self.n_layers_bound = 0
+        # 由 ModelRunner 注入的静态形状 CUDA graph（bs=1、每次 1 个 token）
+        self._graph = None
+        self._gv = None
+        # 统计：本进程里 graphed / eager 各跑了多少次（benchmark 用）
+        self.n_graphed = 0
+        self.n_eager = 0
 
     # ------------------------------------------------------------------
     def bind_kv_cache(self, kv_cache: torch.Tensor) -> int:
@@ -74,8 +80,101 @@ class DraftModelProposer:
         pass
 
     # ------------------------------------------------------------------
+    def bind_cudagraph(self, graph, graph_vars) -> None:
+        """接入 ModelRunner 拍好的 draft decode 图（bs=1、每次 1 个 token）。
+
+        ★ 为什么必须有这一步（实测，不是理论）：
+            draft 模型 0.6B，权重 1.2 GB。按 3090 的 936 GB/s 算，
+            一次前向【读一遍权重】只要 1.3 ms。
+            但 eager 实测 24.8 ms/步 —— 多出来的 23 ms 全是
+            kernel launch + Python dispatch + 各种 tensor 创建。
+            draft 要串行跑 k 次，这笔开销要乘 k，直接吃掉全部收益。
+
+            拍成图之后，这 k 次前向各塌缩成一次 graph.replay()。
+        """
+        self._graph = graph
+        self._gv = graph_vars
+
     @torch.inference_mode()
     def propose(
+        self,
+        seq_block_table,
+        context_len: int,
+        last_token: int,
+        temperature: float,
+    ) -> Tuple[List[int], torch.Tensor]:
+        """自回归生成 k 个候选（有图走图，没图走 eager，语义完全一致）。"""
+        if self._graph is not None:
+            out = self._propose_graphed(seq_block_table, context_len, last_token, temperature)
+            if out is not None:
+                self.n_graphed += 1
+                return out
+        self.n_eager += 1
+        return self._propose_eager(seq_block_table, context_len, last_token, temperature)
+
+    def _propose_graphed(
+        self,
+        seq_block_table,
+        context_len: int,
+        last_token: int,
+        temperature: float,
+    ) -> Optional[Tuple[List[int], torch.Tensor]]:
+        """走 CUDA graph 的 k 步自回归。
+
+        与 _propose_eager 的唯一区别是「前向怎么发出去」：
+        这里把 token / position / slot / block_table 写进【静态缓冲区】再 replay，
+        所以全程没有一次 tensor 创建、也没有 kernel launch 的 Python 开销。
+
+        ★ 关键：采样结果【留在 GPU 上】直接喂给下一步的输入缓冲区，
+          中间不做 .item() —— 否则每步一次 device→host 同步，
+          k 步就是 k 次 pipeline stall，图带来的收益会被同步开销吃掉一半。
+          只在最后 stack 成 list 时同步一次。
+        """
+        gv = self._gv
+        device = gv["input_ids"].device
+        start = context_len - 1
+
+        # 块表必须覆盖这 k 步要写的槽位，否则退回 eager（正常不会发生）
+        if (start + self.k - 1) // self.block_size >= len(seq_block_table):
+            return None
+
+        # block_tables：(1, max_blocks)，不足的位补 -1
+        max_blocks = gv["block_tables"].size(1)
+        gv["block_tables"].fill_(-1)
+        gv["block_tables"][0, :len(seq_block_table)].copy_(
+            torch.tensor(seq_block_table, dtype=torch.int32, device=device))
+
+        cur = torch.tensor([last_token], dtype=torch.int64, device=device)
+        cand_logits: List[torch.Tensor] = []
+        toks: List[torch.Tensor] = []
+
+        for i in range(self.k):
+            pos = start + i
+            block_idx, offset = divmod(pos, self.block_size)
+            gv["input_ids"].copy_(cur)
+            gv["positions"].fill_(pos)
+            gv["slot_mapping"].fill_(seq_block_table[block_idx] * self.block_size + offset)
+            gv["context_lens"].fill_(pos + 1)
+            self._graph.replay()
+            # gv["logits"] 是静态缓冲区，replay 完就是这一步的 logits
+            logits = gv["logits"]
+            p = torch.softmax(logits.float().div_(temperature), dim=-1)
+            noise = torch.empty_like(p).exponential_(1.0).clamp_min_(1e-10)
+            cur = (p / noise).argmax(dim=-1)          # 留在 GPU 上，不 sync
+            # ★ 必须 clone：gv["logits"] 是静态缓冲区，下一次 replay 会被覆写
+            cand_logits.append(logits[0].clone())
+            toks.append(cur)
+
+        # ★ 每个 toks[i] 的形状是 (1,)，stack 出来是 (k,1)，
+        #   必须 reshape(-1) 再 tolist —— 否则得到的是 [[x],[y]]（列表的列表），
+        #   而引擎要的是 List[int]。这个错不会当场报错，
+        #   会一路传到 prepare_verify 的 torch.tensor(list) 才炸，很难查。
+        chain = torch.stack(toks).reshape(-1).tolist()  # 全程唯一一次同步
+        return chain, torch.stack(cand_logits, dim=0)
+
+    # ------------------------------------------------------------------
+    @torch.inference_mode()
+    def _propose_eager(
         self,
         seq_block_table,
         context_len: int,
@@ -94,15 +193,24 @@ class DraftModelProposer:
         返回
         ----
         chain  : List[int]           k 个候选 token
-        probs  : (k, vocab) 每个候选在【draft 分布】下的完整概率向量
-                 ★ 这是核心：真实分布让 min(1, p/q) 的接受率有了理论保障
+        logits : (k, vocab) 每个候选位置在【draft 模型】下的原始 logits
+                 ★★★ 必须返回【原始 logits】，不能返回 softmax 之后的概率！
+                 原因：verify_batch 内部会自己做 softmax(logits / temperature)
+                 得到 q。如果这里先 softmax 了、那边再 softmax 一次，
+                 等于验证用的 q̃ = softmax(q) —— 会被压成接近【均匀分布】
+                 （实测 0.6B 的 151936 词表上，q̃ 的最大值只有 1.2e-5，
+                  而 1/vocab = 6.6e-6）。
+                 后果：草稿 token 是从真分布 q 采的，验证却用 q̃，
+                 拒绝采样的一致性前提被破坏 —— 输出分布不再等于目标分布。
+                 （单元测试里 q≡p 时：传 logits 接受率 1.0000、TV 0.0032；
+                   传概率接受率 0.8895、TV 0.1075，且有偏、不随样本量收敛。）
         """
         device = next(self.model.parameters()).device
 
         from nanovllm.utils.context import set_context, reset_context
 
         chain: List[int] = []
-        cand_probs: List[torch.Tensor] = []
+        cand_logits: List[torch.Tensor] = []
 
         cur_token = last_token
         # ★★★ 这里有个隐蔽但致命的问题（实测 max p = 1.0000 的根因）：
@@ -163,8 +271,8 @@ class DraftModelProposer:
             tok = int((p / noise).argmax(dim=-1))
 
             chain.append(tok)
-            cand_probs.append(p[0])
+            cand_logits.append(logits[0])      # ★ 原始 logits，不是 p
             cur_token = tok
             pos += 1
 
-        return chain, torch.stack(cand_probs)
+        return chain, torch.stack(cand_logits)

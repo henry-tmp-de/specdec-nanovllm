@@ -100,17 +100,37 @@ class BlockManager:
         seq.num_cached_tokens = 0
         seq.block_table.clear()
 
-    def can_append(self, seq: Sequence, n_tokens: int = 1) -> bool:
-        """判断能否再追加 n_tokens 个 token（投机解码时 n_tokens = 1+k）。
+    def _blocks_needed(self, seq: Sequence, n_tokens: int) -> int:
+        """要容纳本次写入的 n_tokens 个 token，block_table 至少要有几块。
 
-        原来只有一个参数、且每次只追加 1 个 token，所以「跨 block」的判据是
-        `len(seq) % block_size == 1`。现在一次要放 1+k 个，判据要改成：
-            放完之后是否会越过当前 block 的末尾。
+        ★★ 这里踩过一个会【触发 CUDA 非法访存】的坑，务必看清：
+          本步真正被写的 token 位于
+              position:  len-1, len, ..., len+n-2
+          （prepare_decode 和 prepare_verify 的 slot_mapping 都是从 len-1 起算的，
+            因为前一个 token 的 KV 要重算一遍）。
+          所以最后一个位置是 len+n-2，不是 len+n-1。
+
+          原来的写法是按「len .. len+n-1」算空位的：
+              remaining_in_block = block_size - (len % block_size)
+          当 len 正好是 block_size 的整数倍时，它给出 remaining = block_size
+          （以为当前 block 空着），其实当前 block 已经【正好写满】，
+          下一个 token 必须落到新 block —— 于是少分配一块，
+          block_table 里那一位是填充值 -1。
+          draft/verify 的 attention 拿到 cache_seqlens 要跨两块时，
+          flash-attn 就去读第 -1 页 → illegal memory access。
+
+          （64 个 token 的短生成永远碰不到 256 的边界，所以一直没暴露；
+            换成 256 token 立刻崩。）
         """
-        cur_block_remaining = self.block_size - (len(seq) % self.block_size)
-        # cur_len % block_size == 0 表示正好在 block 末尾，cur_block_remaining == block_size
-        need_new_blocks = max(0, n_tokens - cur_block_remaining)
-        return len(self.free_block_ids) >= need_new_blocks
+        if n_tokens <= 0:
+            return len(seq.block_table)
+        last_pos = len(seq) + n_tokens - 2
+        return last_pos // self.block_size + 1
+
+    def can_append(self, seq: Sequence, n_tokens: int = 1) -> bool:
+        """判断能否再追加 n_tokens 个 token（投机解码时 n_tokens = 1+k）。"""
+        need = self._blocks_needed(seq, n_tokens) - len(seq.block_table)
+        return len(self.free_block_ids) >= max(0, need)
 
     def may_append(self, seq: Sequence, n_tokens: int = 1):
         """追加 n_tokens 个 token 所需的 block。
@@ -119,9 +139,8 @@ class BlockManager:
           覆写回收（不需要真正的回滚，见 model_runner 的注释）。
           所以这里只管分配，不负责回收——ref_count 的回收在 deallocate 时统一做。
         """
-        remaining_in_block = self.block_size - (len(seq) % self.block_size)
-        to_alloc = max(0, n_tokens - remaining_in_block)
-        for _ in range(to_alloc):
+        need = self._blocks_needed(seq, n_tokens) - len(seq.block_table)
+        for _ in range(max(0, need)):
             seq.block_table.append(self._allocate_block())
 
     def hash_blocks(self, seq: Sequence):

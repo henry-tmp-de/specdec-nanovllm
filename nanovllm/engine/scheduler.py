@@ -141,7 +141,7 @@ class Scheduler:
         """
         for seq, toks in zip(seqs, accepted_tokens):
             seq.draft_tokens = []# 草稿用完即弃，绝不进 token_ids
-            seq.draft_probs = None         # ★ 同理，draft 分布也必须清，否则会串用上一轮
+            seq.draft_logits = None        # ★ 同理，draft 分布也必须清，否则会串用上一轮
 
             if not toks:
                 # 一个都没接受：把本该 decode 的那个位置也退掉，num_computed 回退
@@ -149,6 +149,10 @@ class Scheduler:
                 seq.num_scheduled_tokens = 0
                 continue
 
+            # ★★ 必须先记下 append 之前的完成 token 数：
+            #   终止判据要用「base + i + 1 >= max_tokens」，不能等 append 完
+            #   再拿 num_completion_tokens 去比。
+            base_completion = seq.num_completion_tokens
             # ① 先记已确认的 token（此刻token_ids 还没变）
             confirmed = seq.num_tokens
             seq.append_tokens(toks)
@@ -165,10 +169,17 @@ class Scheduler:
 
             seq.num_scheduled_tokens = 0
 
-            # ③逐个检查终止条件（中途撞 EOS 就截断，后面的候选全部丢弃）
+            # ③逐个检查终止条件（中途撞 EOS / 撞 max_tokens 就截断，后面的全部丢弃）
+            #
+            # ★★ 这里原来是 `seq.num_completion_tokens == seq.max_tokens`，是错的：
+            #   投机一步落地多个 token 时，完成数会【跳过】max_tokens ——
+            #   比如从 62 直接跳到 65，`== 64` 永远不成立，
+            #   序列会一直生成下去（实测跑到 572 个 token、300 步还不结束，
+            #   这也是「draft 模式 benchmark 卡住几百秒」的真正原因）。
+            #   正确判据是「base + i + 1 >= max_tokens」，即这一位会不会越界。
             newly = toks
             for i, t in enumerate(newly):
-                if (not seq.ignore_eos and t == self.eos) or seq.num_completion_tokens == seq.max_tokens:
+                if (not seq.ignore_eos and t == self.eos) or base_completion + i + 1 >= seq.max_tokens:
                     # 截断：把这一步多写的 token 砍掉
                     extra = len(newly) - i - 1
                     if extra > 0:
