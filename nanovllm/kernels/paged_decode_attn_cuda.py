@@ -10,6 +10,10 @@
 第一次调用会编译 paged_decode_attn_cuda.cu（几十秒），之后走缓存。
 
 实现细节看 .cu 里的注释；这里只负责调度和缓存扩展模块。
+
+⚠️ 扩展里还导出了一个 `ws(...)`（warp specialization 版）。**它结果不对，别用**：
+命名 barrier 的生产者/消费者握手有个没解决的竞态，`ctx=1` 就能复现，详见 README 第六节。
+正式数字全部来自 `paged_decode`（mma 版）。
 """
 
 import os
