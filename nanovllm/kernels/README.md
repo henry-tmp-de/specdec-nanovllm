@@ -217,17 +217,194 @@ vs flash-attn：v3 吻合到 2e-3 以内（同为 bf16，同口径）
 | PagedAttention 的原理？ | block_table 把位置映射到物理块；这里用 `pos // block_size` + `pos % block_size` |
 | 为什么 decode 和 prefill 的优化方向不同？ | prefill 是计算密集、decode 是访存密集，本 kernel 的 roofline 就是证据 |
 | CUDA Graph 为什么有用？ | 启动开销在**小尺寸**下支配一切。这个项目在两层都撞到了同一个规律：投机解码 33.2ms→12.8ms，kernel 76µs→32µs |
+| 你用 CUDA 重写过 Triton kernel 吗？赢了多少？ | 赢了 1.09×（28.03 vs 30.66 µs）。**但更重要的是先量出了天花板**：写了个只读探针（访存逐字节相同、mma 全删）跑 23.08 µs，说明整个计算侧只值 2.79 µs —— 于是「M=16 白算 75%」这个假设被自己的数据证伪了（真去写了个 M=4 的 FFMA 版，反而慢 1.84×）。 |
+| 那你这次优化到底靠什么拿到的？ | 靠 Triton 表达不了的两件事：**手写 shared memory 布局 + 流水线**。`cp.async` 三级流水一步就值 1.43×；XOR swizzle 消掉 ldmatrix 的 8 路 bank conflict。不是靠「少算」。 |
+| 怎么知道一个 kernel 还能不能更快？ | 写一个**只保留访存、删掉全部计算**的孪生 kernel。它和真实 kernel 的差距就是「计算侧的开销」，也是优化的上界。这一步比任何 profiling 工具都直接（本机 ncu 还被禁了）。 |
+| 遇到过最阴的 bug？ | 两个：(1) ldmatrix 行索引漏加 `warp*PW`，导致「ctx≤7 全对、ctx≥256 全错」；(2) q_sm 跨线程写后少一个 `__syncthreads()`，症状像精度问题（差 1e-2）其实是 race。都是**只跑一个配置就永远发现不了**的那种。 |
 
 ---
 
-## 六、文件
+## 六、CUDA 版：把 Triton 表达不了的东西手写出来
+
+**结论先说：赢了，但只赢 1.09×（28.03 µs vs 30.66 µs）。
+而这次最重要的产出其实是那条「只读地板」，它把一个很诱人的假设直接证伪了。**
+
+文件：`paged_decode_attn_cuda.cu` / `.py`（Ampere sm_86 深度实现）
+
+### 6.1 用上了哪些 Ampere 特性
+
+| 特性 | 怎么用的 |
+|---|---|
+| `mma.sync.aligned.m16n8k16.row.col.f32.bf16.bf16.f32` | QKᵀ 和 PV 全走张量核 |
+| `ldmatrix.sync.aligned.m8n8.x2.shared.b16` | K 用**非转置**、V 用**转置**（fragment 映射在 .cu 里有完整推导） |
+| 手写 XOR swizzle | `physical_chunk = c ^ (row & 7)`，消 ldmatrix 的 8 路 bank conflict |
+| `cp.async.cg` 多级流水 | 双/三级缓冲，把下一块 K/V 压在 mma 下面 |
+| `__threadfence()` + `atomicAdd` | split 之间的归约由**最后一个到达的 CTA** 顺手做掉，省掉第二个 kernel |
+
+（sm_86 不支持 TMA / 2-SM cluster / TMEM，都没碰。）
+
+### 6.2 最终数字（ctx=4096、batch=1、纯 kernel 时间、取 3 次中位数）
+
+| | 纯 kernel 时间 | 带宽 | 占实测天花板 842 |
+|---|---:|---:|---:|
+| **Triton v3**（partial+combine 两个 kernel） | 30.66 µs | — | — |
+| flash-attn（对照） | 40.80 µs | 411 GB/s | 48.8% |
+| **CUDA 只读探针**（访存逐字节相同、mma 全删） | **23.08 µs** | **727 GB/s** | **86.4%** |
+| CUDA 主 kernel，st1（不用 cp.async） | 36.91 µs | 455 GB/s | 54.0% |
+| CUDA 主 kernel，st2（双缓冲） | 27.63 µs | 607 GB/s | 72.1% |
+| **CUDA 主 kernel，st3（三级流水）** | **25.87 µs** | **648 GB/s** | **77.0%** |
+| CUDA 完整（st3，combine 另起 kernel） | 28.27 µs | — | — |
+| **CUDA 完整（st3，融合归约）** | **28.03 µs** | — | **1.094× vs Triton** |
+
+**每一步优化值多少（这就是那张阶梯表）：**
 
 ```
-nanovllm/kernels/paged_decode_attn.py   kernel（v1/v2/v3 + fp32 参照实现）
-scripts/bench_paged_decode.py           正确性对拍 + 性能 + roofline + 带宽天花板
-scripts/ncu_paged_decode.py             ncu 驱动（本机被禁，见下）
+不用 cp.async  ->  三级流水 cp.async     36.91 -> 25.87 us   1.43x   ← 最大的一步
+双缓冲        ->  三级流水                27.63 -> 25.87 us   1.07x
+combine 另起  ->  threadfence 融合归约    28.27 -> 28.03 us   1.009x  ← 几乎白干
+```
+
+按 context 长度铺开（CUDA 都取当日最优配置）：
+
+| ctx | Triton v3 | flash-attn | CUDA | vs v3 |
+|---:|---:|---:|---:|---:|
+| 256 | 9.14 µs | 12.82 | **7.39** | **1.24×** |
+| 512 | 9.31 | 13.33 | **7.79** | **1.20×** |
+| 1024 | 9.99 | 14.63 | 10.00 | 1.00× |
+| 2048 | 20.94 | 27.73 | **17.82** | 1.17× |
+| 4096 | 30.66 | 40.81 | **28.01** | 1.09× |
+
+（ctx=512 那格是 `st1` 更快——小尺寸下 `cp.async` 的三级流水还没热起来就结束了，
+所以按 ctx 各自取最优配置。其余各格都是 `s8/n64/w4/st3 + 融合归约`。）
+
+**赢在哪**：全程都赢，ctx 越大越稳（数据量大、固定开销摊薄）。
+**输在哪**：ctx=1024 基本打平 —— 那时总共只有 4.19 MB，两边的 kernel 都还没跑热，
+十来个 µs 里全是启动/收尾，谁也没有优势。这也是这个算子的性质：**小尺寸下固定开销支配一切**
+（和 §3.3 那个结论同构）。
+
+### 6.3 ★ 核心假设被证伪：M=16 的白算不是瓶颈
+
+出这道题时的假设是：
+
+> Triton 的 `tl.dot` 要求 M ≥ 16，而 GQA 比只有 4，所以 75% 的 MMA 行是白算的。
+> CUDA 可以正好算 4 行 —— 这是 Triton 表达不了、CUDA 能表达的地方。
+
+**我把「正好算 4 行」的版本写出来了**（`paged_decode_ffma_kernel`，完全不用张量核，
+lane 各管 4 个 dim + 5 步 butterfly 归约），结果：
+
+| | 纯 kernel 时间 |
+|---|---:|
+| mma 版（M 补到 16，75% 白算） | **25.87 µs** |
+| FFMA 版（正好 M=4，零 padding） | **47.73 µs** |
+
+**正好 4 行的版本慢 1.84 倍。** 寄存器 96~128、几乎无 spill（ptxas -v 核过），
+所以这不是「实现太糙」导致的，是结构性的：
+
+> **张量核的价值不在算力，在于它把 head_dim 方向的归约做掉了。**
+> FFMA 版要自己用 shuffle 做归约 —— 每个 (位置, q头) 要 5 步 butterfly，
+> 一个 warp 每 8 个位置就是 160 条 shuffle。而归约走张量核是零指令。
+
+还有一条更硬的证据 —— **只读探针**：
+
+> 我把访存部分（同样的分页寻址、同样的 `cp.async` 流水、同样的 grid）原样保留，
+> **把 mma 和 softmax 全部删掉**，只留拷贝。它跑 **23.08 µs**。
+> 也就是说：**整个张量核 + softmax + 同步加起来只值 2.79 µs（10.8%）。**
+
+M=16 白算的是**张量核的吞吐**，而张量核的吞吐本来就有大量富余（roofline 拐点 38，
+这个算子算术密度只有 4）。把 4 倍的算力浪费丢掉，最多也只能碰那 2.79 µs 里的一小块 ——
+而为了丢掉它，你反而要引入更多指令（shuffle）。**这笔账是亏的。**
+
+所以：**这个假设在「访存瓶颈」这个前提成立时是站不住的。** 真正决定快慢的是
+「搬字节的效率」，而 CUDA 相对 Triton 的优势也不在 M 方向，在**能精确控制 shared memory
+布局和流水线**（13.9 个百分点的带宽就是这么来的）。
+
+### 6.4 踩的坑（都是真踩过的）
+
+**1. `ldmatrix` 的行索引忘了加 warp 偏移。**
+
+K/V tile 是整个 CTA 共用的，每个 warp 只该读自己那 PW 个位置的行。
+我写成了 `row = nt*8 + (r&7)`，等于**所有 warp 都去读第 0..16 行** —— 只有 warp 0 是对的。
+
+症状极具迷惑性：`ctx=1` 和 `ctx=7` **全对**（那两档下只有 warp 0 有有效位置，
+其余 warp 的 p 全被 mask 成 0，读错也看不出来），`ctx≥256` 直接崩。
+**光看小 case 会以为全对。** 修：`row = warp*PW + nt*8 + (r&7)`。
+
+**2. 一个真 race：q_sm 是别的线程写的，ldmatrix 直接就读了。**
+
+只在 Q 写入之后、`aq` 的 ldmatrix 之前漏了一个 `__syncthreads()`。
+症状是「大部分 ctx 都对、个别 ctx 差 1e-2」，**看起来完全像精度问题**，
+其实是读到没写完的 shared memory。加一句 `__syncthreads()` 后 0.0294 → 0.00098。
+
+**3. combine kernel 慢到 8.0 µs —— 串行依赖链，不是带宽问题。**
+
+独立出来的归约 kernel 第一版：
+
+```cpp
+for (int s = 0; s < splits; ++s) M = fmaxf(M, pm[(base + s) * QPK + h]);   // ✗
+```
+
+`splits` 是运行期变量，编译器不展开 → 一条 load、一条 max、再一条 load 全串起来，
+16 个 split 就是 16 次显存往返 ≈ 16 × 600ns ≈ 9.6 µs。**小 kernel 上「延迟」比「带宽」重要得多。**
+
+改法两条：(1) 把 SPLITS 做成模板参数让 `#pragma unroll` 全展开；
+(2) 每个 lane 用 `float4` 读 4 个连续 dim，一个 warp 一次读满 512B 连续，
+避免「每线程跨 2KB 步长读 16 个标量」的 sector 放大。**8.0 µs → 3.3 µs。**
+
+**4. sm_86 每个 block 只能用 99KB shared memory —— 流水线深度是被它卡住的。**
+
+`(block_n=64, 3 级)` 的 K/V 缓冲 = 96 KB，再加跨 warp 归约要的 8 KB 就超了。
+解法：归约缓冲直接**叠在已经用完的 K stage 上**（循环结束后 K 的 stage 不再用），省 8 KB。
+`block_n=128` 因此只能跑单缓冲（cp.async 就上不了），实测也更慢。
+
+**5. 融合归约几乎没有收益（1.009×）。**
+
+用 `__threadfence()` + `atomicAdd` 让最后一个 CTA 顺手做归约，省掉第二个 kernel 的启动 ——
+理论上应该省 2~3 µs，实测只省 0.24 µs。因为**那个 CTA 是最后完成的一批**，
+归约的活落在关键路径尾巴上，和单独起一个 kernel 的费用基本抵消。
+
+### 6.5 没做成的：warp specialization
+
+按计划实现了生产者/消费者分离的版本（4 个消费者 warp 做 mma、4 个生产者 warp 只发
+`cp.async`，用命名 barrier `bar.arrive` / `bar.sync` 做「stage 就绪 / stage 空闲」握手，
+见 `paged_decode_ws_kernel`）。
+
+**它跑得起来、不挂死，但结果不对**：`ctx=1` 就能复现，误差 2.5 量级，
+而且**每次跑错的地方还不一样**（竞态）。修了 4 轮（补 CTA 级 `__syncthreads` 防 k_sm 被复用、
+`__threadfence_block()` 两侧加栅栏、尾巴那几轮 group 计数改成保守 `wait_all`）
+都没解决，最后停手。
+
+**为什么没有继续投入**：只读探针已经给出上界 —— 访存路径（用的还是现在这套
+`__syncthreads` 结构）能跑 23.08 µs，而完整 kernel 是 25.87 µs。
+**warp specialization 既不能让访存快过 23.08，也不会减少计算量**，天花板就是那 2.79 µs。
+所以这条路的上限本来就只有 ~10%，是个低价值目标。
+
+### 6.6 口径说明（别被数字骗了）
+
+* 所有时间都是 `torch.profiler` 的 `self_device_time_total`，**不是墙钟**。
+  Triton 每次启动的 Python 开销 ~20µs，用墙钟会把结论带偏（§三 就是这么踩过来的）。
+* 每一个数字都是**跑 3 次取中位数**，三次之间抖动 < 0.1% —— 这台卡上很稳。
+* 带宽分母用**实测天花板 842 GB/s**（纯 copy 流式），不是规格值 936。
+* 本机 **ncu 被禁**（`ERR_NVGPUCTRPERM`），拿不到 `dram__bytes_read`，
+  所有带宽都是「字节数 ÷ 时间」反推的。roofline 那节也一直是这个口径，不要写成「ncu 量的」。
+
+---
+
+## 七、文件
+
+```
+nanovllm/kernels/paged_decode_attn.py        Triton kernel（v1/v2/v3 + fp32 参照实现）
+nanovllm/kernels/paged_decode_attn_cuda.cu   CUDA kernel（mma/ldmatrix/swizzle/cp.async
+                                             + FFMA M=4 对照版 + 只读探针 + warp spec 尝试）
+nanovllm/kernels/paged_decode_attn_cuda.py   CUDA 版 Python 入口（JIT 编译）
+scripts/bench_paged_decode.py                Triton：正确性对拍 + 性能 + roofline + 带宽天花板
+scripts/bench_cuda_paged_decode.py           三方对比：CUDA vs Triton v3 vs flash-attn
+scripts/sweep_cuda_paged_decode.py           CUDA 配置扫描（block_n × warps × stages × splits）
+scripts/probe_kv_access.py                   KV 访存模式探针
+scripts/ncu_paged_decode.py                  ncu 驱动（本机被禁，见下）
 scripts/run_ncu.sh
 ```
+
+跑 CUDA 版：`CUDA_VISIBLE_DEVICES=<空卡> python scripts/bench_cuda_paged_decode.py`
 
 ⚠️ **本机的 ncu 用不了**：`ERR_NVGPUCTRPERM - The user does not have permission to
 access NVIDIA GPU Performance Counters`。所以拿不到 `dram__bytes_read` 这类硬件计数器，
