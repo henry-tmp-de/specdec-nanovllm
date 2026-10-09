@@ -55,6 +55,86 @@ from torch import nn
 _PAD_BLOCK = -1
 
 
+def window_valid_from(draft_valid_len: int, block_size: int, window_blocks: int) -> int:
+    """draft 环形窗口里【最老一个仍然可信的块】的起始位置。
+
+    draft 只保留最近 `window_blocks` 个块的 KV，而且块是按绝对块号递增写进
+    环形缓冲的（绝对块号 b → ring 第 b % M 块）。所以已经处理过位置
+    [0, draft_valid_len) 之后，环里最老可信的块是
+
+        newest = (draft_valid_len - 1) // block_size
+        start  = max(0, newest - M + 1)
+
+    它同时是「查询能看到的最早位置」的下界：比它更老的块要么没写过、
+    要么内容已经被环覆盖，一律不许读。
+    """
+    if draft_valid_len <= 0 or window_blocks <= 0:
+        return 0
+    newest = (int(draft_valid_len) - 1) // block_size
+    return max(0, newest - window_blocks + 1) * block_size
+
+
+def clip_gap_to_window(start: int, gap: List[int], block_size: int,
+                       window_blocks: int) -> Tuple[int, List[int]]:
+    """把补齐缺口夹到「最近 window_blocks 个块」之内，并把起点对齐到块边界。
+
+    ★ 为什么必须夹：环里更老的内容已经被覆盖，补了也是白补（马上被写掉）。
+    ★ 为什么必须对齐到块边界：paged 内核按「整块」读 cache，查询的可见区间
+      从 b0*bs 起算。若起点落在块中间，这个块里起点之前的槽是【陈旧内容】，
+      内核照样会读进去 —— 静默用错上下文，且不报错。对齐后整块要么全新、
+      要么整体不读。
+    """
+    if window_blocks <= 0 or not gap:
+        return start, gap
+    end = int(start) + len(gap)                 # = len(token_ids) - 1
+    eb = end // block_size
+    s_min = max(0, eb - window_blocks + 1) * block_size
+    if start < s_min:
+        drop = min(s_min - start, len(gap))
+        start, gap = start + drop, gap[drop:]
+    start = (start // block_size) * block_size  # 对齐（只会把已有效的若干位重新喂一遍）
+    start = max(start, s_min)
+    if start >= end:
+        return start, []
+    return start, list(gap)
+
+
+class DraftWindow:
+    """draft 滑窗的纯算术（无 torch，可在 CPU 上单测）。
+
+    bs = block_size，M = window_blocks（环里的块数），ring = M 个物理块 id。
+
+      · 写槽      slot(p)   = ring[(p // bs) % M] * bs + (p % bs)
+      · 窗口起点  b0(p)     = max(valid_from // bs, p // bs - M + 1, 0)
+      · 可见长度  clen(p)   = p - b0(p)*bs + 1      （≤ M*bs）
+      · 块表      bt(p)     = [ ring[(b0 + t) % M] for t in range(M) ]
+        必须【从 b0 起、按绝对块号递增】—— key index j ↔ 绝对位置 b0*bs + j，
+        causal 结构才对。因为 softmax 对 key 的顺序不敏感，只要「集合恰好是
+        窗口」就等价；但 causal 掩码是按 index 比较的，顺序错就会看到未来。
+
+    ★ RoPE：positions 张量照旧传【绝对位置】，丢的只是 KV，不是位置编号。
+    """
+
+    def __init__(self, ring, block_size: int, window_blocks: int):
+        self.ring = [int(x) for x in ring]
+        self.bs = int(block_size)
+        self.M = int(window_blocks)
+        assert self.M >= 1 and len(self.ring) == self.M, (self.ring, self.M)
+
+    def b0(self, pos: int, valid_from: int = 0) -> int:
+        return max(int(valid_from) // self.bs, int(pos) // self.bs - self.M + 1, 0)
+
+    def slot(self, pos: int) -> int:
+        return self.ring[(int(pos) // self.bs) % self.M] * self.bs + int(pos) % self.bs
+
+    def block_table(self, pos: int, valid_from: int = 0) -> List[int]:
+        b0 = self.b0(pos, valid_from)
+        return [self.ring[(b0 + t) % self.M] for t in range(self.M)]
+
+    def ctx_len(self, pos: int, valid_from: int = 0) -> int:
+        return int(pos) - self.b0(pos, valid_from) * self.bs + 1
+
+
 def catchup_gap(draft_valid_len: int, token_ids: List[int]) -> Tuple[int, List[int]]:
     """算出 draft KV 的缺口：要从哪个位置开始补、补哪些 token。
 
@@ -222,19 +302,20 @@ class DraftModelProposer:
         max_gap = max((len(g) for g in gaps), default=0)
         if max_gap:
             base = [int(r.get("catchup_start", 0)) for r in reqs]
-            bts_all = [list(r["block_table"]) for r in reqs]
             for s in range(max_gap):
                 act = [i for i in range(B) if s < len(gaps[i])]
                 if not act:
                     break
                 positions = [base[i] + s for i in act]
+                # 补齐期间，环里可信的区间从补齐起点 base[i] 开始（见 clip_gap_to_window）
+                geo = [self._geom(reqs[i], positions[j], valid_from=base[i])
+                       for j, i in enumerate(act)]
                 self._forward_group(
                     tokens=[gaps[i][s] for i in act],
                     positions=positions,
-                    block_tables=[bts_all[i] for i in act],
-                    context_lens=[p + 1 for p in positions],
-                    slot_mapping=[self._slot(bts_all[i], positions[j])
-                                  for j, i in enumerate(act)],
+                    block_tables=[g[1] for g in geo],
+                    context_lens=[g[2] for g in geo],
+                    slot_mapping=[g[0] for g in geo],
                 )
                 self.n_catchup_forwards += 1
                 self.n_catchup_tokens += len(act)
@@ -247,19 +328,19 @@ class DraftModelProposer:
         vocab = self._vocab_size()
         tokens = torch.tensor([int(r["last_token"]) for r in reqs],
                               dtype=torch.int64, device=dev)      # (B,)
-        bts = [list(r["block_table"]) for r in reqs]
         start = [int(r["context_len"]) - 1 for r in reqs]          # (B,)
         out_logits = torch.empty(B, k, vocab, dtype=torch.float32, device=dev)
         cands = torch.empty(B, k, dtype=torch.int64, device=dev)
 
         for s in range(k):
             positions = [start[i] + s for i in range(B)]
+            geo = [self._geom(reqs[i], positions[i]) for i in range(B)]
             logits = self._forward_group(
                 tokens=tokens,
                 positions=positions,
-                block_tables=bts,
-                context_lens=[p + 1 for p in positions],
-                slot_mapping=[self._slot(bts[i], positions[i]) for i in range(B)],
+                block_tables=[g[1] for g in geo],
+                context_lens=[g[2] for g in geo],
+                slot_mapping=[g[0] for g in geo],
             )
             self.n_batch_forwards += 1
             # ★ 必须立刻落进持久缓冲区：走图时 logits 是静态缓冲区，下一次 replay 会被覆写
@@ -291,6 +372,23 @@ class DraftModelProposer:
         if 0 <= bi < len(block_table):
             return int(block_table[bi]) * self.block_size + off
         return -1
+
+    def _geom(self, r: dict, pos: int, valid_from: Optional[int] = None):
+        """位置 pos 的 (slot, block_table, context_len)。
+
+        窗口关闭（window_blocks == 0）时逐字等价于原来的写法：
+            slot = block_table[pos//bs]*bs + pos%bs，context_len = pos + 1，
+            block_table 原样传（= target 的块表）。
+        窗口打开时走 DraftWindow 的环形算术（含 valid_from 下界保护）。
+        """
+        M = int(r.get("window_blocks") or 0)
+        bs = self.block_size
+        if M <= 0:
+            bt = list(r["block_table"])
+            return self._slot(bt, pos), bt, int(pos) + 1
+        w = DraftWindow(r["draft_ring"], bs, M)
+        vf = int(r.get("valid_from", 0)) if valid_from is None else int(valid_from)
+        return w.slot(pos), w.block_table(pos, vf), w.ctx_len(pos, vf)
 
     def _forward_group(
         self,

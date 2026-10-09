@@ -41,6 +41,22 @@ class Config:
     spec_batch_verify_graph: bool = True
     #   True  = B>1 的验证前向走按 (B,k) 捕获的图
     #   False = 只有 B=1 走图，B>1 退回 eager —— 消融 S2 的对照开关
+    # ---------- P7 / B：draft 只保留滑窗（**新增选项**，不是替换） ----------
+    spec_draft_window: int = 0
+    #   0（默认，= 1c1d907 的行为，逐字节等价）
+    #        = 关闭滑窗：draft 与 target 共用 block_table，跑【全上下文】draft。
+    #         这一条路径的代码原样保留、随时可回退（`BlockManager` 的 draft 池
+    #         保持空池，`Sequence.draft_block_table` 恒为空列表）。
+    #   W>0  = 打开滑窗：draft 只保留最近 W 个 token 的 KV。
+    #         W 必须是 kvcache_block_size 的整数倍；实际窗口 = 最近 W/bs 个块，
+    #         所以有效窗口在 W-bs+1 ~ W 个 token 之间。
+    #   ★ 打开后 draft 有【自己的一套小池子 + 自己的块表】，不再共用 block_table ——
+    #     这是省显存的前提（共用块表时两边块数必须相同，一字节都省不出来）。
+    #     代价：draft 不再直接继承别的请求（前缀缓存命中）的 draft KV，
+    #     命中时改为自己重算最近 M 个块的窗口（一次前向，不是 W 次）。
+    #   ★ draft 池 = max_num_seqs * W/block_size 块，max_num_seqs 越大越吃预算。
+    #   ★ 开关在【每次用到 draft 时现场读】，所以同一份二进制里翻转它就能做
+    #     全上下文 vs W 的消融；见 ModelRunner._window_blocks / _draft_request。
     spec_graph_bs: tuple = (1, 2, 4)
     #   捕获 CUDA 图的精确 batch 桶（draft 单步 decode 图 / 验证图共用）。
     #   按 12.2「新增图先只覆盖精确 B=2/4，保留 B=1 原路径」——

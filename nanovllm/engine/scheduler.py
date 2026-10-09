@@ -13,7 +13,10 @@ class Scheduler:
         self.max_num_batched_tokens = config.max_num_batched_tokens
         self.eos = config.eos
         self.block_size = config.kvcache_block_size
-        self.block_manager = BlockManager(config.num_kvcache_blocks, config.kvcache_block_size)
+        self.block_manager = BlockManager(
+            config.num_kvcache_blocks, config.kvcache_block_size,
+            num_draft_blocks=getattr(config, "num_draft_blocks", 0),
+            draft_window_blocks=getattr(config, "draft_window_blocks", 0))
         self.waiting: deque[Sequence] = deque()
         self.running: deque[Sequence] = deque()
         # ---------- 投机解码 ----------
@@ -82,9 +85,23 @@ class Scheduler:
                 #   另一套物理缓冲里，命中 target 缓存不代表 draft 那块也有这段
                 #   前缀的内容。所以只认 draft 自己的块标记（Block.draft_hash）。
                 #   连续有效多少块，draft 水位就推到哪；其余留给 proposer 补齐。
-                nb = self.block_manager.draft_valid_cached_blocks(seq, num_cached_blocks)
-                if nb:
-                    seq.draft_valid_len = max(seq.draft_valid_len, nb * self.block_size)
+                # ★ 窗口模式（B）下不适用：draft 的 KV 在自己的小池子里，跟 target
+                #   的前缀缓存块不再对应；窗口会在 draft prefill 时按 token_ids
+                #   整体重算（见 ModelRunner._run_draft_prefill_window）。
+                if not self.block_manager.draft_window_blocks:
+                    nb = self.block_manager.draft_valid_cached_blocks(seq, num_cached_blocks)
+                    if nb:
+                        seq.draft_valid_len = max(seq.draft_valid_len, nb * self.block_size)
+                # 窗口模式：给这条序列分配它自己的滑窗块（池子够大就不会失败；
+                # 不够说明 max_num_seqs * W/block_size 超过了预算，配置问题要显式报出来）
+                if self.block_manager.draft_window_blocks and not self.block_manager.draft_acquire(seq):
+                    # ★ 优雅回退：池子不够就【整条序列】退回全上下文 draft
+                    #   （draft_block_table 留空 → _draft_request 自然走老路径）。
+                    #   半新半旧才是危险的，这里宁可退一整条。
+                    self._window_fallbacks = getattr(self, "_window_fallbacks", 0) + 1
+                    if self._window_fallbacks in (1, 2, 10, 100):
+                        print(f"[spec] draft 滑窗池不足，第 {self._window_fallbacks} 次"
+                              f"回退到全上下文（seq {seq.seq_id}）")
             seq.num_scheduled_tokens = min(num_tokens, remaining)
             num_batched_tokens += seq.num_scheduled_tokens
             if seq.num_cached_tokens + seq.num_scheduled_tokens == seq.num_tokens:

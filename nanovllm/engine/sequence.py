@@ -52,6 +52,13 @@ class Sequence:
         # 就必须先补齐，只喂最后一个 token 恢复不了缺失前缀。
         # 维护点见 model_runner.prepare_prefill / run() / scheduler.postprocess_spec。
         self.draft_valid_len = 0
+        # ---------- B 步：draft 自己的滑窗块表 ----------
+        # 窗口关闭时恒为空（draft 用 target 的 block_table，行为与 P6 一致）。
+        # 窗口打开时是 M = draft_window/block_size 个物理块的【环形缓冲】：
+        # 绝对块号 b 永远落在 ring[b % M]，于是任何时刻环里存的就是「最近 M 个块」。
+        # 由 Scheduler 在 prefill 时分配（BlockManager.draft_acquire）、抢占时释放。
+        # ★ 必须一起过进程边界：TP>1 时每条 rank 都要按同一套块表跑 draft。
+        self.draft_block_table: list[int] = []
 
     def __len__(self):
         return self.num_tokens
@@ -145,12 +152,12 @@ class Sequence:
         last_state = self.last_token if not self.is_prefill else self.token_ids
         return (self.num_tokens, self.num_prompt_tokens, self.num_cached_tokens,
                 self.num_scheduled_tokens, self.block_table, last_state,
-                self.draft_valid_len)
+                self.draft_valid_len, self.draft_block_table)
 
     def __setstate__(self, state):
         (self.num_tokens, self.num_prompt_tokens, self.num_cached_tokens,
          self.num_scheduled_tokens, self.block_table, last_state,
-         self.draft_valid_len) = state
+         self.draft_valid_len, self.draft_block_table) = state
         if isinstance(last_state, list):
             self.token_ids = last_state
             self.last_token = self.token_ids[-1]

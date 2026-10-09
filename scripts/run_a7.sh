@@ -19,16 +19,16 @@ KIND=${A7_KIND:-quant}
 TAG=${A7_TAG:-base}
 REPS=${A7_REPS:-5}
 if [ "$KIND" = "verify" ]; then
-  GROUPS=${A7_GROUPS:-"REF NEW OLD NEG NEGX"}
+  GLIST=${A7_GROUPS:-"REF NEW OLD NEG NEGX"}
   OUTDIR=${A7_OUT:-$ROOT/a7-runs/verify-$TAG}
 else
-  GROUPS=${A7_GROUPS:-"HOT HOTX COLD"}
+  GLIST=${A7_GROUPS:-"HOT HOTX COLD"}
   OUTDIR=${A7_OUT:-$ROOT/a7-runs/$TAG}
 fi
 mkdir -p "$OUTDIR"
-echo "== kind=$KIND tag=$TAG groups=[$GROUPS] reps=$REPS gpu=$CUDA_VISIBLE_DEVICES out=$OUTDIR =="
+echo "== kind=$KIND tag=$TAG groups=[$GLIST] reps=$REPS gpu=$CUDA_VISIBLE_DEVICES out=$OUTDIR =="
 for rep in $(seq 1 "$REPS"); do
-  for g in $GROUPS; do
+  for g in $GLIST; do
     f="$OUTDIR/${TAG}_${g}_r${rep}.log"
     echo "[$(date +%H:%M:%S)] $g rep$rep -> $f"
     if [ "$KIND" = "verify" ]; then

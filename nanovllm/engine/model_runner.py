@@ -8,6 +8,7 @@ from nanovllm.config import Config
 from nanovllm.engine.sequence import Sequence
 from nanovllm.models.qwen3 import Qwen3ForCausalLM
 from nanovllm.layers.sampler import Sampler
+from nanovllm.spec_decode.draft_proposer import DraftWindow
 from nanovllm.utils.context import set_context, get_context, reset_context
 from nanovllm.utils.loader import load_model
 
@@ -41,6 +42,9 @@ class ModelRunner:
         #   verify 图：{(B, k): (graph, vars)}，query 数 = B*(k+1)
         self.draft_graphs = {}
         self.verify_graphs = {}
+        # B 步：draft 滑窗的块数 M（0 = 关闭，draft 与 target 共用 block_table）。
+        # 真正的取值在 allocate_kv_cache 里按预算定；warmup 会先用旧路径跑一遍。
+        self.draft_window_blocks = 0
         self._verify_extra = None
         # P6 消融开关（默认走批量；设 False 退回逐请求/仅 B=1 图）
         self.batch_draft = config.spec_batch_draft
@@ -174,8 +178,36 @@ class ModelRunner:
             draft_block_bytes = (2 * d_hf.num_hidden_layers * self.block_size
                                  * d_kv_heads * d_head_dim * d_hf.dtype.itemsize)
 
-        per_block_total = tgt_block_bytes + draft_block_bytes
-        config.num_kvcache_blocks = budget // per_block_total
+        # ---------- B 步：draft 滑窗（新增分支，默认关闭）----------
+        # 默认（spec_draft_window == 0）走下面这条【原有的】分法：
+        #   draft 与 target 共用 block_table → 两边块数必须相同 → 按字节数反推。
+        # 打开滑窗后走另一条：draft 只要 max_num_seqs * M 块（每序列私有的
+        #   块级环形缓冲），target 拿走剩下的全部预算 → 容量上升。
+        W = self._window_tokens()
+        if draft_block_bytes and W > 0:
+            assert W % self.block_size == 0, (
+                f"spec_draft_window={W} 必须是 kvcache_block_size={self.block_size} 的整数倍")
+            M = W // self.block_size
+            draft_pool = M * config.max_num_seqs
+            room = budget - draft_pool * draft_block_bytes
+            assert room >= tgt_block_bytes, (
+                f"draft 滑窗池放不下：{draft_pool} 块 x {draft_block_bytes/2**20:.0f} MiB "
+                f"= {draft_pool*draft_block_bytes/2**30:.2f} GB，而 KV 预算只有 "
+                f"{budget/2**30:.2f} GB（max_num_seqs={config.max_num_seqs}, M={M}）。"
+                f" 减小 spec_draft_window / max_num_seqs 或调大 gpu_memory_utilization")
+            config.num_kvcache_blocks = int(room // tgt_block_bytes)
+            config.num_draft_blocks = draft_pool
+            config.draft_window_blocks = M
+            self.draft_window_blocks = M
+            print(f"[spec] draft 滑窗开启: W={W} token = {M} 块/序列, "
+                  f"draft 池 {draft_pool} 块 ({(draft_pool*draft_block_bytes)/2**30:.2f} GB), "
+                  f"target 池 {config.num_kvcache_blocks} 块")
+        else:
+            per_block_total = tgt_block_bytes + draft_block_bytes
+            config.num_kvcache_blocks = budget // per_block_total
+            config.num_draft_blocks = 0
+            config.draft_window_blocks = 0
+            self.draft_window_blocks = 0
         assert config.num_kvcache_blocks > 0, "KV cache 预算不足"
 
         self.kv_cache = torch.empty(
@@ -193,8 +225,10 @@ class ModelRunner:
             d_hf = self.draft_hf_config
             d_kv_heads = d_hf.num_key_value_heads // self.world_size
             d_head_dim = getattr(d_hf, "head_dim", d_hf.hidden_size // d_hf.num_attention_heads)
+            # 滑窗打开时 draft 池比 target 池小得多；关闭时两者相等（原有行为）。
+            n_draft = config.num_draft_blocks or config.num_kvcache_blocks
             self.draft_kv_cache = torch.empty(
-                2, d_hf.num_hidden_layers, config.num_kvcache_blocks,
+                2, d_hf.num_hidden_layers, n_draft,
                 self.block_size, d_kv_heads, d_head_dim)
             dl = 0
             for module in self.draft_model.modules():
@@ -203,7 +237,7 @@ class ModelRunner:
                     module.v_cache = self.draft_kv_cache[1, dl]
                     dl += 1
             assert dl == d_hf.num_hidden_layers, f"draft 层数不匹配: {dl} vs {d_hf.num_hidden_layers}"
-            print(f"[spec] draft KV cache: {dl} 层 x {config.num_kvcache_blocks} blocks, "
+            print(f"[spec] draft KV cache: {dl} 层 x {n_draft} blocks, "
                   f"每block {draft_block_bytes/1024:.0f} KB")
         print(f"[spec] blocks={config.num_kvcache_blocks}, "
               f"target 每block {tgt_block_bytes/1024:.0f} KB, "
@@ -389,16 +423,88 @@ class ModelRunner:
                      slot_mapping, None, block_tables, is_spec_verify=True)
         return input_ids, positions
 
-    def _run_draft_prefill(self, seqs, input_ids, positions):
+    def _window_tokens(self) -> int:
+        """配置里要求的 draft 滑窗宽度 W（0 = 关闭 = 全上下文 draft）。
+
+        ★ 现场读 config：同一份二进制里翻转它就能做「全上下文 vs W」的消融，
+          不需要切 git 版本（否则测出来的差异会混进代码版本差异）。
+        """
+        w = int(getattr(self.config, "spec_draft_window", 0) or 0)
+        if w <= 0 or self.draft_model is None:
+            return 0
+        return w
+
+    def _run_draft_prefill(self, seqs, input_ids, positions) -> bool:
         """prefill 时也把 draft 模型跑一遍，填它自己的 KV cache。
 
-        ★ 最简实现：直接复用当前 context（prepare_prefill 已经设好了），
-          跑完【不恢复】—— 因为 target 的 prefill 紧接着会自己再
-          set_context 一次（run() 里prepare_prefill 在前、target 前向在后），
-          这里只需要保证 draft 跑到时 context 是对的。
+        ★ 全上下文路径（默认，spec_draft_window == 0）：逐字保留原实现 ——
+          直接复用当前 context（prepare_prefill 已经设好了），跑完【不恢复】，
+          因为 target 的 prefill 紧接着会自己再 set_context 一次。
+          返回 False 表示「没动 context」。
+
+        ★ 滑窗路径（spec_draft_window > 0 且这批序列都已经拿到滑窗块）：
+          转给 _run_draft_prefill_window，它会自己 set/reset context，
+          所以返回 True，调用方要重建 target 的 context。
+        ★ 优雅回退（两边都能退）：只要有一条序列没有滑窗块（例如池子分配失败、
+          或运行期把开关翻回去），整批就走全上下文路径 —— 不会半新半旧。
         """
+        if self.draft_window_blocks and seqs and all(s.draft_block_table for s in seqs):
+            self._run_draft_prefill_window(seqs)
+            return True
         with torch.inference_mode():
             self.draft_model(input_ids, positions)
+        return False
+
+    @torch.inference_mode()
+    def _run_draft_prefill_window(self, seqs):
+        """滑窗路径的 draft prefill：只跑「最近 M 个块」，用 draft 自己的块表。
+
+        ★ 为什么不是整个 prompt：滑窗只保留最近 M 个块，更老的 token 反正会被
+          环覆盖，跑它们纯属浪费。按【块边界】对齐地取最后 M 个块 [b0*bs, end)，
+          一次 varlen 前向算完。
+        ★ 块表必须旋转：paged 内核要求 key index j ↔ block_table[j//bs]，
+          且必须【从窗口最老的块开始递增】，causal 掩码才对（见 DraftWindow）。
+        ★ RoPE：positions 用【绝对位置】range(b0*bs, end) —— 丢的是 KV，不是位置。
+        ★ 诚实的近似：这一趟是「把超出窗口的上下文直接截掉」，
+          所以窗口里靠前的那些位置拿到的是缩短了的上下文（比流式滑窗更短）。
+          每向前解码一步窗口就往前挪，这些位置很快就会滑出去。
+        """
+        bs = self.block_size
+        M = self.draft_window_blocks
+        ids, poss, slots, bts, cu = [], [], [], [], [0]
+        maxlen = 0
+        for seq in seqs:
+            end = seq.num_cached_tokens + seq.num_scheduled_tokens
+            if end <= 0:
+                continue
+            b0 = max(0, (end - 1) // bs - M + 1)
+            w0 = b0 * bs
+            if w0 >= end:
+                continue
+            w = DraftWindow(seq.draft_block_table, bs, M)
+            ids.extend(seq.token_ids[w0:end])
+            poss.extend(range(w0, end))
+            slots.extend(w.slot(p) for p in range(w0, end))
+            bts.append(w.block_table(w0))
+            cu.append(cu[-1] + (end - w0))
+            maxlen = max(maxlen, end - w0)
+            # 窗口是按 token_ids 整体重算的 → 从 0 到 end 都算「已处理」
+            # （比它更老的 token 本来就滑出窗口了，水位语义不受影响）
+            seq.draft_valid_len = end
+        if not ids:
+            return
+        dev = next(self.draft_model.parameters()).device
+        cu = torch.tensor(cu, dtype=torch.int32, device=dev)
+        width = max(len(b) for b in bts)
+        bt = torch.tensor([b + [-1] * (width - len(b)) for b in bts],
+                          dtype=torch.int32, device=dev)
+        set_context(True, cu, cu, maxlen, maxlen,
+                    torch.tensor(slots, dtype=torch.int32, device=dev), None, bt)
+        try:
+            self.draft_model(torch.tensor(ids, dtype=torch.int64, device=dev),
+                             torch.tensor(poss, dtype=torch.int64, device=dev))
+        finally:
+            reset_context()
 
     def _draft_request(self, seq: Sequence) -> dict:
         """把一条请求的 draft 提议元数据打包给 proposer（P6 任务 D 的接口）。
@@ -408,9 +514,25 @@ class ModelRunner:
         也可能来自前缀缓存命中的块。补齐必须【喂这些 token 本身】，
         只喂最后一个 token 恢复不了缺失前缀。补齐费用计入运行时间。
         """
-        from nanovllm.spec_decode.draft_proposer import catchup_gap
+        from nanovllm.spec_decode.draft_proposer import (
+            catchup_gap, clip_gap_to_window, window_valid_from)
         start, catchup = catchup_gap(seq.draft_valid_len, seq.token_ids)
-        return dict(block_table=list(seq.block_table), context_len=len(seq),
+        # ---------- 滑窗（B）：draft 的块表是每序列私有的环形缓冲 ----------
+        # ★ 判据是【这条序列有没有滑窗块表】，而不是读配置：池子分配失败、或者
+        #   运行期把开关翻回全上下文时，这里自动退回老路径（两边都能退）。
+        M = len(seq.draft_block_table)
+        valid_from = 0
+        if M:
+            bs = self.block_size
+            start, catchup = clip_gap_to_window(start, catchup, bs, M)
+            wvf = window_valid_from(seq.draft_valid_len, bs, M)
+            # 有缺口时环里更老的内容可能已被覆盖 → 下界取「环的自然窗口起点」
+            # 与「补齐起点」中更靠后的那个；没缺口时就用窗口起点。
+            valid_from = max(wvf, start) if catchup else wvf
+        return dict(block_table=list(seq.block_table),
+                    draft_ring=list(seq.draft_block_table),
+                    window_blocks=M, valid_from=valid_from,
+                    context_len=len(seq),
                     last_token=seq.last_token, temperature=seq.temperature,
                     catchup_start=start, catchup_tokens=catchup)
 
@@ -443,8 +565,11 @@ class ModelRunner:
             input_ids, positions = self.prepare_prefill(seqs)
             if self.draft_model is not None:
                 # ★ draft 模型也要跑一遍 prefill，把它的 KV cache 建起来
-                #   （draft 与 target 共用 block_table，但各自写进自己的 cache）
-                self._run_draft_prefill(seqs, input_ids, positions)
+                #   （关闭滑窗时 draft 与 target 共用 block_table，但各自写进自己的 cache；
+                #    打开滑窗时 draft 用自己的环形块表，见 _run_draft_prefill_window）
+                if self._run_draft_prefill(seqs, input_ids, positions):
+                    # 滑窗路径 set 过自己的 context 又 reset 了 → 重建 target 的
+                    input_ids, positions = self.prepare_prefill(seqs)
             elif self.spec_proposer is not None:
                 # n-gram 路线：把 prompt 的 n-gram 建进索引
                 for seq in seqs:

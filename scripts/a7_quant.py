@@ -159,6 +159,15 @@ def main():
 
         ModelRunner._draft_request = _strip
 
+    # HOTN = 「修复关闭」的对照：仍走新代码，但把 draft 块级复用钉成 0，
+    # 于是水位回到 0、走全量补齐 —— 这就是修复前逐字节等价的行为。
+    # ★ 与 HOT 用完全相同的 prompt（见下面的 kind_group），所以是干净的 A/B。
+    no_reuse = group == "HOTN"
+    if no_reuse:
+        BlockManager.draft_valid_cached_blocks = lambda self, seq, nb: 0
+    # 负载形态只看 COLD / 非 COLD；HOT / HOTX / HOTN 必须是同一批 prompt
+    kind_group = "COLD" if group == "COLD" else "HOT"
+
     # ---------- 构造 prompt ----------
     # 共享段（LS 个 token）：hot 组所有请求逐字相同；cold 组各不相同
     shared = build_prompt("zh", 2, LS, 70000 + LS)
@@ -168,7 +177,7 @@ def main():
     meta.append(dict(role="writer", n=len(writer), md5=hashlib.md5(
         json.dumps(writer).encode()).hexdigest()))
     for i in range(N):
-        if group == "COLD":
+        if kind_group == "COLD":
             # 无复用：每条前缀都不一样（换 pool_idx + seed + 语言）
             kind = "zh" if i % 2 == 0 else "code"
             head = build_prompt(kind, (i * 5 + REP) % 12, LS, 90000 + i * 977 + REP)

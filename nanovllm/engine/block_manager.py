@@ -35,12 +35,52 @@ class Block:
 
 class BlockManager:
 
-    def __init__(self, num_blocks: int, block_size: int):
+    def __init__(self, num_blocks: int, block_size: int,
+                 num_draft_blocks: int = 0, draft_window_blocks: int = 0):
         self.block_size = block_size
         self.blocks: list[Block] = [Block(i) for i in range(num_blocks)]
         self.hash_to_block_id: dict[int, int] = dict()
         self.free_block_ids: deque[int] = deque(range(num_blocks))
         self.used_block_ids: set[int] = set()
+        # ---------- B 步：draft 自己的小池子（与 target 的池子完全独立）----------
+        # draft_window_blocks > 0 时才启用：每条序列从池里拿 M = draft_window_blocks
+        # 个块做【块级环形缓冲】，draft 的 KV 只写进这 M 个块。
+        # ★ 这个池子【不参与】前缀缓存：它没有哈希表，也不做 ref_count 共享 ——
+        #   draft 的窗口是每序列私有的（窗口内容就是"这条序列最近 M 个块"），
+        #   跨请求共享没有意义。
+        # ★ target 的块共享/前缀缓存机制完全不受影响（另一套 blocks / 另一个池子）。
+        self.draft_window_blocks = int(draft_window_blocks)
+        self.draft_free: deque[int] = deque(range(num_draft_blocks))
+        self.draft_used: set[int] = set()
+
+    # ------------------------------------------------------------------
+    def draft_acquire(self, seq: Sequence) -> bool:
+        """给一条序列分配 draft 滑窗的 M 个块（幂等：已有就直接返回 True）。"""
+        M = self.draft_window_blocks
+        if M <= 0:
+            return False
+        if seq.draft_block_table:
+            return True
+        if len(self.draft_free) < M:
+            return False
+        for _ in range(M):
+            b = self.draft_free.popleft()
+            self.draft_used.add(b)
+            seq.draft_block_table.append(b)
+        return True
+
+    def draft_release(self, seq: Sequence):
+        """归还序列的 draft 滑窗块（抢占/结束）。"""
+        for b in seq.draft_block_table:
+            if b in self.draft_used:
+                self.draft_used.discard(b)
+                self.draft_free.append(b)
+        seq.draft_block_table = []
+
+    def draft_pool_usage(self):
+        return dict(window_blocks=self.draft_window_blocks,
+                    total=len(self.draft_free) + len(self.draft_used),
+                    free=len(self.draft_free), used=len(self.draft_used))
 
     @classmethod
     def compute_hash(cls, token_ids: list[int], prefix: int = -1):
@@ -109,6 +149,9 @@ class BlockManager:
                 self._deallocate_block(block_id)
         seq.num_cached_tokens = 0
         seq.block_table.clear()
+        # ★ draft 滑窗块也一起还（抢占与正常结束都走这里）—— 漏了就是池子泄漏，
+        #   跑一会儿之后 draft_acquire 永远失败。
+        self.draft_release(seq)
 
     def _blocks_needed(self, seq: Sequence, n_tokens: int) -> int:
         """要容纳本次写入的 n_tokens 个 token，block_table 至少要有几块。
