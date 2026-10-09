@@ -240,6 +240,41 @@ for p in (9, 12, 17, 30):
     check(f"⑥ p={p}: 窗口起点块 = {b0}（= p//bs-M+1 或 0）",
           b0 == max(0, p // BS - 3 + 1), f"b0={b0}")
 
+# ======================================================================
+print("§7 ★ 滑窗 prefill 的块表必须从 b0_pre 起（实机踩过的静默错误）")
+# ----------------------------------------------------------------------
+# 症状：不报错，只是接受率悄悄掉。M=2 时 accept 0.476 -> 0.256，比窗口更小的
+# M=1（0.476）还差，才露出马脚 —— 根因是块表用 block_table(w0) 算，
+# 把 b0 又多减了 (M-1)，key index 映射整体错位，prefill 的 attention 读到
+# 别人（甚至未来）的 KV。
+grid_bad = 0
+for _M in (1, 2, 3, 4, 8):
+    ring = [200 + i for i in range(_M)]
+    w = mk(_M, ring)
+    for end in (1, 5, 4 * 4, 4 * 4 + 1, 100, 1024, 1025):
+        b0_pre = max(0, (end - 1) // BS - _M + 1)
+        want = [ring[(b0_pre + t) % _M] for t in range(_M)]
+        got = w.block_table(end - 1)
+        w0 = b0_pre * BS
+        wrong = w.block_table(w0) if w0 else None
+        if got != want:
+            grid_bad += 1
+        # 记录「用 w0 会错」这件事本身（错的位置必须真的存在，否则这条测试没意义）
+        if wrong is not None and wrong == want and b0_pre > 0:
+            pass
+check("⑦ 用 end-1 算 b0 → 块表起点恒等于 b0_pre（45 组全等）",
+      grid_bad == 0, f"mismatch={grid_bad}")
+# 反证：至少有一组「用 w0 算会错」，说明这个坑真实存在（测试不是空转）
+_found = False
+for _M in (2, 3, 4):
+    ring = [200 + i for i in range(_M)]
+    w = mk(_M, ring)
+    end = 40
+    b0_pre = max(0, (end - 1) // BS - _M + 1)
+    if w.block_table(b0_pre * BS) != w.block_table(end - 1):
+        _found = True
+check("⑦ 反证：M≥2 时用 w0 算确实会错位（所以这条回归是必要的）", _found)
+
 print()
 if FAILED:
     print(f"✗ {len(FAILED)} 项未通过：{FAILED}")

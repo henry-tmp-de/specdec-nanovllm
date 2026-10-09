@@ -491,7 +491,13 @@ class ModelRunner:
             ids.extend(seq.token_ids[w0:end])
             poss.extend(range(w0, end))
             slots.extend(w.slot(p) for p in range(w0, end))
-            bts.append(w.block_table(w0))
+            # ★ 块表必须用【最后一个位置】去算 b0 —— 不能用 w0 再算一次：
+            #   block_table(w0) 会把 b0 再减 (M-1)，于是 key index 映射整体错位
+            #   M-1 个块。症状是「不报错、只是接受率悄悄掉」（实测 M=2 时
+            #   accept 0.476 -> 0.256，比窗口更小的 M=1 还差，才露的马脚）。
+            #   block_table(end-1) 给出的 b0 = max(0,(end-1)//bs - M + 1)，与上面
+            #   算 w0 用的 b0_pre 恒等。
+            bts.append(w.block_table(end - 1))
             cu.append(cu[-1] + (end - w0))
             maxlen = max(maxlen, end - w0)
             # 窗口是按 token_ids 整体重算的 → 从 0 到 end 都算「已处理」
