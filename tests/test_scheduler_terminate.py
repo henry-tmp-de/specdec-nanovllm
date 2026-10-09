@@ -50,6 +50,7 @@ class FakeBM:
     推进量是显式入参（契约见 block_manager.hash_blocks 的 docstring）。
     """
     def hash_blocks(self, seq, num_new_tokens): pass
+    def mark_draft_valid(self, seq, draft_valid_len): pass
     def deallocate(self, seq): pass
 
 

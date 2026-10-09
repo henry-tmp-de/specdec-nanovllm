@@ -105,6 +105,25 @@ class Sequence:
         self.num_tokens += len(token_ids)
         self.last_accepted = len(token_ids)
 
+    def advance_draft_watermark(self, start: int, end: int):
+        """prefill 了一个 [start, end) 的 chunk 之后，推进 draft KV 的有效水位。
+
+        规则：**只有与已有有效前缀连续**的新写入才延长水位。
+
+            · 新请求（start == 0 == draft_valid_len）      → 水位 = end
+            · 分块 prefill 的后续 chunk（start == 水位）   → 水位 = end
+            · 前缀缓存命中（start > 水位）                 → 水位【不动】
+              draft 的 KV 在另一套物理缓冲里，target 命中了不代表 draft 也有；
+              这里保守留成缺口，让 proposer 补齐。真正能从缓存复用的部分，
+              由 Scheduler 在 allocate 之后按 Block.draft_hash 先推到
+              num_cached_tokens —— 于是 start == 水位，走进上面第二条分支。
+
+        放在 Sequence 上是因为它同时被 ModelRunner（prepare_prefill）与
+        CPU 测试调用，规则只能有一份。
+        """
+        if start <= self.draft_valid_len:
+            self.draft_valid_len = max(self.draft_valid_len, end)
+
     def tokens_in(self, start: int, end: int) -> list[int]:
         """取 [start, end) 区间的 token，超出部分用草稿候选补。
 

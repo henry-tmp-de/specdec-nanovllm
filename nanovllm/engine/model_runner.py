@@ -244,8 +244,7 @@ class ModelRunner:
             #     draft 侧的物理块可能残留「被拒绝候选」的 KV（见 12.5 任务 D），
             #     不能仅凭 target 前缀命中就假定 draft 侧也有效；
             #     保守留成缺口，让 proposer 在下次提议前补齐（补齐计入运行时间）。
-            if start <= seq.draft_valid_len:
-                seq.draft_valid_len = max(seq.draft_valid_len, end)
+            seq.advance_draft_watermark(start, end)
 
             if not seq.block_table:    # warmup
                 continue

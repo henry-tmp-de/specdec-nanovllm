@@ -76,6 +76,15 @@ class Scheduler:
                 break
             if not seq.block_table:
                 self.block_manager.allocate(seq, num_cached_blocks)
+                # ---------- 前缀缓存命中时，draft 侧能不能跟着复用？----------
+                # ★ 不能拿 num_cached_blocks 直接当 draft 的有效量：前缀缓存
+                #   （hash_to_block_id）存的是 target 的 KV 块，draft 的 KV 在
+                #   另一套物理缓冲里，命中 target 缓存不代表 draft 那块也有这段
+                #   前缀的内容。所以只认 draft 自己的块标记（Block.draft_hash）。
+                #   连续有效多少块，draft 水位就推到哪；其余留给 proposer 补齐。
+                nb = self.block_manager.draft_valid_cached_blocks(seq, num_cached_blocks)
+                if nb:
+                    seq.draft_valid_len = max(seq.draft_valid_len, nb * self.block_size)
             seq.num_scheduled_tokens = min(num_tokens, remaining)
             num_batched_tokens += seq.num_scheduled_tokens
             if seq.num_cached_tokens + seq.num_scheduled_tokens == seq.num_tokens:
@@ -173,6 +182,9 @@ class Scheduler:
             #   （或传了 num_scheduled_tokens 当推进量），登记区间就会整体后移一格：
             #   刚写满的块被跳过、半满块被当成满块登记。复现见 §1/§2。
             self.block_manager.hash_blocks(seq, num_new)
+            # ★ draft 侧的有效性盖章要在同一步做：此刻 token_ids / 块内容 /
+            #   draft_valid_len 三者都已最终化，盖出来的标记才不会有偏差。
+            self.block_manager.mark_draft_valid(seq, seq.draft_valid_len)
             seq.num_scheduled_tokens = 0
             if is_prefill and seq.num_cached_tokens < seq.num_tokens:
                 continue
@@ -246,6 +258,8 @@ class Scheduler:
             #     （schedule 按上限预留的槽位数），与被确认的 len(toks) 不相等，
             #     让 hash_blocks 自己去猜就会算错登记区间（半满块会被当成满块）。
             self.block_manager.hash_blocks(seq, len(toks))
+            # ★ draft 侧盖章：必须在上面夹完水位之后（see the clamp above）。
+            self.block_manager.mark_draft_valid(seq, seq.draft_valid_len)
             # ★ 把新生成的 token 增量加入 n-gram 索引，
             #   否则下一步提不出以这些新 token 结尾的候选
             #   （必须放在 append_tokens 之后 —— 那之前 token_ids 还没这些 token）

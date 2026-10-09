@@ -12,6 +12,15 @@ class Block:
         self.ref_count = 0
         self.hash = -1
         self.token_ids = []
+        # ---------- draft 侧 KV 的有效性标记（与 target 的前缀缓存无关）----------
+        # 物理块里【draft 模型算过的内容】的块哈希；-1 = draft 没算过 / 内容已变。
+        # ★ 为什么必须单独一个字段：前缀缓存 hash_to_block_id 存的是 target 的
+        #   KV 块；draft 的 KV 写在【另一套】物理缓冲里（每层 k/v 是独立张量）。
+        #   两者共用同一份 block_table（逻辑块 i → 物理块 i），但 cache 张量分开，
+        #   所以「target 命中前缀缓存」推不出「draft 侧也有这段前缀」——
+        #   draft 那个物理块里可能是上一次谁留下的内容。
+        #   只有 draft 真的按正确前缀算过这一整块，才在这里盖上对应的哈希。
+        self.draft_hash = -1
 
     def update(self, hash: int, token_ids: list[int]):
         self.hash = hash
@@ -21,6 +30,7 @@ class Block:
         self.ref_count = 1
         self.hash = -1
         self.token_ids = []
+        self.draft_hash = -1
 
 
 class BlockManager:
@@ -199,3 +209,60 @@ class BlockManager:
             h = self.compute_hash(token_ids, h)
             block.update(h, token_ids)
             self.hash_to_block_id[h] = block.block_id
+
+    # ==================================================================
+    #  draft 侧 KV 的有效性追踪（前缀缓存命中的「全量补齐」修复）
+    # ==================================================================
+    def mark_draft_valid(self, seq: Sequence, draft_valid_len: int):
+        """把「draft 已经按正确前缀算过」的完整块盖上一个 draft_hash。
+
+        契约
+        ----
+        draft_valid_len = `Sequence.draft_valid_len`，即「从位置 0 起连续有效的
+        draft KV 个数」。它由 prepare_prefill / propose / postprocess_spec 维护：
+          · prefill 的每个 chunk 成功后推进到 chunk 末尾；
+          · 每轮 propose 后 = 最后已确认位置 + k，再由 postprocess_spec 夹到
+            num_tokens - 1（最后一个 bonus 位置没有 draft KV，是个真缺口）；
+          · gate 关闭期间【不推进】——target 自己生成的 token draft 没看过；
+          · 抢占归零。
+
+        所以「整块落在水位之内」⇔「这一块的每个位置都由 draft 在正确的已确认
+        前缀下算过」。此时才把 block.draft_hash 置成 block.hash（内容哈希）。
+        未登记进前缀缓存（hash == -1）的块跳过：它本来就不会被命中复用。
+
+        ★ 不做任何假设、只做盖章：这个方法永远不会让 draft 以为某块有效，
+          除非水位真的覆盖到了它。
+        """
+        if draft_valid_len <= 0:
+            return
+        bs = self.block_size
+        n = min(int(draft_valid_len) // bs, len(seq.block_table))
+        for i in range(n):
+            block = self.blocks[seq.block_table[i]]
+            if block.hash != -1:
+                block.draft_hash = block.hash
+
+    def draft_valid_cached_blocks(self, seq: Sequence, num_cached_blocks: int) -> int:
+        """前缀缓存命中的块里，draft 侧也确认有效的【连续前缀块数】。
+
+        调用时机：can_allocate 返回 num_cached_blocks 之后、allocate 之后。
+        can_allocate 已经保证这 num_cached_blocks 个块的内容就是 seq 的前缀
+        （链式哈希相等 + token_ids 逐个相等），而块内容是不可变的
+        （被命中的块 ref_count>0，不会被 _allocate_block 回收重写），
+        所以这里只需确认 draft 侧在【同一个物理块】上算过同样的内容：
+
+            block.draft_hash == block.hash
+
+        相等即有效。任何一块断了（-1 或哈希对不上）就到此为止 —— 只返回
+        连续有效的那一段，剩下的交给 proposer 用 catchup 补齐。
+
+        ★ 这就是「target 命中 ≠ draft 有效」这条红线的落点：draft_hash 只由
+          mark_draft_valid 盖，绝不从前缀缓存事件推断。
+        """
+        n = 0
+        for i in range(min(int(num_cached_blocks), len(seq.block_table))):
+            block = self.blocks[seq.block_table[i]]
+            if block.draft_hash == -1 or block.draft_hash != block.hash:
+                break
+            n += 1
+        return n
