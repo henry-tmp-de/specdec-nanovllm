@@ -176,11 +176,27 @@ def verify_batch(
 
 
 def _softmax_with_temp(logits: torch.Tensor, temperatures: Optional[torch.Tensor]) -> torch.Tensor:
-    """按逐请求温度做 softmax。logits 是 (..., vocab)。"""
+    """按【逐请求】温度做 softmax。logits 形状 (batch, ..., vocab)。
+
+    ★★ 温度必须沿【请求维】广播。请求维是第 0 维、vocab 是最后一维，所以
+       温度要 reshape 成 (B, 1, ..., 1)：
+           (B, k, V) -> (B, 1, 1)
+           (B, V)    -> (B, 1)
+       旧写法 `shape = [1]*(ndim-1) + [-1]` 把 B 个温度塞进了【最后一维】也就是
+       vocab 维：B=1 时因为长度 1 的维广播无差别而被掩盖（引擎现在就是逐序列
+       调用，B=1，所以一直没暴露），B>1 时直接错 ——
+         · V ≠ B：reshape/广播直接 RuntimeError；
+         · V == B：每个词的概率被除以【别人的】温度，q 与 p 一起错位，
+           min(1, p/q) 随之算错，无损性破裂。
+       批量验证（P6/批量投机）一上来就是 B>1，所以这是必须先修的正确性问题。
+    """
     x = logits.float()
     if temperatures is not None:
-        shape = [1] * (x.dim() - 1) + [-1]
-        x = x / temperatures.reshape(shape)
+        if temperatures.dim() == 0:
+            x = x / temperatures                    # 标量温度：无需广播
+        else:
+            shape = [temperatures.shape[0]] + [1] * max(0, x.dim() - 1)
+            x = x / temperatures.reshape(shape)
     return torch.softmax(x, dim=-1)
 
 
