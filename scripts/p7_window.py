@@ -94,8 +94,25 @@ def main():
     db = _a7.kv_bytes(dhf)
     tgt_blocks_per_seq = (L + OUT + MML) // mr.block_size + 2
 
+    # ★ 可选：把【预热之后第一次 propose】的原始 logits 落盘。
+    #   用途：当 L < W 时，滑窗覆盖了全部上下文 → 滑窗档与全上下文档的 logits
+    #   必须逐值一致（这是对「自己的块表 / 块表旋转 / clen 计算」最硬的对拍）。
+    CAP = {"arm": False, "logits": None}
+    if os.environ.get("P7_LOGITS"):
+        from nanovllm.spec_decode.draft_proposer import DraftModelProposer
+        _opb = DraftModelProposer.propose_batch
+
+        def _pb(self, reqs):
+            ch, lg = _opb(self, reqs)
+            if CAP["arm"] and CAP["logits"] is None:
+                CAP["logits"] = lg.detach().float().cpu().clone()
+            return ch, lg
+        DraftModelProposer.propose_batch = _pb
+
     sp_w = SamplingParams(temperature=1.0, max_tokens=8, ignore_eos=True)
     llm.generate([prompts[0]], sp_w, use_tqdm=False)
+    CAP["arm"] = True
+    torch.manual_seed(777 + REP)
 
     sp = SamplingParams(temperature=1.0, max_tokens=OUT, ignore_eos=True)
     ACC = {"p": 0, "a": 0}
@@ -152,6 +169,13 @@ def main():
         mem_alloc_peak_gb=round(torch.cuda.max_memory_allocated() / 2**30, 3),
         window_fallbacks=getattr(llm.scheduler, "_window_fallbacks", 0),
     )
+    lp = os.environ.get("P7_LOGITS")
+    if lp and CAP["logits"] is not None:
+        torch.save(CAP["logits"], lp)
+        info["logits_saved"] = lp
+        info["logits_shape"] = list(CAP["logits"].shape)
+    info["out_md5"] = hashlib.md5(json.dumps(
+        [o["token_ids"] for o in outs]).encode()).hexdigest()
     report(info)
 
 

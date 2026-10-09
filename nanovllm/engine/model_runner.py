@@ -239,9 +239,12 @@ class ModelRunner:
             assert dl == d_hf.num_hidden_layers, f"draft 层数不匹配: {dl} vs {d_hf.num_hidden_layers}"
             print(f"[spec] draft KV cache: {dl} 层 x {n_draft} blocks, "
                   f"每block {draft_block_bytes/1024:.0f} KB")
+        n_draft_used = config.num_draft_blocks or config.num_kvcache_blocks
+        kv_total_gb = (config.num_kvcache_blocks * tgt_block_bytes
+                       + n_draft_used * draft_block_bytes) / 2**30
         print(f"[spec] blocks={config.num_kvcache_blocks}, "
               f"target 每block {tgt_block_bytes/1024:.0f} KB, "
-              f"合计 {(per_block_total*config.num_kvcache_blocks)/2**30:.2f} GB")
+              f"合计 {kv_total_gb:.2f} GB")
 
     def prepare_block_tables(self, seqs: list[Sequence]):
         max_len = max(len(seq.block_table) for seq in seqs)
@@ -448,7 +451,10 @@ class ModelRunner:
         ★ 优雅回退（两边都能退）：只要有一条序列没有滑窗块（例如池子分配失败、
           或运行期把开关翻回去），整批就走全上下文路径 —— 不会半新半旧。
         """
-        if self.draft_window_blocks and seqs and all(s.draft_block_table for s in seqs):
+        # ★ 还要现场读一次 spec_draft_window：把它翻回 0（全上下文）时，
+        #   已经分到的滑窗块就不再被使用 —— 开关在两个方向上都能即时生效。
+        if (self.draft_window_blocks and self._window_tokens() > 0
+                and seqs and all(s.draft_block_table for s in seqs)):
             self._run_draft_prefill_window(seqs)
             return True
         with torch.inference_mode():
@@ -520,7 +526,9 @@ class ModelRunner:
         # ---------- 滑窗（B）：draft 的块表是每序列私有的环形缓冲 ----------
         # ★ 判据是【这条序列有没有滑窗块表】，而不是读配置：池子分配失败、或者
         #   运行期把开关翻回全上下文时，这里自动退回老路径（两边都能退）。
-        M = len(seq.draft_block_table)
+        # ★ 现场读开关：spec_draft_window 翻回 0 时，就算池子里还给这条序列留着
+        #   滑窗块，也一律退回全上下文路径（两个方向都能即时生效）。
+        M = len(seq.draft_block_table) if self._window_tokens() > 0 else 0
         valid_from = 0
         if M:
             bs = self.block_size
