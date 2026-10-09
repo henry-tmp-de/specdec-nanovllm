@@ -206,8 +206,19 @@ class Scheduler:
             seq.draft_logits = None        # ★ 同理，draft 分布也必须清，否则会串用上一轮
 
             if not toks:
-                # 一个都没接受：把本该 decode 的那个位置也退掉，num_computed 回退
-                seq.num_cached_tokens = max(0, seq.num_cached_tokens - seq.num_scheduled_tokens)
+                # ★ 全拒：不推进（本步没有任何 token 被确认落地）。
+                #
+                # 【当前引擎路径不可达】—— 只有测试直接传 [[]] 才会走到这里。
+                # run_verify 的两条分支都保证 out 里至少有一个 token：
+                #   · n > 1（有候选）→ 无条件 append bonus
+                #     （verify_batch 每轮必给 bonus，全接受时退化成 target 第 k 行）；
+                #   · n <= 1（没捞到候选）→ 显式 append 一个采样 token。
+                # 所以 out 永远不含空列表。
+                #
+                # 旧写法 `cached -= num_scheduled_tokens`（退 1+k）语义【过头】：
+                # 既然一个 token 都没落地，num_cached_tokens 就该原地不动。
+                # P6 会重写 run_verify 的批量路径，这个分支【可能变成可达的】，
+                # 所以这里先把语义改正，别留一个「看起来正常但退多了」的隐患。
                 seq.num_scheduled_tokens = 0
                 continue
 

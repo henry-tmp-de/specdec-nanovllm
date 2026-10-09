@@ -300,6 +300,11 @@ call(Scheduler.postprocess_spec, s, [seq], [[]])          # toks 为空 = 全拒
 check("⑥ 全拒时不新增登记", len(bm.hash_to_block_id) == before,
       f"{before} -> {len(bm.hash_to_block_id)}")
 check("⑥ 全拒时 token_ids 没变长", seq.num_tokens == 5, f"num_tokens={seq.num_tokens}")
+# ★ 语义修正后的断言：一个 token 都没落地 → num_cached_tokens 原地不动。
+#   旧写法 `cached -= num_scheduled_tokens`（退 1+k=3）会把有效缓存量退到 1，
+#   那是「退过头」——本步根本没有位置被有效写入。
+check("⑥ 全拒时 num_cached_tokens 不推进也不回退（旧写法会退 1+k）",
+      seq.num_cached_tokens == 4, f"cached={seq.num_cached_tokens}，期望 4")
 check("⑥ 全拒时没有半满块被登记",
       all(len(t) == BS for _, t in registered(bm)),
       f"{[(i, len(t)) for i, t in registered(bm)]}")
