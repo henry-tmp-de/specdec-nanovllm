@@ -58,6 +58,7 @@ class FakeSched:
     def __init__(self):
         self.block_manager = FakeBM()
         self.spec_proposer = None
+        self.token_hook = None     # 默认不挂 hook（引擎里的默认值）
         self.running = []
         self.eos = 99          # 与情形 3 里的 eos 一致
 

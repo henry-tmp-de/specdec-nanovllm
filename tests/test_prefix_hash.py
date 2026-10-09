@@ -87,6 +87,7 @@ def fresh_sched(num_blocks=64, spec_k=0, threshold=0):
     s.config = types.SimpleNamespace(spec_k=spec_k, spec_batch_threshold=threshold)
     s.block_manager = BlockManager(num_blocks, BS)
     s.spec_proposer = None
+    s.token_hook = None          # 和 Scheduler.__init__ 一致的默认值
     s.spec_k = spec_k
     s.spec_batch_threshold = threshold
     s.eos = EOS

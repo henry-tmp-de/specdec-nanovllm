@@ -21,9 +21,16 @@ class Scheduler:
         # n-gram 提议器。由 ModelRunner 注入（引擎建好后才有），
         # 这样 token_ids 更新后能立刻把新 token 加进索引。
         self.spec_proposer = None
+        # token 交付 hook（TTFT/TPOT/ITL 用，见 engine/token_hook.py）。
+        # ★ 默认 None：热路径上只多一个 `is not None` 判断，不启用就零开销，
+        #   正式测性能时不挂它。
+        self.token_hook = None
 
     def set_spec_proposer(self, proposer):
         self.spec_proposer = proposer
+
+    def set_token_hook(self, hook):
+        self.token_hook = hook
 
     def is_finished(self):
         return not self.waiting and not self.running
@@ -100,14 +107,20 @@ class Scheduler:
         self.block_manager.deallocate(seq)
         self.waiting.appendleft(seq)
 
-    def postprocess(self, seqs: list[Sequence], token_ids: list, is_prefill: bool):
-        """token_ids 的形态：
+    def postprocess(self, seqs: list[Sequence], token_ids: list, is_prefill: bool) -> int:
+        """收尾，并返回【本步实际交付给用户的 token 数】。
+
+        token_ids 的形态：
            普通 decode   -> [int]          每序列 1 个
            投机验证       -> list[list[int]] 每序列若干个（已接受的 + bonus）
+           分块 prefill   -> 本 chunk 不交付 token（返回 0）
+
+        ★ 返回值就是正式吞吐口径（LLMEngine.step 用它）：一个 step 落地几个
+          token 就记几个，投机一轮成批交付的 k+1 个不会被拆成别的凑数。
         """
         if not is_prefill and token_ids and isinstance(token_ids[0], list):
-            self.postprocess_spec(seqs, token_ids)
-            return
+            return self.postprocess_spec(seqs, token_ids)
+        delivered = 0
         for seq, token_id in zip(seqs, token_ids):
             # ★★ 推进量必须是【本步真正被确认的】token 数，不能拿
             #   num_scheduled_tokens 顶替（它是「本步要写几个位置」，投机时会
@@ -133,19 +146,28 @@ class Scheduler:
             #   漏了它会让索引永远追不上，导致投机占比恒为 0。
             if self.spec_proposer is not None:
                 self.spec_proposer.observe(seq.token_ids)
-            if (not seq.ignore_eos and token_id == self.eos) or seq.num_completion_tokens == seq.max_tokens:
+            finished = (not seq.ignore_eos and token_id == self.eos) \
+                or seq.num_completion_tokens == seq.max_tokens
+            if finished:
                 seq.status = SequenceStatus.FINISHED
                 self.block_manager.deallocate(seq)
                 self.running.remove(seq)
+            # 交付计数 / 计时：走到这里才是真的产出了一个 token
+            # （分块 prefill 的中间 chunk 在上面就 continue 了，不计、不记时）
+            delivered += 1
+            if self.token_hook is not None:
+                self.token_hook.on_deliver(seq, 1, finished)
+        return delivered
 
-    def postprocess_spec(self, seqs: list[Sequence], accepted_tokens: list[list[int]]):
-        """投机验证后的收尾：一次落地多个 token。
+    def postprocess_spec(self, seqs: list[Sequence], accepted_tokens: list[list[int]]) -> int:
+        """投机验证后的收尾：一次落地多个 token，返回本步实际交付的 token 数。
 
         ★ 三件事必须做对，漏了任何一条都不会报错，只会静默出错：
           ① num_cached_tokens 只推进【真正确认的】部分，不能把被拒候选算进去
           ② hash_blocks 必须在 token_ids 更新【之后】调用，且草稿不在 token_ids 里
           ③ EOS 和 max_tokens 要在【每个】落地的 token 上检查，而不是只看最后一个
         """
+        delivered = 0
         for seq, toks in zip(seqs, accepted_tokens):
             seq.draft_tokens = []# 草稿用完即弃，绝不进 token_ids
             seq.draft_logits = None        # ★ 同理，draft 分布也必须清，否则会串用上一轮
@@ -188,6 +210,8 @@ class Scheduler:
             #   这也是「draft 模式 benchmark 卡住几百秒」的真正原因）。
             #   正确判据是「base + i + 1 >= max_tokens」，即这一位会不会越界。
             newly = toks
+            landed = len(newly)          # 本步真正交付给用户的 token 数
+            finished = False
             for i, t in enumerate(newly):
                 if (not seq.ignore_eos and t == self.eos) or base_completion + i + 1 >= seq.max_tokens:
                     # 截断：把这一步多写的 token 砍掉
@@ -199,4 +223,12 @@ class Scheduler:
                     seq.status = SequenceStatus.FINISHED
                     self.block_manager.deallocate(seq)
                     self.running.remove(seq)
+                    landed = i + 1       # 被砍掉的那些没交付，吞吐不能算进去
+                    finished = True
                     break
+            delivered += landed
+            if self.token_hook is not None:
+                # ★ 成批交付：这一轮的 landed 个 token 是【同一时刻】可见的，
+                #   交给 hook 记成一批（不是 landed 个独立时刻）。
+                self.token_hook.on_deliver(seq, landed, finished)
+        return delivered
