@@ -8,6 +8,7 @@ from nanovllm.engine.block_manager import BlockManager
 class Scheduler:
 
     def __init__(self, config: Config):
+        self.config = config
         self.max_num_seqs = config.max_num_seqs
         self.max_num_batched_tokens = config.max_num_batched_tokens
         self.eos = config.eos
@@ -16,7 +17,14 @@ class Scheduler:
         self.waiting: deque[Sequence] = deque()
         self.running: deque[Sequence] = deque()
         # ---------- 投机解码 ----------
-        self.spec_k = config.spec_k
+        # ★ spec_k 不在这里拷一份，而是走下面的 property 直接读写 config ——
+        #   因为 schedule() 按 self.spec_k 预留 1+k 个槽位，而 model_runner
+        #   提议候选、拍验证图用的是 config.spec_k。两份副本一旦漂移：
+        #     · scheduler 侧偏小 → 只备了 1+ks 个槽位，却被喂进 1+kc 个候选，
+        #       prepare_verify 会往没分配的槽位写 KV（CUDA 非法访存那一类崩溃）；
+        #     · 旧代码里 `llm.scheduler.spec_k = 0` 这种「只改一个副本」的写法
+        #       不一定会生效，正是同步关系容易踩空的地方。
+        #   合成一个之后，两处读到的永远是同一个值，改哪边都生效。
         self.spec_batch_threshold = config.spec_batch_threshold
         # n-gram 提议器。由 ModelRunner 注入（引擎建好后才有），
         # 这样 token_ids 更新后能立刻把新 token 加进索引。
@@ -25,6 +33,15 @@ class Scheduler:
         # ★ 默认 None：热路径上只多一个 `is not None` 判断，不启用就零开销，
         #   正式测性能时不挂它。
         self.token_hook = None
+
+    @property
+    def spec_k(self) -> int:
+        """投机候选数。唯一来源是 config.spec_k（见 __init__ 的说明）。"""
+        return self.config.spec_k
+
+    @spec_k.setter
+    def spec_k(self, value: int):
+        self.config.spec_k = value
 
     def set_spec_proposer(self, proposer):
         self.spec_proposer = proposer
@@ -71,13 +88,20 @@ class Scheduler:
             return scheduled_seqs, True
 
         # decode
+        # ★★ 门控在【本轮开始时】取一次快照，全轮复用同一个决定。
+        #    下面的 while 用 popleft() 逐条取序列，self.running 在轮内会变短；
+        #    每取一条重新判断 len(self.running)，同一轮里靠后的请求就会拿到
+        #    不同的决定（前面开投机、后面退回普通 decode），一轮内混着两种
+        #    执行路径 —— 后处理的形状分支、KV 预算、消融归因全都对不上。
+        #    注意这里取的是「本轮 active decode B」，不是「队列剩几个」。
+        spec_on = self.spec_enabled(len(self.running))
         while self.running and len(scheduled_seqs) < self.max_num_seqs:
             seq = self.running.popleft()
             # ---------- 投机解码：这一步要给 k+1 个 token 分配槽位 ----------
             # 之所以是 k+1：1 个是本该decode 的 token，k 个是待验证的候选。
             # 但只有「本该 decode 的那个」的 KV 是最终有效的，
             # 候选的 KV 写入后靠 slot 覆写回收（见 model_runner.prepare_verify）
-            need = 1 + (self.spec_k if self.spec_enabled() else 0)
+            need = 1 + (self.spec_k if spec_on else 0)
             while not self.block_manager.can_append(seq, need):
                 if self.running:
                     self.preempt(self.running.pop())
@@ -93,11 +117,20 @@ class Scheduler:
         self.running.extendleft(reversed(scheduled_seqs))
         return scheduled_seqs, False
 
-    def spec_enabled(self) -> bool:
-        """本步是否启用投机解码（含 batch 门控）。"""
+    def spec_enabled(self, active_b: int | None = None) -> bool:
+        """本轮是否启用投机解码（含 batch 门控）。
+
+        active_b = 本轮的 active decode B，必须由调用方在【轮开始时】取快照传入。
+        ★ 不要传「当前队列长度」：decode 分支用 popleft() 逐条取走队列，
+          队列长度在轮内递减，同一条请求在轮内不同位置被判出不同结果。
+          默认值 len(self.running) 只适合「轮外一次性判断」的场合
+          （例如 benchmark 里预估盈亏平衡点），调度路径上必须显式传快照。
+        """
         if self.spec_k <= 0:
             return False
-        if self.spec_batch_threshold and len(self.running) > self.spec_batch_threshold:
+        if active_b is None:
+            active_b = len(self.running)
+        if self.spec_batch_threshold and active_b > self.spec_batch_threshold:
             return False
         return True
 
