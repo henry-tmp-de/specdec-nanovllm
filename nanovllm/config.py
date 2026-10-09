@@ -16,6 +16,10 @@ class Config:
     eos: int = -1
     kvcache_block_size: int = 256
     num_kvcache_blocks: int = -1
+    # 由 ModelRunner.allocate_kv_cache 按预算算出（dataclass 是 slots，字段必须
+    # 在此声明，否则运行时赋值会 AttributeError）。
+    num_draft_blocks: int = 0        # draft 池的物理块数（滑窗档下 << num_kvcache_blocks）
+    draft_window_blocks: int = 0     # 每条序列滑窗的块数 M（0 = 未启用滑窗）
 
     # ---------- 投机解码 ----------
     spec_k: int = 0              # 0 = 关闭（默认，保证与原版行为一致）

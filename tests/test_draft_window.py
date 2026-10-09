@@ -176,6 +176,11 @@ check("④ Config.spec_draft_window 默认 = 0（默认保留全上下文行为�
 check("④ 默认档不需要 draft 池（BlockManager 默认参数就是 0）",
       "num_draft_blocks: int = 0, draft_window_blocks: int = 0" in
       open(os.path.join(ROOT, "nanovllm/engine/block_manager.py"), encoding="utf-8").read())
+# ★ Config 是 @dataclass(slots=True) —— 运行时【不能】凭空加属性。
+#   （实机踩过：ModelRunner 里 config.num_draft_blocks = ... 直接 AttributeError，
+#    而纯 CPU 测试因为给 config 塞了占位模块，一点都测不出来。）
+check("④ num_draft_blocks / draft_window_blocks 已在 Config 里声明",
+      "num_draft_blocks: int = 0" in _src and "draft_window_blocks: int = 0" in _src, "")
 
 # 全上下文档下，请求字典里【不许】带出任何窗口量
 from nanovllm.engine.sequence import Sequence                          # noqa: E402
