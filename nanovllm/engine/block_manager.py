@@ -143,22 +143,59 @@ class BlockManager:
         for _ in range(max(0, need)):
             seq.block_table.append(self._allocate_block())
 
-    def hash_blocks(self, seq: Sequence):
-        """把「已确认」的 block 登记进前缀缓存哈希表。
+    def hash_blocks(self, seq: Sequence, num_new_tokens: int):
+        """把本步【刚填满】的 block 登记进前缀缓存哈希表。
 
-        ★★ 投机解码的正确性红线：
-          这里必须只用【已确认的 token】。草稿候选存在 seq.draft_tokens 里，
-          刻意不进 token_ids，就是为了让这个函数永远碰不到被拒的 token。
-          如果候选混进了 token_ids，被拒后 token_ids 变了而旧哈希还在
-          hash_to_block_id 里 → 下次相同前缀会命中错误缓存 → 静默输出错误 token。
+        契约（所有调用点必须一致 —— 这里正是之前矛盾的来源）
+        ----------------------------------------------------
+        入参 num_new_tokens = 本次真正被【确认】并推进的 token 数：
+            普通 / 分块 prefill -> 本步处理的 prompt token 数
+            普通 decode        -> 1（投机没捞到候选、退回普通 decode 时也是 1，
+                                  不能拿 num_scheduled_tokens 顶替，那是 1+k）
+            投机验证           -> len(toks)（被接受的候选 + bonus），同样 ≠ 1+k
+        调用时 seq.num_cached_tokens 必须【已经】推进到新值（旧值 + num_new_tokens），
+        登记区间取「旧完成块数 → 新完成块数」：
+
+            start = (num_cached_tokens - num_new_tokens) // block_size
+            end   =  num_cached_tokens                   // block_size
+
+        ★ 为什么 num_cached_tokens 就是「有效缓存量」：
+          它数的是「已确认 + KV 已落地」的 token。刚采出来的那个 token 自己
+          那一格 KV 还没写 —— 要等下一次前向按 position = len-1 重算
+          （见 model_runner.prepare_decode 的 slot_mapping），所以
+          num_cached_tokens 恰好比 num_tokens 少 1。
+          于是「整块落在 num_cached_tokens 之内」⇔「这一块的 KV 全部有效」，
+          边界严丝合缝，不会登记到 KV 还没落地的块。
+
+        ★★ 投机解码的正确性红线（错了不报错，只会静默输出错误 token）：
+          只能登记【已确认 + 整块填满 + block_table 里确实存在】的块。
+          草稿候选存在 seq.draft_tokens，刻意不进 token_ids，就是为了让
+          这里的 seq.block(i) 永远碰不到被拒候选。越界块、半满块、
+          以及「前一块还没登记过」的断链块，一律不登记：
+          登记错了 → 下次相同前缀命中错误缓存 → 静默输出错误 token。
         """
-        start = seq.num_cached_tokens // self.block_size
-        end = (seq.num_cached_tokens + seq.num_scheduled_tokens) // self.block_size
-        if start == end: return
-        h = self.blocks[seq.block_table[start - 1]].hash if start > 0 else -1
+        if num_new_tokens <= 0:
+            return
+        bs = self.block_size
+        start = (seq.num_cached_tokens - num_new_tokens) // bs
+        end = min(seq.num_cached_tokens // bs, len(seq.block_table))
+        if start >= end:
+            return
+        if start > 0:
+            h = self.blocks[seq.block_table[start - 1]].hash
+            if h == -1:
+                # 前一块从来没登记过（窗口不连续），拿不到正确的链前缀。
+                # 宁可这一步不登记，也不能用断链的哈希污染前缀缓存。
+                return
+        else:
+            h = -1
         for i in range(start, end):
-            block = self.blocks[seq.block_table[i]]
             token_ids = seq.block(i)
+            if len(token_ids) < bs:
+                # 半满块：token_ids 里还没攒满 bs 个已确认 token（越界时切片更短）。
+                # 它还没有资格代表一个完整前缀，等填满再说。
+                break
+            block = self.blocks[seq.block_table[i]]
             h = self.compute_hash(token_ids, h)
             block.update(h, token_ids)
             self.hash_to_block_id[h] = block.block_id

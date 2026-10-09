@@ -109,14 +109,21 @@ class Scheduler:
             self.postprocess_spec(seqs, token_ids)
             return
         for seq, token_id in zip(seqs, token_ids):
-            # ★ 顺序：必须先推进 num_cached_tokens，再做 hash_blocks。
-            #   hash_blocks 靠 (num_cached_tokens, num_scheduled_tokens) 算出
-            #   哪些 block 已完成；而它内部读到的必须是【更新后】的值，
-            #   否则登记进前缀缓存的哈希对应的是「旧的完成量」——
-            #   下次相同前缀会命中错误的缓存，静默输出错误 token。
-            #   （投机路径对此更敏感：验证阶段的 start 直接取自num_cached_tokens。）
-            seq.num_cached_tokens += seq.num_scheduled_tokens
-            self.block_manager.hash_blocks(seq)
+            # ★★ 推进量必须是【本步真正被确认的】token 数，不能拿
+            #   num_scheduled_tokens 顶替（它是「本步要写几个位置」，投机时会
+            #   按上限预留 1+k，而真正落地的只有 1 个）：
+            #     · prefill：本 chunk 的每个位置都被 prepare_prefill 写过 → 推 chunk 大小
+            #     · 普通 decode（含投机没捞到候选时的退回）：每序列只交付 1 个 token
+            #   旧写法在退回路径上每步多推 k 个，几步后 num_cached_tokens 就跑到
+            #   num_tokens 前面，登记区间随之越界 —— 复现见 tests/test_prefix_hash.py §3。
+            #   契约「旧有效缓存量 → 新有效缓存量」见 BlockManager.hash_blocks。
+            num_new = seq.num_scheduled_tokens if is_prefill else 1
+            seq.num_cached_tokens += num_new
+            # ★ 顺序：先推进 num_cached_tokens，再把它【已经推进过的值】连同
+            #   推进量一起交给 hash_blocks。两者必须一致 —— 只推进不传量
+            #   （或传了 num_scheduled_tokens 当推进量），登记区间就会整体后移一格：
+            #   刚写满的块被跳过、半满块被当成满块登记。复现见 §1/§2。
+            self.block_manager.hash_blocks(seq, num_new)
             seq.num_scheduled_tokens = 0
             if is_prefill and seq.num_cached_tokens < seq.num_tokens:
                 continue
@@ -159,8 +166,11 @@ class Scheduler:
             # num_scheduled_tokens 是 1+k，只有被接受的那部分对应真实位置
             seq.num_cached_tokens += len(toks)
 
-            # ② token_ids 已更新，现在才能安全地做前缀缓存哈希
-            self.block_manager.hash_blocks(seq)
+            # ② token_ids 已更新，现在才能安全地做前缀缓存哈希。
+            #   ★ 推进量必须显式传 len(toks)：这里的 num_scheduled_tokens 是 1+k
+            #     （schedule 按上限预留的槽位数），与被确认的 len(toks) 不相等，
+            #     让 hash_blocks 自己去猜就会算错登记区间（半满块会被当成满块）。
+            self.block_manager.hash_blocks(seq, len(toks))
             # ★ 把新生成的 token 增量加入 n-gram 索引，
             #   否则下一步提不出以这些新 token 结尾的候选
             #   （必须放在 append_tokens 之后 —— 那之前 token_ids 还没这些 token）

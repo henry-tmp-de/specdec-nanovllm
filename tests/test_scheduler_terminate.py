@@ -44,8 +44,12 @@ def check(name, cond, extra=""):
 
 
 class FakeBM:
-    """只要不报错就行：本测试不关心 block 管理。"""
-    def hash_blocks(self, seq): pass
+    """只要不报错就行：本测试不关心 block 管理。
+
+    签名要和真的 BlockManager.hash_blocks(seq, num_new_tokens) 一致 ——
+    推进量是显式入参（契约见 block_manager.hash_blocks 的 docstring）。
+    """
+    def hash_blocks(self, seq, num_new_tokens): pass
     def deallocate(self, seq): pass
 
 
