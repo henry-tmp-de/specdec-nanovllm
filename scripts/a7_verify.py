@@ -79,19 +79,21 @@ def main():
     NO_CATCHUP = [mode == "NEGX"]
     FORCE_NO_REUSE = [mode == "OLD"]
 
-    _orig_mark = BlockManager.mark_draft_valid
-    _orig_dcv = BlockManager.draft_valid_cached_blocks
+    # ★ 用 getattr 取（A 步之前的老版本没有这两个方法）—— 这样同一个脚本既能
+    #   跑当前实现，也能跑 1c1d907 的裸 nanovllm，用来做「默认档是否逐字节等价」的对拍。
+    _orig_mark = getattr(BlockManager, "mark_draft_valid", None)
+    _orig_dcv = getattr(BlockManager, "draft_valid_cached_blocks", None)
     _orig_req = ModelRunner._draft_request
 
     CFG = dict(writer_done=[False])
 
     def _mark(self, seq, wm):
-        if ABORT_MARKS[0] and not CFG["writer_done"][0]:
+        if _orig_mark is None or (ABORT_MARKS[0] and not CFG["writer_done"][0]):
             return
         return _orig_mark(self, seq, wm)
 
     def _dcv(self, seq, nb):
-        if FORCE_NO_REUSE[0]:
+        if FORCE_NO_REUSE[0] or _orig_dcv is None:
             return 0
         return _orig_dcv(self, seq, nb)
 
@@ -102,7 +104,8 @@ def main():
         return d
 
     BlockManager.mark_draft_valid = _mark
-    BlockManager.draft_valid_cached_blocks = _dcv
+    if _orig_dcv is not None or FORCE_NO_REUSE[0]:
+        BlockManager.draft_valid_cached_blocks = _dcv
     ModelRunner._draft_request = _req
 
     ACC = {"p": 0, "a": 0}
