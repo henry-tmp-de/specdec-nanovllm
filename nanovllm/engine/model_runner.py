@@ -477,7 +477,7 @@ class ModelRunner:
         """
         bs = self.block_size
         M = self.draft_window_blocks
-        ids, poss, slots, bts, cu = [], [], [], [], [0]
+        ids, poss, slots, cu = [], [], [], [0]
         maxlen = 0
         for seq in seqs:
             end = seq.num_cached_tokens + seq.num_scheduled_tokens
@@ -491,13 +491,6 @@ class ModelRunner:
             ids.extend(seq.token_ids[w0:end])
             poss.extend(range(w0, end))
             slots.extend(w.slot(p) for p in range(w0, end))
-            # ★ 块表必须用【最后一个位置】去算 b0 —— 不能用 w0 再算一次：
-            #   block_table(w0) 会把 b0 再减 (M-1)，于是 key index 映射整体错位
-            #   M-1 个块。症状是「不报错、只是接受率悄悄掉」（实测 M=2 时
-            #   accept 0.476 -> 0.256，比窗口更小的 M=1 还差，才露的马脚）。
-            #   block_table(end-1) 给出的 b0 = max(0,(end-1)//bs - M + 1)，与上面
-            #   算 w0 用的 b0_pre 恒等。
-            bts.append(w.block_table(end - 1))
             cu.append(cu[-1] + (end - w0))
             maxlen = max(maxlen, end - w0)
             # 窗口是按 token_ids 整体重算的 → 从 0 到 end 都算「已处理」
@@ -507,11 +500,17 @@ class ModelRunner:
             return
         dev = next(self.draft_model.parameters()).device
         cu = torch.tensor(cu, dtype=torch.int32, device=dev)
-        width = max(len(b) for b in bts)
-        bt = torch.tensor([b + [-1] * (width - len(b)) for b in bts],
-                          dtype=torch.int32, device=dev)
+        # ★★★ 这里刻意【不】传 block_tables，让 attention 走「本地 k/v + 因果」那条路：
+        #   · 这一趟的 chunk 就是「最近 M 个块」，长度 ≤ M*bs，正好是窗口的全部内容；
+        #   · 本地因果注意力给每个 query 的可见区间 = [w0, q]，与「窗口内因果」等价，
+        #     而且索引顺序天然对齐（不需要旋转块表，也没有 key index ↔ 槽位的映射）；
+        #   · store_kvcache 仍然按 slot_mapping 把 KV 写进环形缓冲，后续 decode
+        #     照常通过块表读 —— 写和读的职责分开了。
+        #   实机教训：之前用带 block_table 的 paged 路径跑这一趟，M=8（窗口盖住整个
+        #   prompt、本该与全上下文档逐步等价）的接受率却只有 0.68 vs 0.88 ——
+        #   说明 paged 路径在这一处与本地路径不等价。走本地路径后该不该等价是可判定的。
         set_context(True, cu, cu, maxlen, maxlen,
-                    torch.tensor(slots, dtype=torch.int32, device=dev), None, bt)
+                    torch.tensor(slots, dtype=torch.int32, device=dev), None, None)
         try:
             self.draft_model(torch.tensor(ids, dtype=torch.int64, device=dev),
                              torch.tensor(poss, dtype=torch.int64, device=dev))
