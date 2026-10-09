@@ -6,6 +6,16 @@
 
 RTX 3090 · Qwen3-4B (target) + Qwen3-0.6B (draft) · temperature=1.0 · `enforce_eager=False`
 
+## 文档索引
+
+| 文档 | 看什么 |
+|---|---|
+| **`docs/优化总览.md`** | **所有优化 + 实测效果 + 证据**（5 个 bug、三版 kernel 阶梯、方法论复盘、已知边界） |
+| **`docs/面试考点分析.md`** | **172 道真实面经的考点分布**，逐桶列原题，判断该补什么 |
+| `docs/面试考点-逐题分桶.md` | 上面那份的原始数据（每桶全部原题） |
+| `HANDOVER.md` | 交接：环境、坑、下一步 |
+| `nanovllm/kernels/README.md` | kernel 那条线的完整记录（含踩坑） |
+
 ---
 
 ## 结果
