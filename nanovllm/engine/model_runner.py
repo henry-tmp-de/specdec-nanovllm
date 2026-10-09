@@ -36,13 +36,20 @@ class ModelRunner:
         self.draft_model = None
         self.draft_hf_config = None
         self._last_cu_seqlens_q = None
-        # 投机路径的两张静态形状 CUDA graph（见 capture_*_cudagraph）
-        self.draft_graph = None
-        self.draft_graph_vars = None
-        self.verify_graph = None
-        self.verify_graph_vars = None
-        self._verify_n = 0
+        # 投机路径的静态形状 CUDA graph（见 capture_*_cudagraph）
+        #   draft 图：{B: (graph, vars)}，B = 精确 batch（一条请求一个 token）
+        #   verify 图：{(B, k): (graph, vars)}，query 数 = B*(k+1)
+        self.draft_graphs = {}
+        self.verify_graphs = {}
         self._verify_extra = None
+        # P6 消融开关（默认走批量；设 False 退回逐请求/仅 B=1 图）
+        self.batch_draft = config.spec_batch_draft
+        self.batch_verify_graph = config.spec_batch_verify_graph
+        # 图命中 / 退回统计（结构验收：B>1 的已覆盖形状必须【真的 replay 了图】）
+        self.verify_graph_hits = 0
+        self.verify_graph_fallbacks = {}
+        # 图/缓冲区显存（capture 后量一次，供报告单列）
+        self.graph_mem = {}
 
         if config.spec_k > 0 and config.spec_method == "ngram":
             from nanovllm.spec_decode.ngram_proposer import NgramProposer
@@ -228,6 +235,18 @@ class ModelRunner:
             cu_seqlens_k.append(cu_seqlens_k[-1] + seqlen_k)
             max_seqlen_q = max(seqlen_q, max_seqlen_q)
             max_seqlen_k = max(seqlen_k, max_seqlen_k)
+            # ---------- P6 任务 D：维护 draft KV 的有效水位 ----------
+            # draft_valid_len = 「从位置 0 起连续有效的 draft KV 个数」。
+            # 只有【与已有有效前缀连续】的新写入才延长它：
+            #   · 新请求（start=0）→ 直接延长到 end；
+            #   · 分块 prefill 的后续 chunk（start == draft_valid_len）→ 延长到 end；
+            #   · 前缀缓存命中（start > draft_valid_len）→ 水位【不动】。
+            #     draft 侧的物理块可能残留「被拒绝候选」的 KV（见 12.5 任务 D），
+            #     不能仅凭 target 前缀命中就假定 draft 侧也有效；
+            #     保守留成缺口，让 proposer 在下次提议前补齐（补齐计入运行时间）。
+            if start <= seq.draft_valid_len:
+                seq.draft_valid_len = max(seq.draft_valid_len, end)
+
             if not seq.block_table:    # warmup
                 continue
             start_block = start // self.block_size
@@ -338,6 +357,9 @@ class ModelRunner:
         if cu_seqlens_k[-1] > cu_seqlens_q[-1]:
             block_tables = self.prepare_block_tables(seqs)
 
+        # 在把 python list 变成 tensor 之前先留一份标量：query 总数（= B*(k+1)）。
+        # 图路径用它校验静态形状，且在 CPU 上算，不会引入 D2H 同步。
+        total_q = cu_seqlens_q[-1]
         input_ids = torch.tensor(input_ids, dtype=torch.int64, pin_memory=True).cuda(non_blocking=True)
         positions = torch.tensor(positions, dtype=torch.int64, pin_memory=True).cuda(non_blocking=True)
         cu_seqlens_q = torch.tensor(cu_seqlens_q, dtype=torch.int32, pin_memory=True).cuda(non_blocking=True)
@@ -349,8 +371,16 @@ class ModelRunner:
         #   图有静态缓冲区，这些张量要原样拷进去再 replay。
         #   ★ 索引怎么算只在这里算一次 —— 图路径和 eager 路径共用同一份计算，
         #     避免两条路径各算一套导致错位（那就是「不报错但结果错」）。
+        # ★ 批量验证图（P6 任务 C）只在「所有参与请求都有完整 k 个候选」时可用：
+        #   固定 k → query 数恒为 B*(k+1)，形状才是静态的。候选变短（n_i 不一致）
+        #   会让 cu_seqlens_q 的步长不齐，那种形状退回 eager 并记录原因，
+        #   不用补零 logits/概率强行凑图（补零会污染拒绝采样）。
+        kk = self.config.spec_k
+        full_k = all(len(s.draft_tokens) == kk for s in seqs)
         self._verify_extra = dict(
             n=cu_seqlens_q.numel() - 1,
+            k=kk, full_k=full_k,
+            total_q=total_q,            # python int（上面已留），不引入 D2H 同步
             cu_seqlens_q=cu_seqlens_q, cu_seqlens_k=cu_seqlens_k,
             slot_mapping=slot_mapping, block_tables=block_tables,
         )
@@ -370,6 +400,20 @@ class ModelRunner:
         """
         with torch.inference_mode():
             self.draft_model(input_ids, positions)
+
+    def _draft_request(self, seq: Sequence) -> dict:
+        """把一条请求的 draft 提议元数据打包给 proposer（P6 任务 D 的接口）。
+
+        catchup 的语义：draft KV 里 [draft_valid_len, len(seq)-1) 这一段是缺口
+        —— 通常是 gate 关闭的若干步里 target 自己生成的 token（draft 没跑），
+        也可能来自前缀缓存命中的块。补齐必须【喂这些 token 本身】，
+        只喂最后一个 token 恢复不了缺失前缀。补齐费用计入运行时间。
+        """
+        from nanovllm.spec_decode.draft_proposer import catchup_gap
+        start, catchup = catchup_gap(seq.draft_valid_len, seq.token_ids)
+        return dict(block_table=list(seq.block_table), context_len=len(seq),
+                    last_token=seq.last_token, temperature=seq.temperature,
+                    catchup_start=start, catchup_tokens=catchup)
 
     @torch.inference_mode()
     def run_model(self, input_ids: torch.Tensor, positions: torch.Tensor, is_prefill: bool):
@@ -409,22 +453,38 @@ class ModelRunner:
         elif self.spec_proposer is not None and any(s.num_scheduled_tokens > 1 for s in seqs):
             # 先提议，再决定走验证还是退回普通 decode。
             k = self.config.spec_k
+            to_prop = [s for s in seqs if s.num_scheduled_tokens > 1]
             for seq in seqs:
-                if seq.num_scheduled_tokens > 1:
-                    if self.draft_model is not None:
-                        # draft 路线：小模型自回归 k 步，产出候选 + 原始 logits
-                        chain, logits = self.spec_proposer.propose(
-                            seq.block_table, len(seq), seq.last_token, seq.temperature)
-                        seq.draft_tokens = chain
-                        seq.draft_logits = logits
-                    else:
-                        chains = self.spec_proposer.propose(seq.token_ids, k)
-                        # 线性链一次 forward 只能验证一条 —— 要同时验证多条就得做树状
-                        # 注意力（需要自定义 mask + 换 SDPA，见 README 的取舍说明）。
-                        # 这里取【最长】的那条：长度直接决定能省几次 forward。
-                        seq.draft_tokens = max(chains, key=len) if chains else []
-                else:
+                if seq.num_scheduled_tokens <= 1:
+                    # 本轮不参与投机的请求：草稿与 logits 都要清干净，否则会串用上一轮
                     seq.draft_tokens = []
+                    seq.draft_logits = None
+            if self.draft_model is not None and to_prop:
+                reqs = [self._draft_request(s) for s in to_prop]
+                if self.batch_draft:
+                    # ---------- P6 任务 A：批量 draft ----------
+                    # 同一候选位置 B 条请求一起前向 → k 次批量前向（原来是 B×k 次单序列）
+                    chains, logits = self.spec_proposer.propose_batch(reqs)
+                else:
+                    # 消融开关：逐请求循环（= C 组行为，B×k 次单序列前向）
+                    chains, logits = [], []
+                    for r in reqs:
+                        ch, lg = self.spec_proposer.propose_batch([r])
+                        chains.append(ch[0])
+                        logits.append(lg[0])
+                for seq, ch, lg in zip(to_prop, chains, logits):
+                    seq.draft_tokens = ch
+                    seq.draft_logits = lg
+                    # draft KV 有效水位 = 「最后已确认 token 的位置 + 1」再往后 k 个写入位置
+                    # （propose 写了位置 len-1 .. len+k-2，所以有效个数 = len-1+k）
+                    seq.draft_valid_len = len(seq) - 1 + len(ch)
+            elif self.spec_proposer is not None:
+                for seq in to_prop:
+                    chains = self.spec_proposer.propose(seq.token_ids, k)
+                    # 线性链一次 forward 只能验证一条 —— 要同时验证多条就得做树状
+                    # 注意力（需要自定义 mask + 换 SDPA，见 README 的取舍说明）。
+                    # 这里取【最长】的那条：长度直接决定能省几次 forward。
+                    seq.draft_tokens = max(chains, key=len) if chains else []
             # ★ 全部都没捞到候选 -> 干净退回普通 decode。
             #   不退回的话会白白付一次 verify 的多位置 forward 成本，更慢。
             if all(len(s.draft_tokens) == 0 for s in seqs):
@@ -568,85 +628,148 @@ class ModelRunner:
         条件不满足时（batch>1、或草稿数不足 k）自动退回 eager，行为不变。
         """
         ex = self._verify_extra
-        if (self.verify_graph is not None and ex is not None
-                and ex["n"] == 1 and input_ids.numel() == self._verify_n):
-            gv = self.verify_graph_vars
-            gv["input_ids"].copy_(input_ids)
-            gv["positions"].copy_(positions)
-            gv["slot_mapping"].copy_(ex["slot_mapping"])
-            gv["cu_seqlens_q"].copy_(ex["cu_seqlens_q"])
-            gv["cu_seqlens_k"].copy_(ex["cu_seqlens_k"])
-            gv["block_tables"].fill_(-1)
-            if ex["block_tables"] is not None:
+        if ex is not None and self.verify_graphs:
+            B, k = ex["n"], ex["k"]
+            entry = None
+            reason = None
+            # ★ S2 消融开关：batch_verify_graph=False 时只有 B=1 走图（= C 组行为）
+            if B > 1 and not self.batch_verify_graph:
+                reason = "batch_verify_graph_off"
+            elif not ex["full_k"]:
+                # 候选变短：cu_seqlens_q 步长不齐，形状不是静态的
+                reason = "ragged_draft_len"
+            else:
+                entry = self.verify_graphs.get((B, k))
+                if entry is None:
+                    reason = f"shape_not_captured(B={B},k={k})"
+            if entry is not None:
+                graph, gv = entry
                 bt = ex["block_tables"]
-                gv["block_tables"][:, :bt.size(1)].copy_(bt)
-            self.verify_graph.replay()
-            # 静态缓冲区，replay 完就是这一步的结果
-            return gv["logits"]
+                if input_ids.numel() == gv["input_ids"].numel() and \
+                        (bt is None or bt.size(1) <= gv["block_tables"].size(1)):
+                    gv["input_ids"].copy_(input_ids)
+                    gv["positions"].copy_(positions)
+                    gv["slot_mapping"].copy_(ex["slot_mapping"])
+                    gv["cu_seqlens_q"].copy_(ex["cu_seqlens_q"])
+                    gv["cu_seqlens_k"].copy_(ex["cu_seqlens_k"])
+                    gv["block_tables"].fill_(-1)
+                    if bt is not None:
+                        gv["block_tables"][:, :bt.size(1)].copy_(bt)
+                    graph.replay()
+                    self.verify_graph_hits += 1
+                    # 静态缓冲区，replay 完就是这一步的结果
+                    return gv["logits"]
+                reason = "static_shape_mismatch"
+            if reason is not None:
+                self.verify_graph_fallbacks[reason] = \
+                    self.verify_graph_fallbacks.get(reason, 0) + 1
         return self.run_model(input_ids, positions, True)
+
+    def _graph_bs(self) -> list[int]:
+        """要捕获的精确 batch 桶（P6 任务 B）：只覆盖实际会用的规模。
+
+        12.2 的要求：新增图先只覆盖精确 B=2/4，保留 B=1 原路径；
+        不捕获默认 512 的全范围（那会白吃一大块图池显存）。
+        这里再按 max_num_seqs 截断，并去重排序。
+        """
+        bs = sorted({int(b) for b in self.config.spec_graph_bs
+                     if 1 <= int(b) <= self.config.max_num_seqs})
+        return bs or [1]
 
     @torch.inference_mode()
     def capture_draft_cudagraph(self):
-        """draft 模型的 decode 图：batch=1、每次 1 个 token。
+        """draft 模型的 decode 图集合：{B: graph}，每次 1 个 token、B 条请求。
 
         实测收益：eager 24.8 ms/次 -> 拍图后 ~2 ms/次。
-        k 步串行，所以这笔节省要乘以 k。
+        k 步串行，所以这笔节省要乘以 k；批量之后，B 条请求共享一次 replay。
+
+        每张图用**自己的**持久缓冲区，各行的元数据（position / context_len /
+        slot / block_table）在 replay 前独立更新，所以 B 条请求可以处在
+        不同的位置、写不同的物理槽。
         """
         d_hf = self.draft_hf_config
         max_num_blocks = (self.config.max_model_len + self.block_size - 1) // self.block_size
-        input_ids = torch.zeros(1, dtype=torch.int64)
-        positions = torch.zeros(1, dtype=torch.int64)
-        slot_mapping = torch.zeros(1, dtype=torch.int32)
-        context_lens = torch.zeros(1, dtype=torch.int32)
-        block_tables = torch.zeros(1, max_num_blocks, dtype=torch.int32)
-        logits = torch.empty(1, d_hf.vocab_size)
-        graph = torch.cuda.CUDAGraph()
-        set_context(False, slot_mapping=slot_mapping, context_lens=context_lens,
-                    block_tables=block_tables)
-        logits.copy_(self.draft_model.compute_logits(self.draft_model(input_ids, positions)))
-        with torch.cuda.graph(graph):
+        before = torch.cuda.memory_allocated()
+        graphs = {}
+        for B in self._graph_bs():
+            input_ids = torch.zeros(B, dtype=torch.int64)
+            positions = torch.zeros(B, dtype=torch.int64)
+            slot_mapping = torch.zeros(B, dtype=torch.int32)
+            context_lens = torch.zeros(B, dtype=torch.int32)
+            block_tables = torch.zeros(B, max_num_blocks, dtype=torch.int32)
+            logits = torch.empty(B, d_hf.vocab_size)
+            graph = torch.cuda.CUDAGraph()
+            set_context(False, slot_mapping=slot_mapping, context_lens=context_lens,
+                        block_tables=block_tables)
             logits.copy_(self.draft_model.compute_logits(self.draft_model(input_ids, positions)))
-        reset_context()
-        torch.cuda.synchronize()
-        self.draft_graph = graph
-        self.draft_graph_vars = dict(
-            input_ids=input_ids, positions=positions, slot_mapping=slot_mapping,
-            context_lens=context_lens, block_tables=block_tables, logits=logits)
-        self.spec_proposer.bind_cudagraph(graph, self.draft_graph_vars)
-        print("[spec] draft CUDA graph 就绪 (bs=1, 1 token)")
+            with torch.cuda.graph(graph):
+                logits.copy_(self.draft_model.compute_logits(self.draft_model(input_ids, positions)))
+            reset_context()
+            torch.cuda.synchronize()
+            graphs[B] = (graph, dict(
+                input_ids=input_ids, positions=positions, slot_mapping=slot_mapping,
+                context_lens=context_lens, block_tables=block_tables, logits=logits))
+        self.draft_graphs = graphs
+        self.spec_proposer.bind_cudagraph(graphs)
+        self.graph_mem["draft_graphs_gb"] = round(
+            (torch.cuda.memory_allocated() - before) / 2**30, 4)
+        print(f"[spec] draft CUDA graph 就绪 (bs={sorted(graphs)}, 1 token/行)")
 
     @torch.inference_mode()
     def capture_verify_cudagraph(self):
-        """验证前向的图：batch=1、query 数固定 1+k、走 varlen 路径。"""
+        """验证前向的图集合：{(B, k): graph}，query 数 = B*(k+1)，走 varlen 路径。
+
+        ★ 为什么可以批量化：验证送进去的是【变长】的请求（每条 n_i = 1+k 个
+          query token，但前缀长度 len_i 各不相同）—— 这正是 varlen 的形态。
+          固定 k 时 query 总数恒为 B*(k+1)，形状是静态的，所以能拍图。
+          cu_seqlens_q/k、slot、block_table 在 replay 前原样拷进静态输入，
+          logits 按请求边界切分（run_verify 用 _last_cu_seqlens_q 切）。
+
+        ★ max_seqlen_k 在 capture 时就被烘进 kernel 参数了，所以只能给上界
+          （max_model_len）。它只是给 flash-attn 分块用的提示，给大了不影响正确性
+          —— 真实可见长度由 cu_seqlens_k 决定。
+
+        ★ 只用「所有参与请求都有完整 k 个候选」的形状；其它形状走 eager 并记录原因，
+          不补零 logits 强行凑图。
+        """
         hf_config = self.config.hf_config
-        n = self.config.spec_k + 1
+        k = self.config.spec_k
+        n = k + 1
         max_num_blocks = (self.config.max_model_len + self.block_size - 1) // self.block_size
-        input_ids = torch.zeros(n, dtype=torch.int64)
-        positions = torch.zeros(n, dtype=torch.int64)
-        slot_mapping = torch.zeros(n, dtype=torch.int32)
-        # capture 时给一组【合法】的 dummy 值（[0, n]），别用全 0
-        # —— varlen 内核拿到 cu_seqlens=[0,0] 会退化成长度 0。
-        cu_seqlens_q = torch.tensor([0, n], dtype=torch.int32)
-        cu_seqlens_k = torch.tensor([0, n], dtype=torch.int32)
-        block_tables = torch.zeros(1, max_num_blocks, dtype=torch.int32)
-        logits = torch.empty(n, hf_config.vocab_size)
-        graph = torch.cuda.CUDAGraph()
-        # ★ max_seqlen_k 在 capture 时就被烘进 kernel 参数了，所以只能给上界。
-        #   它只是给 flash-attn 分块用的提示，给大了不影响正确性。
-        set_context(True, cu_seqlens_q, cu_seqlens_k, n, self.config.max_model_len,
-                    slot_mapping, None, block_tables, is_spec_verify=True)
-        logits.copy_(self.model.compute_logits(self.model(input_ids, positions)))
-        with torch.cuda.graph(graph):
+        before = torch.cuda.memory_allocated()
+        graphs = {}
+        # 从大到小捕获：先用最大的 B 建池，其余复用同一个池，避免每张图各吃一块
+        pool = None
+        for B in sorted(self._graph_bs(), reverse=True):
+            Q = B * n
+            input_ids = torch.zeros(Q, dtype=torch.int64)
+            positions = torch.zeros(Q, dtype=torch.int64)
+            slot_mapping = torch.zeros(Q, dtype=torch.int32)
+            # capture 时给一组【合法】的 dummy 值（步长恒为 n），别用全 0
+            # —— varlen 内核拿到 cu_seqlens=[0,0] 会退化成长度 0。
+            cu_seqlens_q = torch.tensor([i * n for i in range(B + 1)], dtype=torch.int32)
+            cu_seqlens_k = torch.tensor([i * n for i in range(B + 1)], dtype=torch.int32)
+            block_tables = torch.zeros(B, max_num_blocks, dtype=torch.int32)
+            logits = torch.empty(Q, hf_config.vocab_size)
+            graph = torch.cuda.CUDAGraph()
+            set_context(True, cu_seqlens_q, cu_seqlens_k, n, self.config.max_model_len,
+                        slot_mapping, None, block_tables, is_spec_verify=True)
             logits.copy_(self.model.compute_logits(self.model(input_ids, positions)))
-        reset_context()
-        torch.cuda.synchronize()
-        self.verify_graph = graph
-        self._verify_n = n
-        self.verify_graph_vars = dict(
-            input_ids=input_ids, positions=positions, slot_mapping=slot_mapping,
-            cu_seqlens_q=cu_seqlens_q, cu_seqlens_k=cu_seqlens_k,
-            block_tables=block_tables, logits=logits)
-        print(f"[spec] verify CUDA graph 就绪 (bs=1, {n} query)")
+            with torch.cuda.graph(graph, pool):
+                logits.copy_(self.model.compute_logits(self.model(input_ids, positions)))
+            reset_context()
+            torch.cuda.synchronize()
+            if pool is None:
+                pool = graph.pool()
+            graphs[(B, k)] = (graph, dict(
+                input_ids=input_ids, positions=positions, slot_mapping=slot_mapping,
+                cu_seqlens_q=cu_seqlens_q, cu_seqlens_k=cu_seqlens_k,
+                block_tables=block_tables, logits=logits))
+        self.verify_graphs = graphs
+        self.graph_mem["verify_graphs_gb"] = round(
+            (torch.cuda.memory_allocated() - before) / 2**30, 4)
+        print(f"[spec] verify CUDA graph 就绪 (shapes={sorted(graphs)}, "
+              f"{n} query/请求, 共享图池)")
 
     @torch.inference_mode()
     def capture_cudagraph(self):

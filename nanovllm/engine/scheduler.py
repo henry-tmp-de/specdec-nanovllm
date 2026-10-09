@@ -138,6 +138,9 @@ class Scheduler:
         seq.status = SequenceStatus.WAITING
         seq.is_prefill = True
         self.block_manager.deallocate(seq)
+        # ★ P6 任务 D：块被释放 → draft KV 里对应物理块的内容不再属于这条请求，
+        #   有效水位必须归零。重新 prefill 后会由 prepare_prefill 重新建立。
+        seq.draft_valid_len = 0
         self.waiting.appendleft(seq)
 
     def postprocess(self, seqs: list[Sequence], token_ids: list, is_prefill: bool) -> int:
@@ -231,6 +234,12 @@ class Scheduler:
             seq.append_tokens(toks)
             # num_scheduled_tokens 是 1+k，只有被接受的那部分对应真实位置
             seq.num_cached_tokens += len(toks)
+            # ★ P6 任务 D：propose 写完 draft KV 后水位是「最后已确认位置 + k」，
+            #   但真正被确认的只有 len(toks) 个 —— 水位要夹到「已确认前缀」，
+            #   否则下次提议会以为某些位置已经缓存好了。
+            #   （全部接受时 len(toks)=k+1，夹到 num_tokens-1 会留下 1 个位置
+            #     的缺口，正好是要补写的 bonus 位 —— 见 model_runner 的推导。）
+            seq.draft_valid_len = min(seq.draft_valid_len, seq.num_tokens - 1)
 
             # ② token_ids 已更新，现在才能安全地做前缀缓存哈希。
             #   ★ 推进量必须显式传 len(toks)：这里的 num_scheduled_tokens 是 1+k

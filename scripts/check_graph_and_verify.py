@@ -1,5 +1,6 @@
 """一次加载跑完两组检查：
   A. CUDA graph 路径 vs eager 路径，逐元素对拍 logits / 分布
+     （P6 后：draft 图按 B 分桶、验证图按 (B,k) 分桶，这里比对 B=1 与批量两条）
   B. 拒绝采样内部数值：q 是不是概率被当 logits 又 softmax 了一次
 """
 import os, sys, json
@@ -17,13 +18,15 @@ llm = LLM(TARGET, enforce_eager=False, max_num_batched_tokens=16384,
 mr = llm.model_runner
 
 # ---------------- A1. 验证前向：图 vs eager ----------------
-assert mr.verify_graph is not None, "verify graph 没建起来"
-assert mr.spec_proposer._graph is not None, "draft graph 没注入"
+assert mr.verify_graphs, "verify graph 没建起来"
+assert mr.spec_proposer._graphs, "draft graph 没注入"
 DIFF = []
 orig_rvf = mr.run_verify_forward
 def wrapped_rvf(input_ids, positions):
     ex = mr._verify_extra
-    use_graph = (ex is not None and ex["n"] == 1 and input_ids.numel() == mr._verify_n)
+    key = (ex["n"], ex["k"]) if ex is not None else None
+    use_graph = (ex is not None and ex["full_k"] and key in mr.verify_graphs
+                 and input_ids.numel() == ex["total_q"])
     if not use_graph:
         return orig_rvf(input_ids, positions)
     g = orig_rvf(input_ids, positions).clone()
@@ -37,20 +40,31 @@ mr.run_verify_forward = wrapped_rvf
 # ---------------- A2. draft 前向：图 vs eager ----------------
 prop = mr.spec_proposer
 gcnt = {"n": 0}
-orig_propose = prop.propose
+orig_pb = prop.propose_batch
 DDIFF = []
-def wrapped_propose(bt, ctx_len, last_token, temp):
-    chain_g, probs_g = orig_propose(bt, ctx_len, last_token, temp)
-    if gcnt["n"] < 8:
+def _draft_once(req, force_eager):
+    saved = prop._graphs
+    if force_eager:
+        prop._graphs = {}
+    try:
+        chains, logits = orig_pb([req])
+    finally:
+        prop._graphs = saved
+    return chains[0], logits[0]
+
+def wrapped_pb(reqs):
+    chains, logits = orig_pb(reqs)
+    if gcnt["n"] < 8 and len(reqs) == 1:
         gcnt["n"] += 1
-        chain_e, probs_e = prop._propose_eager(bt, ctx_len, last_token, temp)
+        req = dict(reqs[0])
         # ★ 只能比第 0 步：两路都是【随机采样】，第 1 步起输入 token 就分叉了，
         #   分布自然不同 —— 那不是 bug，是采样。
         #   第 0 步的输入（last_token / pos / 缓存状态）完全相同，必须一致。
-        DDIFF.append({"step0_max_abs": (probs_g[0] - probs_e[0]).abs().max().item(),
-                      "step0_argmax_same": bool(probs_g[0].argmax() == probs_e[0].argmax())})
-    return chain_g, probs_g
-prop.propose = wrapped_propose
+        chain_e, logits_e = _draft_once(req, force_eager=True)
+        DDIFF.append({"step0_max_abs": (logits[0][0] - logits_e[0]).abs().max().item(),
+                      "step0_argmax_same": bool(logits[0][0].argmax() == logits_e[0].argmax())})
+    return chains, logits
+prop.propose_batch = wrapped_pb
 
 # ---------------- B. 拒绝采样内部数值 ----------------
 LOG = []
@@ -63,7 +77,8 @@ def wrapped_vb(draft_probs, target_logits, draft_tokens, temperatures=None,
             q = draft_probs if draft_is_point_mass else _softmax_with_temp(draft_probs, temperatures)
             p = _softmax_with_temp(target_logits, temperatures)
             k = draft_tokens.shape[1]
-            pfd = p[:, 1:k+1, :] if p.shape[1] >= k+1 else p[:, :k, :]
+            # ★ 对齐：候选 j <-> 第 j 行（不是 p[:, 1:k+1] —— 那是整体挪一行的错位写法）
+            pfd = p[:, :k, :]
             idx = draft_tokens.unsqueeze(-1)
             qt = q.gather(2, idx).squeeze(-1)
             pt = pfd.gather(2, idx).squeeze(-1)
@@ -92,6 +107,11 @@ out = {
     "A2_draft_calls": len(DDIFF),
     "A2_draft_step0_max_abs_diff": round(max((r["step0_max_abs"] for r in DDIFF), default=-1), 8),
     "A2_draft_step0_argmax_all_same": all(r["step0_argmax_same"] for r in DDIFF),
+    "verify_graph_hits": mr.verify_graph_hits,
+    "verify_graph_fallbacks": mr.verify_graph_fallbacks,
+    "draft_graphs": sorted(mr.draft_graphs.keys()),
+    "verify_graphs": sorted(list(k) for k in mr.verify_graphs.keys()),
+    "graph_mem": mr.graph_mem,
     "B_calls": len(LOG),
     "B_draft_probs_max_mean": mean(LOG, "draft_probs_max"),
     "B_q_after_softmax_max_mean": mean(LOG, "q_after_softmax_max"),

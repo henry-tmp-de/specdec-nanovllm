@@ -46,6 +46,12 @@ class Sequence:
         self.draft_logits = None
         # 本步实际落地的 token 数（accepted + bonus），用于统计接受率
         self.last_accepted = 0
+        # ---------- P6 任务 D：draft 侧 KV 的有效水位 ----------
+        # 「从位置 0 起连续有效的 draft KV 个数」。draft 提议只能从这个水位
+        # 之后继续；水位之前有缺口（如 gate 关闭若干步时 target 自己生成的 token）
+        # 就必须先补齐，只喂最后一个 token 恢复不了缺失前缀。
+        # 维护点见 model_runner.prepare_prefill / run() / scheduler.postprocess_spec。
+        self.draft_valid_len = 0
 
     def __len__(self):
         return self.num_tokens
@@ -115,11 +121,17 @@ class Sequence:
         return out
 
     def __getstate__(self):
+        # ★ draft_valid_len 必须一起过进程边界：TP>1 时每条 rank 都会执行
+        #   propose，补齐位置要一致，否则各 rank 的 draft KV 水位不同步。
         last_state = self.last_token if not self.is_prefill else self.token_ids
-        return (self.num_tokens, self.num_prompt_tokens, self.num_cached_tokens, self.num_scheduled_tokens, self.block_table, last_state)
+        return (self.num_tokens, self.num_prompt_tokens, self.num_cached_tokens,
+                self.num_scheduled_tokens, self.block_table, last_state,
+                self.draft_valid_len)
 
     def __setstate__(self, state):
-        self.num_tokens, self.num_prompt_tokens, self.num_cached_tokens, self.num_scheduled_tokens, self.block_table, last_state = state
+        (self.num_tokens, self.num_prompt_tokens, self.num_cached_tokens,
+         self.num_scheduled_tokens, self.block_table, last_state,
+         self.draft_valid_len) = state
         if isinstance(last_state, list):
             self.token_ids = last_state
             self.last_token = self.token_ids[-1]

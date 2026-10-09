@@ -34,6 +34,18 @@ class Config:
     #     而 n-gram 的接受率随上下文多样性上升而下降）。留 0 = 不限制，
     #     但默认建议设 8，benchmark 时能看出盈亏平衡点。
 
+    # ---------- P6：批量 draft 与批量验证图 ----------
+    spec_batch_draft: bool = True
+    #   True  = 同一候选位置把 B 条请求一起前向（k 次批量前向）
+    #   False = 逐请求循环（B×k 次单序列前向）—— 消融 S1 的对照开关（= C 组行为）
+    spec_batch_verify_graph: bool = True
+    #   True  = B>1 的验证前向走按 (B,k) 捕获的图
+    #   False = 只有 B=1 走图，B>1 退回 eager —— 消融 S2 的对照开关
+    spec_graph_bs: tuple = (1, 2, 4)
+    #   捕获 CUDA 图的精确 batch 桶（draft 单步 decode 图 / 验证图共用）。
+    #   按 12.2「新增图先只覆盖精确 B=2/4，保留 B=1 原路径」——
+    #   不捕获默认 512 的全范围，未覆盖的 B 走 eager 并记录原因。
+
     def __post_init__(self):
         assert os.path.isdir(self.model)
         assert self.kvcache_block_size % 256 == 0
