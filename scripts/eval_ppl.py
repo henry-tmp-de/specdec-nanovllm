@@ -84,31 +84,30 @@ def pick(model, cfg):
     names = []
     if cfg == "bf16":
         return []
-    if cfg == "block_all":
-        for p in PROJ:
-            names += targets[p]
-    elif cfg == "ffn":
-        for p in ["gate_proj", "up_proj", "down_proj"]:
-            names += targets[p]
-    elif cfg == "ffn_no_down":
-        for p in ["gate_proj", "up_proj"]:
-            names += targets[p]
-    elif cfg == "attn":
-        for p in ["q_proj", "k_proj", "v_proj", "o_proj"]:
-            names += targets[p]
-    elif cfg.startswith("first") or cfg.startswith("last") or cfg == "middle":
-        n = int(cfg.split(":")[1]) if ":" in cfg else 6
+    # 可选前缀 "ffn-"：把范围限制在 FFN 三块上
+    rest = cfg[4:] if cfg.startswith("ffn-") else cfg
+    pool = (["gate_proj", "up_proj", "down_proj"] if cfg.startswith("ffn-") else PROJ)
+    if rest == "block_all":
+        names += [nm for p in PROJ for nm in targets[p]]
+    elif rest == "ffn":
+        names += [nm for p in ["gate_proj", "up_proj", "down_proj"] for nm in targets[p]]
+    elif rest == "ffn_no_down":
+        names += [nm for p in ["gate_proj", "up_proj"] for nm in targets[p]]
+    elif rest == "attn":
+        names += [nm for p in ["q_proj", "k_proj", "v_proj", "o_proj"] for nm in targets[p]]
+    elif rest.split(":")[0] in ("first", "last", "middle"):
+        n = int(rest.split(":")[1]) if ":" in rest else 6
         L = len(targets["q_proj"])
-        if cfg.startswith("first"):
+        if rest.startswith("first"):
             keep = set(range(n))
-        elif cfg.startswith("last"):
+        elif rest.startswith("last"):
             keep = set(range(L - n, L))
         else:
             keep = set(range(n, L - n))
-        for p in PROJ:
+        for p in pool:
             names += [nm for i, nm in enumerate(targets[p]) if i in keep]
     else:
-        for key in cfg.split(","):
+        for key in rest.split(","):
             if key in SHORT.values():
                 p = [k for k, v in SHORT.items() if v == key][0]
                 names += targets[p]

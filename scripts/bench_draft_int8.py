@@ -50,14 +50,26 @@ OUT_JSON = os.environ.get("OUT_JSON", "/home/ziru/nano-vllm/draft_int8_ablation.
 DRAFT_FFN = re.compile(r"\.mlp\.(gate_up_proj|down_proj)$")
 
 
-def build_ids(tok, need):
+PROMPT_SRC = os.environ.get("PROMPTS", "synth")
+# ★ 合成池化素材会把接受率抬到 1.0（草稿与 target 都完美接上重复模式），
+#   那个档只能测「速度」，测不出量化对接受率的影响 —— 必须配 natural 档。
+WIKI = os.path.join(ROOT, "data", "wikitext2_test.txt")
+
+
+def build_prompts(tok, ctx, B):
+    if PROMPT_SRC == "wiki":
+        with open(WIKI, encoding="utf-8") as f:
+            ids = tok(f.read()).input_ids
+        span = (len(ids) - ctx) // B
+        out = []
+        for i in range(B):
+            a = i * span
+            out.append(ids[a:a + ctx])
+        return out
     txt = ("The quick brown fox jumps over the lazy dog. "
            "In a distant galaxy, researchers study attention kernels. ")
-    return tok.encode(txt * 4000)
-
-
-def prompts_for(base, ctx, B, stride=64):
-    return [base[i * stride: i * stride + ctx] for i in range(B)]
+    base = tok.encode(txt * 4000)
+    return [base[i * 64: i * 64 + ctx] for i in range(B)]
 
 
 def med(vals):
@@ -101,12 +113,24 @@ def main():
                 m.weight_scale = None
 
     # ---------- 两套状态各拍一张 draft 图（之后切换不再重拍）----------
-    install("bf16")
-    mr.capture_draft_cudagraph()
-    G = {"bf16": mr.draft_graphs}
-    install("int8")
-    mr.capture_draft_cudagraph()
-    G["int8"] = mr.draft_graphs
+    # ★ ModelRunner.__init__ 结尾会把默认设备恢复成 cpu；capture_draft_cudagraph
+    #   里的 torch.zeros(...) 不显式给 device，所以这里必须自己把默认设备/精度
+    #   设回去（否则图里烘进的是 CPU 索引，replay 时立刻 device 不匹配）。
+    ddev, ddt = torch.get_default_device(), torch.get_default_dtype()
+    torch.set_default_device("cuda")
+    torch.set_default_dtype(torch.bfloat16)
+    try:
+        install("bf16")
+        mr.capture_draft_cudagraph()
+        G = {"bf16": mr.draft_graphs}
+        install("int8")
+        mr.capture_draft_cudagraph()
+        G["int8"] = mr.draft_graphs
+    finally:
+        torch.set_default_device(ddev)
+        torch.set_default_dtype(ddt)
+
+    STATE = {"S_bf16": "bf16", "S_int8": "int8"}
 
     def set_variant(v):
         if v == "U":
@@ -115,8 +139,9 @@ def main():
             prop.bind_cudagraph(G["bf16"])
         else:
             llm.scheduler.spec_k = K
-            install(v)
-            prop.bind_cudagraph(G[v])
+            s = STATE[v]
+            install(s)
+            prop.bind_cudagraph(G[s])
         torch.cuda.synchronize()
 
     # ---------- 统计钩子：接受率 + 轮数 ----------
@@ -159,12 +184,11 @@ def main():
             "accept_rate": (S["accepted"] / S["proposed"]) if S["proposed"] else None,
         }
 
-    base_ids = build_ids(llm.tokenizer, max(CTXS) + 512)
     variants = ["U", "S_bf16", "S_int8"]
     results = []
     for B in BS:
         for ctx in CTXS:
-            prompts = prompts_for(base_ids, ctx, B)
+            prompts = build_prompts(llm.tokenizer, ctx, B)
             sp = SamplingParams(temperature=1.0, max_tokens=64, ignore_eos=True)
             recs = {v: [] for v in variants}
             for v in variants:                      # 每个状态先 warmup
@@ -175,9 +199,10 @@ def main():
                 for v in variants:
                     set_variant(v)
                     x = one_run(prompts, OUTLEN)
-                    x.update(variant=v, B=B, ctx=ctx, run=r)
+                    x.update(variant=v, B=B, ctx=ctx, run=r, prompts=PROMPT_SRC)
                     recs[v].append(x)
-            row = {"B": B, "ctx": ctx, "outlen": OUTLEN, "runs": RUNS, "k": K}
+            row = {"B": B, "ctx": ctx, "outlen": OUTLEN, "runs": RUNS, "k": K,
+                   "prompts": PROMPT_SRC}
             for v in variants:
                 row[v] = {
                     "tok_per_s": med([x["tok_per_s"] for x in recs[v]]),

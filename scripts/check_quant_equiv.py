@@ -40,8 +40,18 @@ def one(mode):
     sp = SamplingParams(temperature=1.0, max_tokens=256, ignore_eos=True)
     out = llm.generate([P, Q], sp, use_tqdm=False)
     ids = [o["token_ids"] for o in out]
-    llm.exit = lambda: None
+    # ★ 必须真的 exit()：它里面会 dist.destroy_process_group()，
+    #   否则第二次 LLM() 会报 "trying to initialize the default process group twice!"
+    import atexit
+    import gc
+    try:
+        atexit.unregister(llm.exit)
+    except Exception:
+        pass
+    llm.exit()
     del llm
+    gc.collect()
+    torch.cuda.empty_cache()
     return ids
 
 

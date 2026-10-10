@@ -102,6 +102,13 @@ class ModelRunner:
                   f"vocab {self.draft_hf_config.vocab_size})")
 
         self.warmup_model()
+        # ★ 只在开了量化时做：把 warmup 期间 caching allocator 攒下的
+        #   「已 free 但仍占着」的块还给驱动。allocate_kv_cache 的预算是
+        #   `0.9*total - used - peak + current`，而 used 取的是【驱动级】
+        #   已用量（含 allocator 缓存）—— 不还回去，量化省下的显存会被它吃掉。
+        #   默认（bf16）路径一行不变。
+        if config.quant_weights == "int8" or config.draft_quant_weights == "int8":
+            torch.cuda.empty_cache()
         self.allocate_kv_cache()
         if not self.enforce_eager:
             self.capture_cudagraph()

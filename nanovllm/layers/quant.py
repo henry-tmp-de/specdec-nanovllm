@@ -91,9 +91,13 @@ def apply_int8_quant(model, module_names, granularity="per_channel", group_size=
         mod.quant_group_size = group_size
         bytes_before = w.numel() * 2
         bytes_after = q.numel() + s.numel() * 2
-        # 误差在 GPU 上算（别把 8 GB 权重搬回 CPU）；逐层算完立刻释放。
-        wf = w.to(torch.float32)
-        deq = dequantize_weight(q, s, granularity, group_size)
+        # 误差在 GPU 上按【前 SAMPLE 行】估算，别整层展开成 fp32。
+        # ★ 为什么要省这几百 MB：allocate_kv_cache 的预算是
+        #   `0.9*total - used - peak + current` —— 加载期的一次性峰值会【永久】吃掉
+        #   KV 池容量。整层 fp32 展开会把 peak 顶上去 ~0.3 GB（实测 174→163 块）。
+        SAMPLE = min(w.shape[0], 256)
+        wf = w[:SAMPLE].to(torch.float32)
+        deq = dequantize_weight(q[:SAMPLE], s[:SAMPLE], granularity, group_size)
         diff = wf - deq
         rel = (diff.norm() / wf.norm()).item()
         del wf, deq, diff
@@ -107,6 +111,9 @@ def apply_int8_quant(model, module_names, granularity="per_channel", group_size=
     missing = want - {d["name"] for d in done}
     if missing:
         raise KeyError(f"这些模块名在模型里找不到: {sorted(missing)}")
+    # 量化过程中 freed 的 bf16 权重还在 caching allocator 手里；
+    # 不还回去的话 `used`（= total-free）会偏大，KV 池跟着变小。
+    torch.cuda.empty_cache()
     return done
 
 
@@ -228,6 +235,7 @@ def _int8_dequant_gemm_kernel(
 
 
 _COMBINE_BLOCK_N = 1024
+_SPLITK_MAX_M = 64      # M 超过它就退回 split-K=1（prefill 不需要 split-K，且省掉大 scratch）
 
 
 @triton.jit
@@ -273,7 +281,11 @@ def int8_linear(x: torch.Tensor, qweight: torch.Tensor, scale: torch.Tensor,
     cfg = dict(_BLOCK[granularity])
     if cfg_:
         cfg.update(cfg_)
-    sk = int(cfg["split"])
+    # ★ split-K 只用于【decode】(M 小、并行度不够)；prefill 的 M 很大，
+    #   N/M 方向本身就有足够并行度，split-K 不但没用，还会分配
+    #   [SPLIT_K, M, N] 的 fp32 scratch —— warmup 的 prefill M=2048 时这就有 200 MB，
+    #   把 allocate_kv_cache 的 peak 顶上去，**KV 池直接少十几块**（实测 174→163）。
+    sk = int(cfg["split"]) if M <= _SPLITK_MAX_M else 1
     grid = (triton.cdiv(N, cfg["BN"]), triton.cdiv(M, cfg["BM"]), sk)
     part = None
     if sk > 1:
