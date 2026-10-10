@@ -200,25 +200,44 @@ def window_request_geom(draft_valid_len: int, token_ids: List[int],
     · window_blocks  > 0（滑窗档）：
         start, gap = clip_gap_to_window(缺口, bs, M, token_ids)   ← 只前移、且
                      返回的 gap 恒等于 token_ids[start:end]
-        valid_from = window_valid_from(draft_valid_len, bs, M)     ← 只认 wvf
+        valid_from = start    若 clip 把起点【前移】了（缺口伸到窗口之外）
+                   = wvf      否则（常态）wvf = window_valid_from(draft_valid_len, bs, M)
 
       契约（调用方 propose_batch 依赖）：``catchup_tokens[s]`` 落在位置
       ``catchup_start + s`` 上。任何破坏它的写法都会静默写错 KV。
+      ★ 这个 valid_from 同时给【补齐阶段】和【提议阶段】用（见 propose_batch）：
+        两边的可见区间必须一致，否则补齐那一次前向会在缩短的上下文里算 KV，
+        把缺口位置的 KV 写坏 —— 而缺口位置正是 draft 下一步最需要的那个。
 
-    ★ 为什么 valid_from 不取 max(wvf, 补齐起点)：
+    ★ 为什么常态下 valid_from 不能取 max(wvf, 补齐起点)：
       补齐起点 = 「最早缺失的位置」，就在 len(seq) 附近；拿它当可见下界会把
-      窗口砍成大约一个块（与 M 无关）。而缺口之前的内容并没有失效，见
-      window_valid_from 的说明。补齐起点被夹到窗口外时也不需要兜：
-      b0 的自然下界 (pos//bs - M + 1) 恒 ≥ start//bs（因为 pos ≥ end）。
+      窗口砍成大约一个块（与 M 无关）。缺口之前的内容并没有失效 ——
+      [wvf, draft_valid_len) 是 draft 上次按正确前缀写好的，且那些块还在环里
+      （wvf 就是按"最近 M 块"算出来的）。
+    ★ 只有 clip 真的前移了起点时才收紧到 start —— 那时更老的位置根本没写过。
+      提议阶段（pos ≥ end）不需要额外兜：b0 的自然下界 (pos//bs-M+1)
+      恒 ≥ start//bs。
     """
     start, gap = catchup_gap(draft_valid_len, token_ids)
     if window_blocks <= 0:
         return start, gap, 0
+    true_start = start                       # clip 之前的缺口起点
     start, gap = clip_gap_to_window(start, gap, block_size, window_blocks, token_ids)
     end = len(token_ids) - 1
     assert len(gap) == end - start, (
         f"窗口补齐区间与起点不自洽: start={start} len(gap)={len(gap)} end={end}")
-    return start, gap, window_valid_from(draft_valid_len, block_size, window_blocks)
+    wvf = window_valid_from(draft_valid_len, block_size, window_blocks)
+    # ★ 下界怎么取，只有两种情形，不能无条件 max：
+    #   · clip 把起点【前移】了（缺口伸到窗口之外）：更老的位置根本没写过，
+    #     读了就是脏 KV → 下界必须跟到 start。
+    #   · clip 没动起点（常态，缺口就在序列末尾附近）：缺口【之前】的内容
+    #     还是有效的（draft 上一次按正确前缀写好的，且块还在环里）→ 下界
+    #     就是环的自然窗口起点 wvf。
+    #     ★★ 这里曾经写成 `max(wvf, start)`：常态下 start ≈ len(seq)，
+    #        取 max 等于把窗口砍成 [start//bs*bs, now] ≈ 1 个块，且与 M 无关。
+    #        实测表现为所有 W 在"上一轮全接受"的轮次退化到同一个窗口。
+    dropped = start > true_start
+    return start, gap, (start if dropped else wvf)
 
 
 class DraftModelProposer:
@@ -367,9 +386,15 @@ class DraftModelProposer:
                 if not act:
                     break
                 positions = [base[i] + s for i in act]
-                # 补齐期间，环里可信的区间从补齐起点 base[i] 开始（见 clip_gap_to_window）
-                geo = [self._geom(reqs[i], positions[j], valid_from=base[i])
-                       for j, i in enumerate(act)]
+                # ★ 补齐期间的可见下界 = 和阶段 1 用的是同一个（r["valid_from"]，
+                #   由 window_request_geom 按「clip 有没有把起点前移」定）。
+                #   曾经这里硬传 valid_from=base[i]，等于把补齐这一趟的上下文
+                #   砍到「补齐起点所在的块」—— 于是缺口那个 token 的 KV 是在
+                #   极短上下文下算出来的（实测 ctx 从 1031 掉到 7），
+                #   而它恰恰是 draft 下一步最需要的那个位置。
+                #   ★ 只有 clip 把起点前移到窗口之外时才收紧（那种情况更老的
+                #     位置根本没写过，读了就是脏 KV）——见 window_request_geom。
+                geo = [self._geom(reqs[i], positions[j]) for j, i in enumerate(act)]
                 self._forward_group(
                     tokens=[gaps[i][s] for i in act],
                     positions=positions,

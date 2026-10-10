@@ -467,6 +467,36 @@ check("⑧' 负对照：旧规则 max(wvf, 补齐起点) 把同一窗口砍到 �
 check("⑧' 负对照确实把窗口砍小了（新 > 旧 * 4）",
       _clen_new > 4 * _clen_old, f"{_clen_new} vs {_clen_old}")
 
+# ----------------------------------------------------------------------
+# ⑧'' ★ 补齐那一趟前向的上下文：必须与提议阶段用同一个下界。
+#     propose_batch 原来硬传 valid_from=base（= 补齐起点），等于把补齐的上下文
+#    砍到「补齐起点所在的块」—— 实测 ctx 从 1031 掉到 7，缺口那个位置的 KV
+#     就是在极短上下文下算出来的（而它正是 draft 下一步最需要的那个）。
+_tk2 = list(range(30000, 30000 + 1032))
+_s3, _g3, _vf3 = window_request_geom(1030, _tk2, 256, 8)
+_w8 = DraftWindow(list(range(8)), 256, 8)
+_pos_c = _s3                                   # 补齐的第一个（也是唯一一个）位置
+_clen_catch = _w8.ctx_len(_pos_c, _vf3)
+_clen_catch_old = _w8.ctx_len(_pos_c, _s3)     # 旧写法：硬传 valid_from = base
+check("⑧'' 补齐前向的 ctx = 完整上下文（与提议阶段同一下界）",
+      _clen_catch == _pos_c + 1, f"clen={_clen_catch} pos={_pos_c}")
+check("⑧'' 负对照：硬传 valid_from=base 会把补齐的 ctx 砍到 ≈1 个块（能失败）",
+      _clen_catch_old <= 2 * 256 and _clen_catch_old < _clen_catch,
+      f"旧 clen={_clen_catch_old} vs 新 clen={_clen_catch}")
+
+# 缺口伸到窗口之外（drop）时：补齐必须收紧到 start —— 更老的位置根本没写过
+for _M in (1, 2, 4, 8):
+    _w = DraftWindow(list(range(_M)), 256, _M)
+    _L, _dvl = 6000, 300                        # 缺口 5699 个 token，远超窗口
+    _tk = list(range(40000, 40000 + _L))
+    _st, _gp, _vfd = window_request_geom(_dvl, _tk, 256, _M)
+    assert _st > min(_dvl, _L - 1), (_M, _st, _dvl)      # 确实发生了前移
+    _bad = [p for p in range(_st, _L)
+            if _w.b0(p, _vfd) * 256 < _st]
+    check(f"⑧'' M={_M}: drop 后补齐前向 b0 恒 ≥ 补齐起点（不读没写过更老位置）",
+          not _bad, f"{_bad[:3]}")
+
+
 # 缺口被夹到窗口外（drop 分支）时：起点前移到窗口最老块，且自然下界 ≥ start//bs
 for Mv in (1, 2, 4, 8):
     _w = DraftWindow([0] * Mv, 256, Mv)
