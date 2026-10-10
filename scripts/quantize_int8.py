@@ -34,6 +34,12 @@ from safetensors.torch import save_file
 
 # 量化哪些层：只匹配 block 里的线性层（HF checkpoint 的 key 名）
 QUANT_RE = re.compile(r"\.(q_proj|k_proj|v_proj|o_proj|gate_proj|up_proj|down_proj)\.weight$")
+PRESETS = {
+    "all":  None,
+    "ffn":  re.compile(r"\.(gate_proj|up_proj|down_proj)\.weight$"),
+    "attn": re.compile(r"\.(q_proj|k_proj|v_proj|o_proj)\.weight$"),
+    "ffn_no_down": re.compile(r"\.(gate_proj|up_proj)\.weight$"),
+}
 # 明确排除（双保险）
 SKIP_RE = re.compile(r"(embed_tokens|lm_head|norm|bias)")
 QMAX = 127
@@ -79,6 +85,8 @@ def main():
     ap.add_argument("--granularity", default="per_channel",
                     choices=["per_channel", "per_group"])
     ap.add_argument("--group-size", type=int, default=128)
+    ap.add_argument("--preset", default="all", choices=list(PRESETS),
+                    help="量化哪些模块：all / ffn / attn / ffn_no_down")
     ap.add_argument("--dtype", default="bfloat16")
     args = ap.parse_args()
 
@@ -99,7 +107,10 @@ def main():
                 if t.dtype is not torch.bfloat16 and t.dtype is not torch.float16 \
                         and t.dtype is not torch.float32:
                     t = t.to(torch.bfloat16)
-                if QUANT_RE.search(key) and not SKIP_RE.search(key):
+                want = QUANT_RE.search(key) and not SKIP_RE.search(key)
+                if want and PRESETS[args.preset] is not None:
+                    want = bool(PRESETS[args.preset].search(key))
+                if want:
                     q, scale, err, sat, amax = quantize_tensor(
                         t, args.granularity, args.group_size)
                     out_tensors[key] = q                        # int8
@@ -143,6 +154,8 @@ def main():
         "qmax": QMAX, "symmetric": True,
         "quantized_layers": [s["name"] for s in stats],
         "kept_bf16_layers": [],          # 见下面的普通权重清单
+        "preset": args.preset,
+        "source_model": src,
         "n_quantized": n_quant, "n_kept": n_keep,
         "bytes_bf16_total": tot_bf16,
         "bytes_int8_total": bytes_q + bytes_k,

@@ -3,6 +3,8 @@ from torch import nn
 import torch.nn.functional as F
 import torch.distributed as dist
 
+from nanovllm.layers.quant import int8_linear
+
 
 def divide(numerator, denominator):
     assert numerator % denominator == 0
@@ -22,6 +24,11 @@ class LinearBase(nn.Module):
         self.tp_dim = tp_dim
         self.tp_rank = dist.get_rank()
         self.tp_size = dist.get_world_size()
+        # INT8 是【加载完成后就地替换】的（见 nanovllm.layers.quant.apply_int8_quant），
+        # 构造期一律是 bf16 —— 这样既能按名字筛层（「只量化 draft 的 FFN」），
+        # 又让默认路径与改动前逐字节一致。quant_* 属性在替换时才被写。
+        self.quant_granularity = "per_channel"
+        self.quant_group_size = 128
         self.weight = nn.Parameter(torch.empty(output_size, input_size))
         self.weight.weight_loader = self.weight_loader
         if bias:
@@ -29,6 +36,13 @@ class LinearBase(nn.Module):
             self.bias.weight_loader = self.weight_loader
         else:
             self.register_parameter("bias", None)
+
+    def _apply(self, x: torch.Tensor, bias: torch.Tensor | None) -> torch.Tensor:
+        """统一的线性层入口：int8 -> 融合反量化 GEMM；否则原样 F.linear。"""
+        if self.weight.dtype == torch.int8:
+            return int8_linear(x, self.weight, self.weight_scale, bias,
+                               self.quant_granularity, self.quant_group_size)
+        return F.linear(x, self.weight, bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         raise NotImplementedError
@@ -48,7 +62,7 @@ class ReplicatedLinear(LinearBase):
         param.data.copy_(loaded_weight)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return F.linear(x, self.weight, self.bias)
+        return self._apply(x, self.bias)
 
 
 class ColumnParallelLinear(LinearBase):
@@ -70,7 +84,7 @@ class ColumnParallelLinear(LinearBase):
         param_data.copy_(loaded_weight)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return F.linear(x, self.weight, self.bias)
+        return self._apply(x, self.bias)
 
 
 class MergedColumnParallelLinear(ColumnParallelLinear):
@@ -150,7 +164,7 @@ class RowParallelLinear(LinearBase):
         param_data.copy_(loaded_weight)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        y = F.linear(x, self.weight, self.bias if self.tp_rank == 0 else None)
+        y = self._apply(x, self.bias if self.tp_rank == 0 else None)
         if self.tp_size > 1:
             dist.all_reduce(y)
         return y

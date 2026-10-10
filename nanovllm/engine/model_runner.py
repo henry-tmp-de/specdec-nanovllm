@@ -1,3 +1,4 @@
+import os
 import pickle
 import torch
 import torch.distributed as dist
@@ -8,6 +9,15 @@ from nanovllm.config import Config
 from nanovllm.engine.sequence import Sequence
 from nanovllm.models.qwen3 import Qwen3ForCausalLM
 from nanovllm.layers.sampler import Sampler
+from nanovllm.layers.quant import apply_int8_quant
+
+
+def _log_quant(which, path, stats):
+    b = sum(s["bytes_before"] for s in stats)
+    a = sum(s["bytes_after"] for s in stats)
+    print(f"[int8] {which} 量化 {len(stats)} 个模块 "f"({os.path.basename(path.rstrip('/'))}): "
+          f"{b/2**20:.1f} -> {a/2**20:.1f} MiB ({a/max(b,1):.3f}x), "
+          f"rel_err max={max(s['rel_err'] for s in stats):.5f}")
 from nanovllm.spec_decode.draft_proposer import DraftWindow
 from nanovllm.utils.context import set_context, get_context, reset_context
 from nanovllm.utils.loader import load_model
@@ -31,6 +41,14 @@ class ModelRunner:
         torch.set_default_device("cuda")
         self.model = Qwen3ForCausalLM(hf_config)
         load_model(self.model, config.model)
+        # ★ INT8：加载完之后【就地】替换（按 quant_config.json 点名的模块）。
+        #   必须在 allocate_kv_cache 之前 —— KV 池大小按剩余显存算。
+        self.quant_stats = []
+        if config.quant_weights == "int8":
+            self.quant_stats = apply_int8_quant(
+                self.model, config.quant_modules,
+                config.quant_granularity, config.quant_group_size)
+            _log_quant("target", config.model, self.quant_stats)
         self.sampler = Sampler()
         # ---------- 投机解码 ----------
         self.spec_proposer = None
@@ -69,6 +87,14 @@ class ModelRunner:
             )
             self.draft_model = Qwen3ForCausalLM(self.draft_hf_config)
             load_model(self.draft_model, config.draft_model)
+            # ★ draft 的 INT8（与 target 独立）：量化 draft 在数学上完全安全 ——
+            #   拒绝采样会把草稿猜错的地方修正回来，"相对 BF16 target 无损" 仍严格成立。
+            self.draft_quant_stats = []
+            if config.draft_quant_weights == "int8":
+                self.draft_quant_stats = apply_int8_quant(
+                    self.draft_model, config.draft_quant_modules,
+                    config.draft_quant_granularity, config.draft_quant_group_size)
+                _log_quant("draft", config.draft_model, self.draft_quant_stats)
             self.spec_proposer = DraftModelProposer(self.draft_model, k=config.spec_k,
                                                     block_size=self.block_size)
             print(f"[spec] draft model: {config.draft_model} "
