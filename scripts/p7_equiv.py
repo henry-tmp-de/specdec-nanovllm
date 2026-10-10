@@ -79,7 +79,7 @@ def main():
                 for bt_i in block_tables:
                     idx = [int(b) for b in bt_i if int(b) >= 0]
                     if idx:
-                        parts.append(kc[idx].contiguous().cpu().numpy().tobytes())
+                        parts.append(kc[idx].float().contiguous().cpu().numpy().tobytes())
                 kv_hash = hashlib.md5(b"".join(parts)).hexdigest()
         lg = _ofg(self, tokens, positions, block_tables, context_lens, slot_mapping)
         if len(REC["forwards"]) < NMAX:
