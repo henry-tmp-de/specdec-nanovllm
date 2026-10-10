@@ -1,8 +1,12 @@
 #!/usr/bin/env python
-"""bench_draft_int8.py —— draft FFN INT8 的端到端消融（配对 / 交替 / 含空转噪声地板）
+"""bench_draft_int8.py —— draft INT8 的端到端消融（配对 / 交替 / 含空转噪声地板）
 
-范围（用户定）：**只量化 draft（Qwen3-0.6B）的 FFN（gate/up/down）**，target 完全不动。
+范围（用户定）：**只量化 draft（Qwen3-0.6B）的线性层**，target 完全不动。
 所以「相对 BF16 target 无损」这句话**仍然严格成立**（target 是参考标准，一个字节没改）。
+`DRAFT_SCOPE` 选量化范围：
+    ffn（默认，= 上一轮交付的配置）  gate_up_proj / down_proj
+    all（本轮）                      qkv_proj / o_proj / gate_up_proj / down_proj
+两个范围走【同一份代码、同一套测量】，所以可以直接对比（上一轮 ffn、本轮 all）。
 
 三个状态在【同一个进程】里交替测量，避免跨进程/跨加载漂移：
     U      普通解码（scheduler.spec_k = 0，draft 不参与）
@@ -46,8 +50,14 @@ K = int(os.environ.get("K", "6"))
 GRAN = os.environ.get("GRAN", "per_channel")
 GS = int(os.environ.get("GS", "128"))
 MAX_MODEL_LEN = 8192
-OUT_JSON = os.environ.get("OUT_JSON", "/home/ziru/nano-vllm/draft_int8_ablation.json")
-DRAFT_FFN = re.compile(r"\.mlp\.(gate_up_proj|down_proj)$")
+SCOPE = os.environ.get("DRAFT_SCOPE", "ffn")
+OUT_JSON = os.environ.get("OUT_JSON",
+                          f"/home/ziru/nano-vllm/draft_int8_ablation_{SCOPE}.json")
+# 引擎里的合并模块名：qkv_proj(=q/k/v) / o_proj / gate_up_proj(=gate/up) / down_proj
+DRAFT_PAT = {
+    "ffn": re.compile(r"\.mlp\.(gate_up_proj|down_proj)$"),
+    "all": re.compile(r"\.(qkv_proj|o_proj|gate_up_proj|down_proj)$"),
+}[SCOPE]
 
 
 PROMPT_SRC = os.environ.get("PROMPTS", "synth")
@@ -80,18 +90,18 @@ def med(vals):
 
 def main():
     os.makedirs(os.path.dirname(OUT_JSON), exist_ok=True)
-    print(f"=== bench_draft_int8 RUNS={RUNS} K={K} BS={BS} CTXS={CTXS} out={OUTLEN} "
-          f"gran={GRAN} dev={torch.cuda.get_device_name(0)} ===")
+    print(f"=== bench_draft_int8 scope={SCOPE} RUNS={RUNS} K={K} BS={BS} CTXS={CTXS} "
+          f"out={OUTLEN} gran={GRAN} dev={torch.cuda.get_device_name(0)} ===")
     llm = LLM(TARGET, enforce_eager=False, max_model_len=MAX_MODEL_LEN,
               max_num_batched_tokens=16384, spec_k=K, spec_method="draft",
               draft_model=DRAFT, spec_batch_threshold=0)
     mr = llm.model_runner
     prop = mr.spec_proposer
 
-    # ---------- 找出 draft 的 FFN 模块 ----------
+    # ---------- 找出 draft 要量化的模块（范围由 DRAFT_SCOPE 定）----------
     dmods = [(n, m) for n, m in mr.draft_model.named_modules()
-             if DRAFT_FFN.search(n)]
-    assert dmods, "没找到 draft 的 FFN 模块"
+             if DRAFT_PAT.search(n)]
+    assert dmods, f"没找到 draft 的模块（scope={SCOPE}）"
     orig = {n: m.weight for n, m in dmods}
     nb = sum(w.numel() * 2 for w in orig.values())
     int8_state = {}
@@ -100,7 +110,15 @@ def main():
         int8_state[n] = (torch.nn.Parameter(q.contiguous(), requires_grad=False),
                          torch.nn.Parameter(s.contiguous(), requires_grad=False))
     na = sum(q.numel() + s.numel() * 2 for q, s in int8_state.values())
-    print(f"draft FFN: {len(dmods)} 个模块, {nb/2**20:.1f} -> {na/2**20:.1f} MiB "
+    # draft 总权重：按 storage 去重（tie_word_embeddings=True，lm_head 与 embed_tokens 共享）
+    _seen = {}
+    for p in mr.draft_model.parameters():
+        _seen[p.data_ptr()] = p.numel() * p.element_size()
+    draft_tot_bf16 = sum(_seen.values())
+    draft_tot_int8 = draft_tot_bf16 - nb + na
+    print(f"draft 总权重（去重）: {draft_tot_bf16/2**30:.3f} -> {draft_tot_int8/2**30:.3f} GB "
+          f"({draft_tot_int8/draft_tot_bf16:.4f}x)")
+    print(f"draft scope={SCOPE}: {len(dmods)} 个模块, {nb/2**20:.1f} -> {na/2**20:.1f} MiB "
           f"({na/nb:.3f}x), 模块={sorted({n.split('.')[-1] for n, _ in dmods})}")
 
     def install(which):
@@ -202,7 +220,12 @@ def main():
                     x.update(variant=v, B=B, ctx=ctx, run=r, prompts=PROMPT_SRC)
                     recs[v].append(x)
             row = {"B": B, "ctx": ctx, "outlen": OUTLEN, "runs": RUNS, "k": K,
-                   "prompts": PROMPT_SRC}
+                   "prompts": PROMPT_SRC, "draft_scope": SCOPE,
+                   "draft_quant_modules": len(dmods),
+                   "draft_quant_bytes_before": nb, "draft_quant_bytes_after": na,
+                   "draft_total_bytes_bf16": draft_tot_bf16,
+                   "draft_total_bytes_int8": draft_tot_int8,
+                   "draft_quant_modules_used": sorted({n.split(".")[-1] for n, _ in dmods})}
             for v in variants:
                 row[v] = {
                     "tok_per_s": med([x["tok_per_s"] for x in recs[v]]),

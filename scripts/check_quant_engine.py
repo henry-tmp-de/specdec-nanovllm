@@ -27,7 +27,8 @@ from nanovllm import LLM, SamplingParams
 
 TARGET = os.path.expanduser("~/nano-vllm/models/Qwen3-4B")
 D_BF16 = os.path.expanduser("~/nano-vllm/models/Qwen3-0.6B")
-D_QDIR = os.path.expanduser("~/nano-vllm/models/Qwen3-0.6B-qffn")     # bf16 权重 + quant_config.json
+D_QDIR = os.path.expanduser("~/nano-vllm/models/Qwen3-0.6B-qffn")     # bf16 权重 + quant_config.json(ffn)
+D_QALL = os.path.expanduser("~/nano-vllm/models/Qwen3-0.6B-qall")     # bf16 权重 + quant_config.json(全线性层)
 D_INT8 = os.path.expanduser("~/nano-vllm/models/Qwen3-0.6B-int8-ffn")  # 真·int8 checkpoint
 
 P = ("def calculate_sum(numbers):\n    total = 0\n    for num in numbers:\n"
@@ -115,6 +116,9 @@ def main():
                                    ensure_ascii=False))
     elif case == "qffn":
         print("@@C@@" + json.dumps(build(D_QDIR, "draft_qffn (自动识别 int8)"),
+                                   ensure_ascii=False))
+    elif case == "qall":
+        print("@@C@@" + json.dumps(build(D_QALL, "draft_qall (全线性层自动识别 int8)"),
                                    ensure_ascii=False))
     elif case == "int8dir":
         try:
