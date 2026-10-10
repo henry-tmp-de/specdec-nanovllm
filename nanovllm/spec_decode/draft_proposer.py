@@ -67,6 +67,12 @@ def window_valid_from(draft_valid_len: int, block_size: int, window_blocks: int)
 
     它同时是「查询能看到的最早位置」的下界：比它更老的块要么没写过、
     要么内容已经被环覆盖，一律不许读。
+
+    ★ 缺口【不会】让缺口之前的内容失效 —— [wvf, draft_valid_len) 这一段是
+      draft 上一次正常提议时按正确前缀写好的，而 wvf 正是按「环里还有最近的
+      M 块」算出来的，所以这些块仍在环里、内容仍然有效。所以下界只需要
+      wvf，不能拿「缺口起点」（它就在序列末尾附近）去收紧，否则窗口会塌缩
+      到大约一个块（实测踩过：见 tests/test_draft_window.py §8）。
     """
     if draft_valid_len <= 0 or window_blocks <= 0:
         return 0
@@ -75,14 +81,32 @@ def window_valid_from(draft_valid_len: int, block_size: int, window_blocks: int)
 
 
 def clip_gap_to_window(start: int, gap: List[int], block_size: int,
-                       window_blocks: int) -> Tuple[int, List[int]]:
-    """把补齐缺口夹到「最近 window_blocks 个块」之内，并把起点对齐到块边界。
+                       window_blocks: int, token_ids: Optional[List[int]] = None
+                       ) -> Tuple[int, List[int]]:
+    """把补齐缺口夹到「最近 window_blocks 个块」之内。
 
-    ★ 为什么必须夹：环里更老的内容已经被覆盖，补了也是白补（马上被写掉）。
-    ★ 为什么必须对齐到块边界：paged 内核按「整块」读 cache，查询的可见区间
-      从 b0*bs 起算。若起点落在块中间，这个块里起点之前的槽是【陈旧内容】，
-      内核照样会读进去 —— 静默用错上下文，且不报错。对齐后整块要么全新、
-      要么整体不读。
+    契约（调用方依赖这一条，务必保持）
+    ----------------------------------
+    返回的 ``(start, gap)`` 必须满足 ``gap[s] == token_ids[start + s]``，
+    且 ``len(gap) == end - start``（end = 原 start + 原 len(gap)）。
+    `propose_batch` 的补齐阶段就是这么配对的::
+
+        positions = [base[i] + s for s in range(len(gap[i]))]
+        tokens    = [gap[i][s] for s in range(len(gap[i]))]
+
+    所以 `start` 与 `gap` 必须【一起动】。任何只改 `start` 不改 `gap`
+    （或反之）的写法都会把 token 写到错位的位置上，静默覆盖环里正确的 KV。
+
+    ★ 只允许【前移】，绝不允许后移
+      · 前移（drop 分支）：缺口伸到窗口之外的更老位置，补了也会立刻被写掉。
+        此时起点前移到窗口最老的块边界，并【同步裁掉 gap 的等长前缀】。
+        被丢掉的那些位置保持陈旧 —— 它们 < start，而 b0 ≥ start//bs，
+        内核根本不会读它们。
+      · 后移（把 start 向下取整到块边界）是【错的】，已删除：
+        原始 gap 是从原来的 start 起算的，更早的位置没有对应 token 可用；
+        后移等于给整段 token 重新贴位置标签。而且"首块必须整块全新"这个
+        动机本身不成立 —— 缺口【之前】的内容是 draft 上一次按正确前缀写好的，
+        仍然有效（见 ModelRunner._draft_request 里 valid_from 的推导）。
     """
     if window_blocks <= 0 or not gap:
         return start, gap
@@ -92,10 +116,12 @@ def clip_gap_to_window(start: int, gap: List[int], block_size: int,
     if start < s_min:
         drop = min(s_min - start, len(gap))
         start, gap = start + drop, gap[drop:]
-    start = (start // block_size) * block_size  # 对齐（只会把已有效的若干位重新喂一遍）
-    start = max(start, s_min)
     if start >= end:
         return start, []
+    # ★ 传了 token_ids 就按新的 start 重新切一次：配对关系由构造保证，
+    #   不依赖上面每一步是否恰好同步（防御未来改动破坏契约）。
+    if token_ids is not None:
+        gap = list(token_ids[start:end])
     return start, list(gap)
 
 
@@ -159,6 +185,40 @@ def catchup_gap(draft_valid_len: int, token_ids: List[int]) -> Tuple[int, List[i
     end = len(token_ids) - 1
     start = min(int(draft_valid_len), end)
     return start, (list(token_ids[start:end]) if end > start else [])
+
+
+def window_request_geom(draft_valid_len: int, token_ids: List[int],
+                        block_size: int, window_blocks: int
+                        ) -> Tuple[int, List[int], int]:
+    """滑窗档下 `ModelRunner._draft_request` 的【纯算术】部分（无 torch，可 CPU 单测）。
+
+    返回 ``(catchup_start, catchup_tokens, valid_from)``。
+
+    · window_blocks <= 0（全上下文档）：缺口原样返回、valid_from = 0。
+      调用方那时 window_blocks=0，根本不读 valid_from（走老路径），
+      所以这条分支与改动前的行为逐值一致。
+    · window_blocks  > 0（滑窗档）：
+        start, gap = clip_gap_to_window(缺口, bs, M, token_ids)   ← 只前移、且
+                     返回的 gap 恒等于 token_ids[start:end]
+        valid_from = window_valid_from(draft_valid_len, bs, M)     ← 只认 wvf
+
+      契约（调用方 propose_batch 依赖）：``catchup_tokens[s]`` 落在位置
+      ``catchup_start + s`` 上。任何破坏它的写法都会静默写错 KV。
+
+    ★ 为什么 valid_from 不取 max(wvf, 补齐起点)：
+      补齐起点 = 「最早缺失的位置」，就在 len(seq) 附近；拿它当可见下界会把
+      窗口砍成大约一个块（与 M 无关）。而缺口之前的内容并没有失效，见
+      window_valid_from 的说明。补齐起点被夹到窗口外时也不需要兜：
+      b0 的自然下界 (pos//bs - M + 1) 恒 ≥ start//bs（因为 pos ≥ end）。
+    """
+    start, gap = catchup_gap(draft_valid_len, token_ids)
+    if window_blocks <= 0:
+        return start, gap, 0
+    start, gap = clip_gap_to_window(start, gap, block_size, window_blocks, token_ids)
+    end = len(token_ids) - 1
+    assert len(gap) == end - start, (
+        f"窗口补齐区间与起点不自洽: start={start} len(gap)={len(gap)} end={end}")
+    return start, gap, window_valid_from(draft_valid_len, block_size, window_blocks)
 
 
 class DraftModelProposer:

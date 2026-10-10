@@ -524,26 +524,21 @@ class ModelRunner:
         —— 通常是 gate 关闭的若干步里 target 自己生成的 token（draft 没跑），
         也可能来自前缀缓存命中的块。补齐必须【喂这些 token 本身】，
         只喂最后一个 token 恢复不了缺失前缀。补齐费用计入运行时间。
+
+        ★ 滑窗档的算术全部收在 draft_proposer.window_request_geom 里
+          （纯函数、可 CPU 单测），这里只负责把整条序列的滑窗块表拿对。
         """
-        from nanovllm.spec_decode.draft_proposer import (
-            catchup_gap, clip_gap_to_window, window_valid_from)
-        start, catchup = catchup_gap(seq.draft_valid_len, seq.token_ids)
+        from nanovllm.spec_decode.draft_proposer import window_request_geom
         # ---------- 滑窗（B）：draft 的块表是每序列私有的环形缓冲 ----------
         # ★ 判据是【这条序列有没有滑窗块表】，而不是读配置：池子分配失败、或者
         #   运行期把开关翻回全上下文时，这里自动退回老路径（两边都能退）。
         # ★ 现场读开关：spec_draft_window 翻回 0 时，就算池子里还给这条序列留着
         #   滑窗块，也一律退回全上下文路径（两个方向都能即时生效）。
         M = len(seq.draft_block_table) if self._window_tokens() > 0 else 0
-        valid_from = 0
-        if M:
-            bs = self.block_size
-            start, catchup = clip_gap_to_window(start, catchup, bs, M)
-            wvf = window_valid_from(seq.draft_valid_len, bs, M)
-            # 有缺口时环里更老的内容可能已被覆盖 → 下界取「环的自然窗口起点」
-            # 与「补齐起点」中更靠后的那个；没缺口时就用窗口起点。
-            valid_from = max(wvf, start) if catchup else wvf
+        start, catchup, valid_from = window_request_geom(
+            seq.draft_valid_len, seq.token_ids, self.block_size, M)
         return dict(block_table=list(seq.block_table),
-                    draft_ring=list(seq.draft_block_table),
+                    draft_ring=list(seq.draft_block_table) if M else [],
                     window_blocks=M, valid_from=valid_from,
                     context_len=len(seq),
                     last_token=seq.last_token, temperature=seq.temperature,

@@ -37,6 +37,7 @@ DraftWindow = _dp.DraftWindow
 window_valid_from = _dp.window_valid_from
 clip_gap_to_window = _dp.clip_gap_to_window
 catchup_gap = _dp.catchup_gap
+window_request_geom = _dp.window_request_geom
 
 BS = 4
 M = 3                      # 窗口 = 最近 3 个块 = 12 个槽
@@ -114,12 +115,87 @@ check("③ 夹完的缺口跨越的块数 ≤ M",
       (start + len(gap) - 1) // BS - start // BS + 1 <= M,
       f"blocks={ (start + len(gap) - 1)//BS - start//BS + 1 }")
 
-# 小缺口：整体保留（不丢有效 token）
-s2, g2 = clip_gap_to_window(10, [1, 2, 3, 4], BS, M)      # end = 14
-check("③ 小缺口只做块对齐，不丢 token（长度不减少）",
-      len(g2) >= 4 and s2 % BS == 0 and s2 <= 10, f"start={s2} len={len(g2)}")
+# 小缺口：原样保留 —— 【不许】为了对齐而移动 start
+# ★ 这里原来是 `len(g2) >= 4 and s2 % BS == 0 and s2 <= 10`，恰好把
+#   「把 start 向下取整到块边界、gap 却不动」这个 bug 当成正确行为钉住了。
+#   那个写法让 gap[s] 落到 start+s 之外（调用方 propose_batch 就是按
+#   `positions = catchup_start + s` 配对写入的），把环里正确的 KV 覆盖成错的。
+_tok = list(range(1000, 1100))
+s2, g2 = clip_gap_to_window(10, _tok[10:14], BS, M, _tok)      # end = 14
+check("③ 小缺口原样保留（start 不动、gap 不动）",
+      s2 == 10 and g2 == _tok[10:14], f"start={s2} gap={g2}")
+check("③ 小缺口配对：gap[s] 就是位置 start+s 上的 token",
+      g2 == [_tok[s2 + s] for s in range(len(g2))], f"{g2} vs {_tok[10:14]}")
+_pair_bad = 0
+for _st in range(0, 40):
+    for _ln in range(1, 40):
+        _s, _g = clip_gap_to_window(_st, _tok[_st:_st + _ln], BS, M, _tok)
+        if _g != _tok[_s:_st + _ln]:
+            _pair_bad += 1
+check("③ 契约：1540 组 (start,len) 上 gap 恒等于 token_ids[start:end]", _pair_bad == 0,
+      f"mismatch={_pair_bad}")
+
+# 缺口伸到窗口之外：起点前移，且 gap 同步裁掉等长前缀（仍然配对）
+_s, _g = clip_gap_to_window(0, _tok[0:100], BS, M, _tok)   # end = 100, s_min = 92
+check("③ 超出窗口的缺口：起点前移到窗口最老块、gap 同步裁前缀",
+      _s == 92 and _g == _tok[92:100], f"start={_s} len={len(_g)}")
+check("③ 前移后仍然配对", _g == _tok[_s:100], "")
+
+# 空缺口原样返回
 s3, g3 = clip_gap_to_window(12, [], BS, M)
 check("③ 空缺口原样返回", g3 == [] and s3 == 12, "")
+
+# ----------------------------------------------------------------------
+# ③' ★ 负对照（必须能失败）：把对齐方向反过来（向下取整到块边界）就会
+#    破坏配对 —— 这一条证明上面那些断言不是空转。
+def _old_align_down(start, gap, block_size, window_blocks):
+    """改动前的写法（把 start 向下取整到块边界，gap 不动）。"""
+    if window_blocks <= 0 or not gap:
+        return start, gap
+    end = int(start) + len(gap)
+    s_min = max(0, (end // block_size) - window_blocks + 1) * block_size
+    if start < s_min:
+        drop = min(s_min - start, len(gap))
+        start, gap = start + drop, gap[drop:]
+    start = (start // block_size) * block_size
+    start = max(start, s_min)
+    if start >= end:
+        return start, []
+    return start, list(gap)
+
+
+_neg_bad = 0
+_neg_shifted = 0
+for _st in range(0, 40):
+    _g0 = _tok[_st:_st + 10]
+    _s_old, _g_old = _old_align_down(_st, _g0, BS, M)
+    # 旧写法：返回的 gap 声称它们落在 [_s_old, _s_old+len) 上
+    if _g_old != _tok[_s_old:_st + len(_g0)]:
+        _neg_bad += 1
+    if _s_old != _st:
+        _neg_shifted += 1
+check("③' 负对照：旧的对齐写法确实破坏配对（≥1 组）", _neg_bad > 0,
+      f"破坏 {_neg_bad}/40 组，其中 {_neg_shifted} 组起点被挪动")
+# 而新写法在同一批输入上全对
+_new_bad = 0
+for _st in range(0, 40):
+    _g0 = _tok[_st:_st + 10]
+    _s1, _g1 = clip_gap_to_window(_st, _g0, BS, M, _tok)
+    if _g1 != _tok[_s1:_st + len(_g0)]:
+        _new_bad += 1
+check("③' 新写法在同一批输入上配对全对", _new_bad == 0, f"mismatch={_new_bad}")
+
+# ★ 负对照（真实场景，最锋利的一条）：bs=256、上一轮全接受 → 缺口是位置 1030
+#   上的 1 个 token。旧写法把它挪到位置 1024 去写 —— 于是位置 1030 保持陈旧、
+#   位置 1024 被写成别人的 KV。两种写法必须给出不同的落点。
+_rt = list(range(20000, 20000 + 1032))
+_s_old, _g_old = _old_align_down(1030, _rt[1030:1031], 256, 8)
+_s_new, _g_new = clip_gap_to_window(1030, _rt[1030:1031], 256, 8, _rt)
+check("③' 真实场景负对照：旧写法把位置 1030 的 token 写到 1024（错位 6 格）",
+      _s_old == 1024 and _g_old == _rt[1030:1031], f"start={_s_old} {_g_old}")
+check("③' 真实场景：新写法原地不动，落点 = 1030（配对正确）",
+      _s_new == 1030 and _g_new == _rt[1030:1031], f"start={_s_new} {_g_new}")
+check("③' 两种写法的落点不同（所以这条负对照不是空转）", _s_old != _s_new)
 
 # ======================================================================
 print("§4 ★ 硬要求：默认档（滑窗关闭）必须与改动前的写法逐值相等")
@@ -278,6 +354,133 @@ for _M in (2, 3, 4):
     if w.block_table(b0_pre * BS) != w.block_table(end - 1):
         _found = True
 check("⑦ 反证：M≥2 时用 w0 算确实会错位（所以这条回归是必要的）", _found)
+
+# ======================================================================
+print("§8 ★ 独立验证：「滑窗真的只看到最近 M 个 token」+ 缺口轮次不许砍小窗口")
+# ----------------------------------------------------------------------
+# 这条是上一轮自己承认没做的地基验证。做法不是"看几何公式对不对"，而是
+# 把整条时间线跑一遍并给每一格环内容【打上它自己的绝对位置标签】：
+#   写  slot(p) -> 标签 p
+#   读  key j   -> slot = bt[j//bs]*bs + j%bs，必须 content[slot] == b0*bs + j
+# 任何"读到陈旧/别人的内容 / 读到未来 / 越过窗口"都会被抓出来。
+#
+# 同时验证「只看到最近 M 个 token」这件事的两半：
+#   ① 可见的位置集合 = 最近 M 个块里 ≤ pos 的那些（够不到的更老位置不可见）；
+#   ② 这些位置读到的都是自己的 KV（不是别人的）。
+
+
+def _simulate(M_, L, k, accepts, bs=BS):
+    """跑一遍 prefill + 若干轮 decode，返回 (failures, stats)。"""
+    ring = [100 + i for i in range(M_)]
+    w = mk(M_, ring)
+    content = {}                       # slot -> 环里这一格装的是哪个绝对位置的 KV
+    bad = []
+
+    def _check_read(pos, vf, where):
+        b0 = w.b0(pos, vf)
+        b0p = w.b0(pos)                # 自然窗口起点（不含 valid_from）
+        clen = w.ctx_len(pos, vf)
+        bt = w.block_table(pos, vf)
+        # ① 窗口不越界：最老可见位置不早于 pos-M*bs+1；可见长度 ≤ M*bs
+        if b0 * bs < pos - M_ * bs + 1:
+            bad.append((where, pos, "window_too_old", b0 * bs))
+        if clen > M_ * bs:
+            bad.append((where, pos, "clen>M*bs", clen))
+        # ② 每一格读到的都必须是它自己的位置
+        for j in range(clen):
+            slot = bt[j // bs] * bs + (j % bs)
+            want = b0 * bs + j
+            if content.get(slot) != want:
+                bad.append((where, pos, "stale_read", want, content.get(slot)))
+            if want > pos:
+                bad.append((where, pos, "future_read", want))
+        # ③ 无缺口时候选位置必须拿到完整窗口（b0 就是自然起点）
+        return b0, b0p, clen
+
+    # ---- 窗口 prefill：只写最近 M 个块 ----
+    b0p = max(0, (L - 1) // bs - M_ + 1)
+    for p in range(b0p * bs, L):
+        content[w.slot(p)] = p
+    num_tokens, dvl, gap_len = L, L, 0
+    stats = []
+    for r in range(len(accepts)):
+        token_ids = list(range(10000, 10000 + num_tokens))
+        dvl = num_tokens - 1 - gap_len
+        start, gapt, vf = window_request_geom(dvl, token_ids, bs, M_)
+        # 补齐：token[s] 必须落到 start+s
+        if gapt != token_ids[start:len(token_ids) - 1]:
+            bad.append(("catchup_pair", r, start, len(gapt)))
+        for s, _t in enumerate(gapt):
+            content[w.slot(start + s)] = start + s
+        # k 个候选位置（propose 每步：先 store 再 attend）
+        clens = []
+        for s in range(k):
+            pos = num_tokens - 1 + s
+            content[w.slot(pos)] = pos
+            b0, b0p_nat, clen = _check_read(pos, vf, f"r{r}s{s}")
+            clens.append(clen)
+            if b0 != b0p_nat:
+                bad.append((f"r{r}s{s}", pos, "collapsed_window", b0, b0p_nat))
+        stats.append(dict(r=r, num_tokens=num_tokens, gap=len(gapt),
+                          vf=vf, clen=clens))
+        a = accepts[r]
+        num_tokens += a + 1
+        gap_len = 1 if a == k else 0
+    return bad, stats
+
+
+for Mv in (1, 2, 3, 5, 8):
+    bad, stats = _simulate(Mv, 40, 4, [4, 2, 4, 0, 4, 3, 4, 1])
+    check(f"⑧ M={Mv}: 全时间线无陈旧读/无未来读/不越界/缺口轮次不塌缩", not bad,
+          f"{bad[:3]}")
+    # 「只看到最近 M 个 token」的硬边界：M 越小可见长度越短，且 ≤ M*bs
+    maxc = max(max(s["clen"]) for s in stats)
+    check(f"⑧ M={Mv}: 可见长度 ≤ M*bs = {Mv * BS}", maxc <= Mv * BS, f"max clen={maxc}")
+
+# 边界结论：M=2 看得见的位置【严格】多于 M=1（块粒度），且 M=1 看不见上一个块
+w1, w2 = mk(1, [0]), mk(2, [0, 1])
+_s1 = {w1.b0(p) * BS + j for p in (4 * BS - 1,) for j in range(w1.ctx_len(p))}
+_s2 = {w2.b0(p) * BS + j for p in (4 * BS - 1,) for j in range(w2.ctx_len(p))}
+check("⑧ 同一查询位置：M=2 的可见位置集合真包含 M=1（滑窗确实随 M 变宽）",
+      _s1 < _s2, f"M=1:{min(_s1)}..{max(_s1)}  M=2:{min(_s2)}..{max(_s2)}")
+check("⑧ M=1 时上一个块完全不可见（只看到最近 1 个块）",
+      min(_s1) == (4 * BS - 1) // BS * BS, f"min={min(_s1)}")
+
+# ----------------------------------------------------------------------
+# ⑧' ★ 负对照：把 valid_from 退回「max(wvf, 补齐起点)」就会把窗口砍成 ≈1 块
+#     （这正是 W=512 接受率最低那类现象的机制）。必须能失败。
+_tk = list(range(10000, 10000 + 1032))
+Mv, BSv = 8, 256
+_w = DraftWindow([0, 1, 2, 3, 4, 5, 6, 7], BSv, Mv)
+dvl, pos = 1030, 1031                       # 上一轮全接受 → 缺口 = 位置 1030 一个 token
+_start, _gap, _vf = window_request_geom(dvl, _tk, BSv, Mv)
+_clen_new = _w.ctx_len(pos, _vf)
+# 旧规则
+_wvf = window_valid_from(dvl, BSv, Mv)
+_vf_old = max(_wvf, _start)
+_clen_old = _w.ctx_len(pos, _vf_old)
+check("⑧' 修复后：1-token 缺口下窗口 = 完整上下文（clen = pos+1）",
+      _clen_new == pos + 1, f"clen={_clen_new}  vf={_vf}  start={_start}")
+check("⑧' 负对照：旧规则 max(wvf, 补齐起点) 把同一窗口砍到 ≈1 个块（能失败）",
+      _clen_old < 2 * BSv and _clen_old == pos - (_start // BSv) * BSv + 1,
+      f"旧 clen={_clen_old} vs 新 clen={_clen_new}（vf_old={_vf_old}）")
+check("⑧' 负对照确实把窗口砍小了（新 > 旧 * 4）",
+      _clen_new > 4 * _clen_old, f"{_clen_new} vs {_clen_old}")
+
+# 缺口被夹到窗口外（drop 分支）时：起点前移到窗口最老块，且自然下界 ≥ start//bs
+for Mv in (1, 2, 4, 8):
+    _w = DraftWindow([0] * Mv, 256, Mv)
+    for _L, _dvl in ((3000, 500), (3000, 0), (5000, 100)):
+        _tk = list(range(10000, 10000 + _L))
+        _st, _gp, _vfn = window_request_geom(_dvl, _tk, 256, Mv)
+        _smin = max(0, ((_L - 1) // 256 - Mv + 1)) * 256
+        assert _st >= _smin, (_st, _smin)
+        for _pos in range(_L - 1, _L - 1 + 6):
+            _b0 = _w.b0(_pos, _vfn)
+            if _b0 * 256 < _st:
+                FAILED.append(f"⑧ drop 后仍能读到补齐起点之前的位置 M={Mv} dvl={_dvl}")
+check("⑧ 缺口被夹到窗口外时：b0 恒 ≥ 补齐起点所在块（drop 后不读更老的位置）",
+      not any("drop 后" in f for f in FAILED), "")
 
 print()
 if FAILED:
