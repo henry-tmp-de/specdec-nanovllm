@@ -1,0 +1,127 @@
+diff --git a/nanovllm/config.py b/nanovllm/config.py
+index 7791617..dc631fb 100644
+--- a/nanovllm/config.py
++++ b/nanovllm/config.py
+@@ -43,6 +43,14 @@ class Config:
+     spec_batch_draft: bool = True
+     #   True  = 同一候选位置把 B 条请求一起前向（k 次批量前向）
+     #   False = 逐请求循环（B×k 次单序列前向）—— 消融 S1 的对照开关（= C 组行为）
++    spec_draft_pinned_meta: bool = True
++    #   True  = 草稿图每步的元数据（position / slot / ctx_len / block_table）
++    #           先写【锁页】CPU 缓冲、再 non_blocking 拷进图的静态缓冲。
++    #   False = 老路径：直接 torch.tensor(list, device='cuda') ——【可分页】H2D，
++    #           同步、每次几十 µs，每步 4~5 次。
++    #   ★ 纯数据搬运改动，数值完全一致（关闭时与改动前逐字节等价）。
++    #     动机：草稿一步的前向本身没有 kernel 间空隙（device_sum ≈ wall），
++    #     但图外这 4~5 次可分页拷贝实测 ~211 µs/步，一轮 6~7 步就是 ~1.5 ms。
+     spec_batch_verify_graph: bool = True
+     #   True  = B>1 的验证前向走按 (B,k) 捕获的图
+     #   False = 只有 B=1 走图，B>1 退回 eager —— 消融 S2 的对照开关
+diff --git a/nanovllm/engine/model_runner.py b/nanovllm/engine/model_runner.py
+index 2aef0ab..d4d031f 100644
+--- a/nanovllm/engine/model_runner.py
++++ b/nanovllm/engine/model_runner.py
+@@ -95,8 +95,9 @@ class ModelRunner:
+                     self.draft_model, config.draft_quant_modules,
+                     config.draft_quant_granularity, config.draft_quant_group_size)
+                 _log_quant("draft", config.draft_model, self.draft_quant_stats)
+-            self.spec_proposer = DraftModelProposer(self.draft_model, k=config.spec_k,
+-                                                    block_size=self.block_size)
++            self.spec_proposer = DraftModelProposer(
++                self.draft_model, k=config.spec_k, block_size=self.block_size,
++                pinned_meta=config.spec_draft_pinned_meta)
+             print(f"[spec] draft model: {config.draft_model} "
+                   f"({self.draft_hf_config.num_hidden_layers} 层, "
+                   f"vocab {self.draft_hf_config.vocab_size})")
+diff --git a/nanovllm/spec_decode/draft_proposer.py b/nanovllm/spec_decode/draft_proposer.py
+index 02695cd..b55a2cc 100644
+--- a/nanovllm/spec_decode/draft_proposer.py
++++ b/nanovllm/spec_decode/draft_proposer.py
+@@ -246,7 +246,8 @@ class DraftModelProposer:
+     对外入口就一个：`propose_batch(reqs)`（`propose` 是它的 B=1 兼容包装）。
+     """
+ 
+-    def __init__(self, model: nn.Module, k: int = 4, block_size: int = 256):
++    def __init__(self, model: nn.Module, k: int = 4, block_size: int = 256,
++                 pinned_meta: bool = True):
+         self.model = model
+         self.k = k
+         self.block_size = block_size
+@@ -254,6 +255,12 @@ class DraftModelProposer:
+         self.n_layers_bound = 0
+         # 由 ModelRunner 注入的静态形状 CUDA graph：{batch -> (graph, graph_vars)}
+         self._graphs: Dict[int, tuple] = {}
++        # ★ 每步图形元数据的【锁页】暂存区：{B -> dict(tensor)}。
++        #   老写法 `torch.tensor(list, device='cuda')` 走的是【可分页】H2D
++        #   （同步 cudaMemcpy，每次几十 µs），一步 4~5 次、一轮 6~7 步。
++        #   改成「写锁页 CPU 缓冲 -> non_blocking 拷进图」后数值完全一致。
++        self.pinned_meta = bool(pinned_meta)
++        self._meta_pinned: Dict[int, dict] = {}
+ 
+         # ---------- 统计（结构验收用：必须能看出「每轮是 k 次批量前向」）----------
+         self.n_graphed = 0            # 走图的前向次数
+@@ -451,6 +458,23 @@ class DraftModelProposer:
+         # 兜底：从 logits 推（只在没有 lm_head 的包装模型上会走到）
+         return getattr(self.model, "vocab_size", 151936)
+ 
++    def _staging(self, B: int, width: int) -> dict:
++        """按 (B, 块表宽度) 缓存一份锁页 CPU 暂存区（只在图路径用）。
++
++        宽度按图的静态块表宽度取；宽了会重开一份（正常不会发生）。
++        """
++        st = self._meta_pinned.get(B)
++        if st is None or st["block_tables"].size(1) < width:
++            st = dict(
++                positions=torch.empty(B, dtype=torch.int64, pin_memory=True),
++                slot_mapping=torch.empty(B, dtype=torch.int32, pin_memory=True),
++                context_lens=torch.empty(B, dtype=torch.int32, pin_memory=True),
++                block_tables=torch.full((B, width), _PAD_BLOCK,
++                                        dtype=torch.int32, pin_memory=True),
++            )
++            self._meta_pinned[B] = st
++        return st
++
+     def _slot(self, block_table: List[int], pos: int) -> int:
+         """位置 pos 的物理槽 = 块表[pos//bs] * bs + pos%bs（块表不够就给 -1）。"""
+         bi, off = divmod(int(pos), self.block_size)
+@@ -498,14 +522,32 @@ class DraftModelProposer:
+                 if not isinstance(tokens, torch.Tensor):
+                     tokens = torch.tensor(tokens, dtype=torch.int64, device=dev)
+                 gv["input_ids"].copy_(tokens)
+-                gv["positions"].copy_(torch.tensor(positions, dtype=torch.int64, device=dev))
+-                gv["slot_mapping"].copy_(torch.tensor(slot_mapping, dtype=torch.int32, device=dev))
+-                gv["context_lens"].copy_(torch.tensor(context_lens, dtype=torch.int32, device=dev))
+-                gv["block_tables"].fill_(_PAD_BLOCK)
+-                for i, bt in enumerate(block_tables):
+-                    if bt:
+-                        gv["block_tables"][i, :len(bt)] = torch.tensor(
+-                            bt, dtype=torch.int32, device=dev)
++                if self.pinned_meta:
++                    # ★ 走锁页暂存：4 次可分页 H2D + 1 个 fill kernel
++                    #   -> 4 次 non_blocking 锁页 H2D + 1 次整块拷贝。
++                    #   值一模一样，只是搬运方式变了（默认路径逐字节等价）。
++                    st = self._staging(B, width)
++                    st["positions"][:B] = torch.tensor(positions, dtype=torch.int64)
++                    st["slot_mapping"][:B] = torch.tensor(slot_mapping, dtype=torch.int32)
++                    st["context_lens"][:B] = torch.tensor(context_lens, dtype=torch.int32)
++                    st["block_tables"].fill_(_PAD_BLOCK)
++                    for i, bt in enumerate(block_tables):
++                        if bt:
++                            st["block_tables"][i, :len(bt)] = torch.tensor(
++                                bt, dtype=torch.int32)
++                    gv["positions"].copy_(st["positions"], non_blocking=True)
++                    gv["slot_mapping"].copy_(st["slot_mapping"], non_blocking=True)
++                    gv["context_lens"].copy_(st["context_lens"], non_blocking=True)
++                    gv["block_tables"].copy_(st["block_tables"], non_blocking=True)
++                else:
++                    gv["positions"].copy_(torch.tensor(positions, dtype=torch.int64, device=dev))
++                    gv["slot_mapping"].copy_(torch.tensor(slot_mapping, dtype=torch.int32, device=dev))
++                    gv["context_lens"].copy_(torch.tensor(context_lens, dtype=torch.int32, device=dev))
++                    gv["block_tables"].fill_(_PAD_BLOCK)
++                    for i, bt in enumerate(block_tables):
++                        if bt:
++                            gv["block_tables"][i, :len(bt)] = torch.tensor(
++                                bt, dtype=torch.int32, device=dev)
+                 graph.replay()
+                 self.n_graphed += 1
+                 return gv["logits"]
