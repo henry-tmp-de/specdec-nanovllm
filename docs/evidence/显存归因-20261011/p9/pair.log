@@ -1,0 +1,60 @@
+### pair start 2026-10-11T08:05:07Z  GPU=0
+--- nvidia-smi compute-apps [before-all] ---
+0, GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91, 15 MiB, 0 %
+1, GPU-ffebe28a-1bac-1eca-02d4-55404ad408ed, 15 MiB, 0 %
+2, GPU-831b0ef4-b4bf-fb89-40c5-0094190dc34b, 15 MiB, 0 %
+3, GPU-11831eb3-6ad2-8dd4-064d-072991544921, 15 MiB, 0 %
+4, GPU-a8884835-fdbc-2cbb-faee-c09133f33869, 15 MiB, 0 %
+5, GPU-d55826e2-bbed-6716-57f7-6c834a1d592f, 15 MiB, 0 %
+6, GPU-306b1d1b-4a60-7b84-fc46-e0db72e553d5, 15 MiB, 0 %
+7, GPU-e0671215-034e-dd14-093f-b3755e543b6f, 15 MiB, 0 %
+### CASE=bf16  start 2026-10-11T08:05:08Z
+--- nvidia-smi compute-apps [before-bf16] ---
+0, GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91, 15 MiB, 0 %
+1, GPU-ffebe28a-1bac-1eca-02d4-55404ad408ed, 15 MiB, 0 %
+2, GPU-831b0ef4-b4bf-fb89-40c5-0094190dc34b, 15 MiB, 0 %
+3, GPU-11831eb3-6ad2-8dd4-064d-072991544921, 15 MiB, 0 %
+4, GPU-a8884835-fdbc-2cbb-faee-c09133f33869, 15 MiB, 0 %
+5, GPU-d55826e2-bbed-6716-57f7-6c834a1d592f, 15 MiB, 0 %
+6, GPU-306b1d1b-4a60-7b84-fc46-e0db72e553d5, 15 MiB, 0 %
+7, GPU-e0671215-034e-dd14-093f-b3755e543b6f, 15 MiB, 0 %
+### CASE=bf16  exit=0  end 2026-10-11T08:05:28Z
+--- nvidia-smi compute-apps [after-bf16] ---
+0, GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91, 15 MiB, 100 %
+1, GPU-ffebe28a-1bac-1eca-02d4-55404ad408ed, 15 MiB, 0 %
+2, GPU-831b0ef4-b4bf-fb89-40c5-0094190dc34b, 15 MiB, 0 %
+3, GPU-11831eb3-6ad2-8dd4-064d-072991544921, 15 MiB, 0 %
+4, GPU-a8884835-fdbc-2cbb-faee-c09133f33869, 15 MiB, 0 %
+5, GPU-d55826e2-bbed-6716-57f7-6c834a1d592f, 15 MiB, 0 %
+6, GPU-306b1d1b-4a60-7b84-fc46-e0db72e553d5, 15 MiB, 0 %
+7, GPU-e0671215-034e-dd14-093f-b3755e543b6f, 15 MiB, 0 %
+### CASE=qall  start 2026-10-11T08:05:28Z
+--- nvidia-smi compute-apps [before-qall] ---
+0, GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91, 15 MiB, 2 %
+1, GPU-ffebe28a-1bac-1eca-02d4-55404ad408ed, 15 MiB, 0 %
+2, GPU-831b0ef4-b4bf-fb89-40c5-0094190dc34b, 15 MiB, 0 %
+3, GPU-11831eb3-6ad2-8dd4-064d-072991544921, 15 MiB, 0 %
+4, GPU-a8884835-fdbc-2cbb-faee-c09133f33869, 15 MiB, 0 %
+5, GPU-d55826e2-bbed-6716-57f7-6c834a1d592f, 15 MiB, 0 %
+6, GPU-306b1d1b-4a60-7b84-fc46-e0db72e553d5, 15 MiB, 0 %
+7, GPU-e0671215-034e-dd14-093f-b3755e543b6f, 15 MiB, 0 %
+### CASE=qall  exit=0  end 2026-10-11T08:05:49Z
+--- nvidia-smi compute-apps [after-qall] ---
+0, GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91, 15 MiB, 100 %
+1, GPU-ffebe28a-1bac-1eca-02d4-55404ad408ed, 15 MiB, 0 %
+2, GPU-831b0ef4-b4bf-fb89-40c5-0094190dc34b, 15 MiB, 0 %
+3, GPU-11831eb3-6ad2-8dd4-064d-072991544921, 15 MiB, 0 %
+4, GPU-a8884835-fdbc-2cbb-faee-c09133f33869, 15 MiB, 0 %
+5, GPU-d55826e2-bbed-6716-57f7-6c834a1d592f, 15 MiB, 0 %
+6, GPU-306b1d1b-4a60-7b84-fc46-e0db72e553d5, 15 MiB, 0 %
+7, GPU-e0671215-034e-dd14-093f-b3755e543b6f, 15 MiB, 0 %
+--- nvidia-smi compute-apps [after-all] ---
+0, GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91, 15 MiB, 21 %
+1, GPU-ffebe28a-1bac-1eca-02d4-55404ad408ed, 15 MiB, 0 %
+2, GPU-831b0ef4-b4bf-fb89-40c5-0094190dc34b, 15 MiB, 0 %
+3, GPU-11831eb3-6ad2-8dd4-064d-072991544921, 15 MiB, 0 %
+4, GPU-a8884835-fdbc-2cbb-faee-c09133f33869, 15 MiB, 0 %
+5, GPU-d55826e2-bbed-6716-57f7-6c834a1d592f, 15 MiB, 0 %
+6, GPU-306b1d1b-4a60-7b84-fc46-e0db72e553d5, 15 MiB, 0 %
+7, GPU-e0671215-034e-dd14-093f-b3755e543b6f, 15 MiB, 0 %
+### pair done 2026-10-11T08:05:49Z

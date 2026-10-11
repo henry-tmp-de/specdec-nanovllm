@@ -15,6 +15,7 @@ import sys
 import gc
 import json
 import atexit
+import hashlib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -111,6 +112,8 @@ draft_model=draft, spec_batch_threshold=0,
               quant_direct_load=direct)
     mr = llm.model_runner
     st = getattr(mr, "draft_quant_stats", [])
+    # ★ 固定种子：让「就地量化 vs 直载」的生成 token 序列可比（P9 验证项）
+    torch.manual_seed(20261010)
     out = llm.generate([P], SamplingParams(temperature=1.0, max_tokens=64,
                                            ignore_eos=True), use_tqdm=False)
     nb = sum(s["bytes_before"] for s in st)
@@ -123,7 +126,8 @@ draft_model=draft, spec_batch_threshold=0,
         "num_kvcache_blocks": mr.config.num_kvcache_blocks,
         "num_draft_blocks": getattr(mr.config, "num_draft_blocks", None),
         "kv_tokens_target": mr.config.num_kvcache_blocks * mr.block_size,
-        "gen_tokens": len(out[0]["token_ids"]),
+"gen_tokens": len(out[0]["token_ids"]),
+        "gen_md5": hashlib.md5(",".join(map(str, out[0]["token_ids"])).encode()).hexdigest(),
     }
     try:
         atexit.unregister(llm.exit)

@@ -1,0 +1,8 @@
+[equiv] 量化模块 112 个, granularity=per_channel, group_size=128
+[equiv] A 就地量化（GPU）完成
+[equiv] B 直载 / GPU 量化完成
+[equiv] C 直载 / 读离线 int8 完成
+@@EQ:A_vs_B_gpuquant@@{"int8_weight_mismatch": 0, "weight_examples": [], "scale_mismatch": 0, "scale_examples": [], "other_param_mismatch": [], "gemm_cases": 20, "gemm_mismatch": 0, "gemm_examples": [], "lm_head_tied": true}
+@@EQ:A_vs_C_offlineint8@@{"int8_weight_mismatch": 112, "weight_examples": [["model.layers.0.mlp.down_proj", 177, 3145728], ["model.layers.0.mlp.gate_up_proj", 349, 6291456]], "scale_mismatch": 0, "scale_examples": [], "other_param_mismatch": [], "gemm_cases": 20, "gemm_mismatch": 20, "gemm_examples": [[1, "model.layers.0.self_attn.qkv_proj", 0.0078125], [1, "model.layers.0.self_attn.o_proj", 0.015625]], "lm_head_tied": true}
+VERDICT_B(GPU量化): BITWISE_IDENTICAL
+VERDICT_C(离线int8): DIFFERENT

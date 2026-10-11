@@ -1,0 +1,29 @@
+  [snap:after load_model] peak=8.289 current=7.565 used=8.632 reserved=8.320
+[mem] {"tag": "target_loaded", "free": 16038690816, "total": 25307578368, "used": 9268887552, "current": 8122680320, "reserved": 8933867520, "peak": 8900723712, "retained_idle": 811187200, "outside_allocator": 335020032, "inactive_split": 1686528, "allocator": "native"}
+  [snap:after load_model] peak=8.965 current=8.675 used=9.310 reserved=8.998
+[mem] {"tag": "draft_loaded_before_quant", "free": 15310979072, "total": 25307578368, "used": 9996599296, "current": 9314794496, "reserved": 9661579264, "peak": 9625959424, "retained_idle": 346784768, "outside_allocator": 335020032, "inactive_split": 34309120, "allocator": "native"}
+  [snap:before apply_int8_quant] peak=8.965 current=8.675 used=9.310 reserved=8.998
+  [snap:after apply_int8_quant] peak=8.965 current=8.276 used=9.228 reserved=8.916
+[int8] draft 量化 112 个模块 (Qwen3-0.6B-qall): 840.0 -> 420.7 MiB (0.501x), rel_err max=0.01639
+[mem] {"tag": "draft_after_quant", "free": 15399059456, "total": 25307578368, "used": 9908518912, "current": 8885828608, "reserved": 9573498880, "peak": 9625959424, "retained_idle": 687670272, "outside_allocator": 335020032, "inactive_split": 687670272, "allocator": "native"}
+[spec] draft model: /home/ziru/nano-vllm/models/Qwen3-0.6B-qall (28 层, vocab 151936)
+[mem] {"tag": "warmup_after_reset", "free": 15399059456, "total": 25307578368, "used": 9908518912, "current": 8885828608, "reserved": 9573498880, "peak": 8885828608, "retained_idle": 687670272, "outside_allocator": 335020032, "inactive_split": 687670272, "allocator": "native"}
+[mem] {"tag": "warmup_after_prefill", "free": 13819904000, "total": 25307578368, "used": 11487674368, "current": 8894348288, "reserved": 11135877120, "peak": 10270343680, "retained_idle": 2241528832, "outside_allocator": 351797248, "inactive_split": 679150592, "allocator": "native"}
+[force-blocks] 目标 170 块 -> util=0.898678 per_block=67108864
+[kv-budget] total=23.57GB used=9.24GB peak=9.565GB current=8.284GB
+[mem] {"tag": "kv_budget_entry", "free": 15382282240, "total": 25307578368, "used": 9925296128, "current": 8894348288, "reserved": 9573498880, "peak": 10270343680, "retained_idle": 679150592, "outside_allocator": 351797248, "inactive_split": 679150592, "allocator": "native"}
+[mem] {"tag": "kv_budget_entry_raw", "free": 15382282240, "total": 25307578368, "used": 9925296128, "current": 8894348288, "reserved": 9573498880, "peak": 10270343680, "retained_idle": 679150592, "outside_allocator": 351797248, "inactive_split": 679150592, "allocator": "native"}
+[mem] {"tag": "kv_budget_computed", "gpu_memory_utilization": 0.8986775621628691, "total": 25307578368, "used": 9925296128, "peak": 10270343680, "current": 8894348288, "budget": 11442061312, "tgt_block_bytes": 37748736, "draft_block_bytes": 29360128, "per_block_total": 67108864, "blocks_floor": 170, "budget_mod_block": 33554432, "num_kvcache_blocks": 170}
+[spec] draft KV cache: 28 层 x 170 blocks, 每block 28672 KB
+[spec] blocks=170, target 每block 36864 KB, 合计 10.62 GB
+[mem] {"tag": "after_allocate_kv_cache", "free": 3973775360, "total": 25307578368, "used": 21333803008, "current": 20302855168, "reserved": 20982005760, "peak": 20302855168, "retained_idle": 679150592, "outside_allocator": 351797248, "inactive_split": 679150592, "allocator": "native"}
+[spec] draft CUDA graph 就绪 (bs=[1, 2, 4], 1 token/行)
+[spec] verify CUDA graph 就绪 (shapes=[(1, 6), (2, 6), (4, 6)], 7 query/请求, 共享图池)
+[mem] {"tag": "after_capture", "free": 3600482304, "total": 25307578368, "used": 21707096064, "current": 20332253184, "reserved": 21107834880, "peak": 20361129984, "retained_idle": 775581696, "outside_allocator": 599261184, "inactive_split": 674918400, "allocator": "native"}
+[rank0]:W1011 08:34:21.991000 1928200 torch/_dynamo/convert_frame.py:1676] [0/8] torch._dynamo hit config.recompile_limit (8)
+[rank0]:W1011 08:34:21.991000 1928200 torch/_dynamo/convert_frame.py:1676] [0/8]    function: 'rms_forward' (/home/ziru/nano-vllm/p1-work/nanovllm/layers/layernorm.py:16)
+[rank0]:W1011 08:34:21.991000 1928200 torch/_dynamo/convert_frame.py:1676] [0/8]    last reason: 0/7: tensor 'x' rank mismatch. expected 2, actual 3
+[rank0]:W1011 08:34:21.991000 1928200 torch/_dynamo/convert_frame.py:1676] [0/8] To log all recompilation reasons, use TORCH_LOGS="recompiles".
+[rank0]:W1011 08:34:21.991000 1928200 torch/_dynamo/convert_frame.py:1676] [0/8] To diagnose recompilation issues, see https://pytorch.org/docs/main/compile/programming_model.recompilation.html
+@@C@@{"tag": "draft_qall (全线性层自动识别 int8)", "draft_dir": "/home/ziru/nano-vllm/models/Qwen3-0.6B-qall", "draft_quant_modules": 112, "draft_ffn_bytes_before": 880803840, "draft_ffn_bytes_after": 441090048, "used_MB": 19417.9, "num_kvcache_blocks": 170, "num_draft_blocks": 0, "kv_tokens_target": 43520, "gen_tokens": 64}
+@@DONE@@

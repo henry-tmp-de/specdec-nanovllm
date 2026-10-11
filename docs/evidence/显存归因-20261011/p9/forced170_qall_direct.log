@@ -1,0 +1,25 @@
+  [snap:after load_model] peak=8.289 current=7.565 used=8.632 reserved=8.320
+[mem] {"tag": "target_loaded", "free": 16038690816, "total": 25307578368, "used": 9268887552, "current": 8122680320, "reserved": 8933867520, "peak": 8900723712, "retained_idle": 811187200, "outside_allocator": 335020032, "inactive_split": 1686528, "allocator": "native"}
+[mem] {"tag": "draft_loaded_before_quant", "free": 16038690816, "total": 25307578368, "used": 9268887552, "current": 8877177856, "reserved": 8933867520, "peak": 8900723712, "retained_idle": 56689664, "outside_allocator": 335020032, "inactive_split": 56689664, "allocator": "native"}
+[int8] draft 预量化直载 112 个模块 (Qwen3-0.6B-int8-all): 840.0 -> 420.7 MiB (0.501x)  [无 GPU 侧 bf16]
+[spec] draft model: /home/ziru/nano-vllm/models/Qwen3-0.6B-int8-all (28 层, vocab 151936)
+[mem] {"tag": "warmup_after_reset", "free": 16038690816, "total": 25307578368, "used": 9268887552, "current": 8877177856, "reserved": 8933867520, "peak": 8877177856, "retained_idle": 56689664, "outside_allocator": 335020032, "inactive_split": 56689664, "allocator": "native"}
+[mem] {"tag": "warmup_after_prefill", "free": 13704560640, "total": 25307578368, "used": 11603017728, "current": 8885697536, "reserved": 11251220480, "peak": 10261692928, "retained_idle": 2365522944, "outside_allocator": 351797248, "inactive_split": 81724416, "allocator": "native"}
+[force-blocks] 目标 170 块 -> util=0.874729 per_block=67108864
+[kv-budget] total=23.57GB used=8.68GB peak=9.557GB current=8.275GB
+[mem] {"tag": "kv_budget_entry", "free": 15988359168, "total": 25307578368, "used": 9319219200, "current": 8885697536, "reserved": 8967421952, "peak": 10261692928, "retained_idle": 81724416, "outside_allocator": 351797248, "inactive_split": 81724416, "allocator": "native"}
+[mem] {"tag": "kv_budget_entry_raw", "free": 15988359168, "total": 25307578368, "used": 9319219200, "current": 8885697536, "reserved": 8967421952, "peak": 10261692928, "retained_idle": 81724416, "outside_allocator": 351797248, "inactive_split": 81724416, "allocator": "native"}
+[mem] {"tag": "kv_budget_computed", "gpu_memory_utilization": 0.8747291258807809, "total": 25307578368, "used": 9319219200, "peak": 10261692928, "current": 8885697536, "budget": 11442061312, "tgt_block_bytes": 37748736, "draft_block_bytes": 29360128, "per_block_total": 67108864, "blocks_floor": 170, "budget_mod_block": 33554432, "num_kvcache_blocks": 170}
+[spec] draft KV cache: 28 层 x 170 blocks, 每block 28672 KB
+[spec] blocks=170, target 每block 36864 KB, 合计 10.62 GB
+[mem] {"tag": "after_allocate_kv_cache", "free": 4579852288, "total": 25307578368, "used": 20727726080, "current": 20294204416, "reserved": 20375928832, "peak": 20294204416, "retained_idle": 81724416, "outside_allocator": 351797248, "inactive_split": 81724416, "allocator": "native"}
+[spec] draft CUDA graph 就绪 (bs=[1, 2, 4], 1 token/行)
+[spec] verify CUDA graph 就绪 (shapes=[(1, 6), (2, 6), (4, 6)], 7 query/请求, 共享图池)
+[mem] {"tag": "after_capture", "free": 4206559232, "total": 25307578368, "used": 21101019136, "current": 20323376128, "reserved": 20501757952, "peak": 20352479232, "retained_idle": 178381824, "outside_allocator": 599261184, "inactive_split": 77718528, "allocator": "native"}
+[rank0]:W1011 08:34:43.541000 1928643 torch/_dynamo/convert_frame.py:1676] [0/8] torch._dynamo hit config.recompile_limit (8)
+[rank0]:W1011 08:34:43.541000 1928643 torch/_dynamo/convert_frame.py:1676] [0/8]    function: 'rms_forward' (/home/ziru/nano-vllm/p1-work/nanovllm/layers/layernorm.py:16)
+[rank0]:W1011 08:34:43.541000 1928643 torch/_dynamo/convert_frame.py:1676] [0/8]    last reason: 0/7: tensor 'x' rank mismatch. expected 2, actual 3
+[rank0]:W1011 08:34:43.541000 1928643 torch/_dynamo/convert_frame.py:1676] [0/8] To log all recompilation reasons, use TORCH_LOGS="recompiles".
+[rank0]:W1011 08:34:43.541000 1928643 torch/_dynamo/convert_frame.py:1676] [0/8] To diagnose recompilation issues, see https://pytorch.org/docs/main/compile/programming_model.recompilation.html
+@@C@@{"tag": "draft_int8直载 (全线性层)", "draft_dir": "/home/ziru/nano-vllm/models/Qwen3-0.6B-int8-all", "draft_quant_modules": 112, "draft_ffn_bytes_before": 880803840, "draft_ffn_bytes_after": 441090048, "used_MB": 19409.6, "num_kvcache_blocks": 170, "num_draft_blocks": 0, "kv_tokens_target": 43520, "gen_tokens": 64}
+@@DONE@@

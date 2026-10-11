@@ -1,0 +1,24 @@
+  [snap:after load_model] peak=8.289 current=7.565 used=8.632 reserved=8.320
+[mem] {"tag": "target_loaded", "free": 16038690816, "total": 25307578368, "used": 9268887552, "current": 8122680320, "reserved": 8933867520, "peak": 8900723712, "retained_idle": 811187200, "outside_allocator": 335020032, "inactive_split": 1686528, "allocator": "native"}
+  [snap:after load_model] peak=8.965 current=8.675 used=9.310 reserved=8.998
+[mem] {"tag": "draft_loaded_before_quant", "free": 15310979072, "total": 25307578368, "used": 9996599296, "current": 9314794496, "reserved": 9661579264, "peak": 9625959424, "retained_idle": 346784768, "outside_allocator": 335020032, "inactive_split": 34309120, "allocator": "native"}
+[spec] draft model: /home/ziru/nano-vllm/models/Qwen3-0.6B (28 层, vocab 151936)
+[mem] {"tag": "warmup_after_reset", "free": 15623454720, "total": 25307578368, "used": 9684123648, "current": 9314794496, "reserved": 9349103616, "peak": 9314794496, "retained_idle": 34309120, "outside_allocator": 335020032, "inactive_split": 34309120, "allocator": "native"}
+[mem] {"tag": "warmup_after_prefill", "free": 13236895744, "total": 25307578368, "used": 12070682624, "current": 9323314176, "reserved": 11718885376, "peak": 10699309568, "retained_idle": 2395571200, "outside_allocator": 351797248, "inactive_split": 46760960, "allocator": "native"}
+[kv-budget] total=23.57GB used=9.05GB peak=9.965GB current=8.683GB
+[mem] {"tag": "kv_budget_entry", "free": 15585705984, "total": 25307578368, "used": 9721872384, "current": 9323314176, "reserved": 9370075136, "peak": 10699309568, "retained_idle": 46760960, "outside_allocator": 351797248, "inactive_split": 46760960, "allocator": "native"}
+[mem] {"tag": "kv_budget_entry_raw", "free": 15585705984, "total": 25307578368, "used": 9721872384, "current": 9323314176, "reserved": 9370075136, "peak": 10699309568, "retained_idle": 46760960, "outside_allocator": 351797248, "inactive_split": 46760960, "allocator": "native"}
+[mem] {"tag": "kv_budget_computed", "gpu_memory_utilization": 0.9, "total": 25307578368, "used": 9721872384, "peak": 10699309568, "current": 9323314176, "budget": 11678952755, "tgt_block_bytes": 37748736, "draft_block_bytes": 29360128, "per_block_total": 67108864, "blocks_floor": 174, "budget_mod_block": 2010419, "num_kvcache_blocks": 174}
+[spec] draft KV cache: 28 层 x 174 blocks, 每block 28672 KB
+[spec] blocks=174, target 每block 36864 KB, 合计 10.88 GB
+[mem] {"tag": "after_allocate_kv_cache", "free": 3908763648, "total": 25307578368, "used": 21398814720, "current": 21000256512, "reserved": 21047017472, "peak": 21000256512, "retained_idle": 46760960, "outside_allocator": 351797248, "inactive_split": 46760960, "allocator": "native"}
+[spec] draft CUDA graph 就绪 (bs=[1, 2, 4], 1 token/行)
+[spec] verify CUDA graph 就绪 (shapes=[(1, 6), (2, 6), (4, 6)], 7 query/请求, 共享图池)
+[mem] {"tag": "after_capture", "free": 3516596224, "total": 25307578368, "used": 21790982144, "current": 21031096320, "reserved": 21191720960, "peak": 21059317760, "retained_idle": 160624640, "outside_allocator": 599261184, "inactive_split": 59961344, "allocator": "native"}
+[rank0]:W1011 08:05:24.447000 1908503 torch/_dynamo/convert_frame.py:1676] [0/8] torch._dynamo hit config.recompile_limit (8)
+[rank0]:W1011 08:05:24.447000 1908503 torch/_dynamo/convert_frame.py:1676] [0/8]    function: 'rms_forward' (/home/ziru/nano-vllm/p1-work/nanovllm/layers/layernorm.py:16)
+[rank0]:W1011 08:05:24.447000 1908503 torch/_dynamo/convert_frame.py:1676] [0/8]    last reason: 0/7: tensor 'x' rank mismatch. expected 2, actual 3
+[rank0]:W1011 08:05:24.447000 1908503 torch/_dynamo/convert_frame.py:1676] [0/8] To log all recompilation reasons, use TORCH_LOGS="recompiles".
+[rank0]:W1011 08:05:24.447000 1908503 torch/_dynamo/convert_frame.py:1676] [0/8] To diagnose recompilation issues, see https://pytorch.org/docs/main/compile/programming_model.recompilation.html
+@@C@@{"tag": "draft_bf16 (无 quant_config.json)", "draft_dir": "/home/ziru/nano-vllm/models/Qwen3-0.6B", "draft_quant_modules": 0, "draft_ffn_bytes_before": 0, "draft_ffn_bytes_after": 0, "used_MB": 20083.7, "num_kvcache_blocks": 174, "num_draft_blocks": 0, "kv_tokens_target": 44544, "gen_tokens": 64}
+@@DONE@@

@@ -1,0 +1,5 @@
+  [snap:after load_model] peak=8.289 current=7.565 used=8.632 reserved=8.320
+[mem] {"tag": "target_loaded", "free": 16038690816, "total": 25307578368, "used": 9268887552, "current": 8122680320, "reserved": 8933867520, "peak": 8900723712, "retained_idle": 811187200, "outside_allocator": 335020032, "inactive_split": 1686528, "allocator": "native"}
+@@NEG@@ OK —— model_int8.safetensors 看起来是 INT8 checkpoint（含 model.layers.0.mlp.down_proj.weight_scale 等 84 个 scale）。引擎的量化是【从 BF16 权重就地量化】的：请把 model/draft_model 指到【BF16 原始 checkpoint】目录，并让该目录里有 quant_config.json（或用 quant_weights='int8'
+@@DONE@@
+[rank0]:[W1011 08:34:53.254140000 ProcessGroupNCCL.cpp:1553] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())

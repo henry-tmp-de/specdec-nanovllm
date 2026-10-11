@@ -1,0 +1,12 @@
+int8 file tensors: 507 quantized_layers(有scale): 196
+有 lm_head.weight 吗: True  有 model.embed_tokens.weight 吗: True
+{
+ "compared": 196,
+ "skipped_bf16_missing": 0,
+ "skipped_examples": [],
+ "q_int8_mismatch_count": 0,
+ "q_int8_mismatch_examples": [],
+ "scale_mismatch_count": 0,
+ "scale_mismatch_examples": []
+}
+VERDICT: BITWISE_IDENTICAL

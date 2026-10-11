@@ -1,0 +1,29 @@
+### final verify start 2026-10-11T08:32:42Z
+### CASE=bf16 [natural_bf16] FOO=1 2026-10-11T08:32:42Z
+###   exit=0
+@@C@@{"tag": "draft_bf16 (无 quant_config.json)", "draft_dir": "/home/ziru/nano-vllm/models/Qwen3-0.6B", "draft_quant_modules": 0, "draft_ffn_bytes_before": 0, "draft_ffn_bytes_after": 0, "used_MB": 20083.7, "num_kvcache_blocks": 174, "num_draft_blocks": 0, "kv_tokens_target": 44544, "gen_tokens": 64}
+### CASE=qall [natural_qall] FOO=1 2026-10-11T08:33:02Z
+###   exit=0
+@@C@@{"tag": "draft_qall (全线性层自动识别 int8)", "draft_dir": "/home/ziru/nano-vllm/models/Qwen3-0.6B-qall", "draft_quant_modules": 112, "draft_ffn_bytes_before": 880803840, "draft_ffn_bytes_after": 441090048, "used_MB": 19417.9, "num_kvcache_blocks": 170, "num_draft_blocks": 0, "kv_tokens_target": 43520, "gen_tokens": 64}
+### CASE=qall_direct [natural_qall_direct] FOO=1 2026-10-11T08:33:22Z
+###   exit=0
+@@C@@{"tag": "draft_int8直载 (全线性层)", "draft_dir": "/home/ziru/nano-vllm/models/Qwen3-0.6B-int8-all", "draft_quant_modules": 112, "draft_ffn_bytes_before": 880803840, "draft_ffn_bytes_after": 441090048, "used_MB": 20049.6, "num_kvcache_blocks": 180, "num_draft_blocks": 0, "kv_tokens_target": 46080, "gen_tokens": 64}
+### CASE=bf16 [forced170_bf16] FORCE_BLOCKS=170 2026-10-11T08:33:45Z
+###   exit=0
+@@C@@{"tag": "draft_bf16 (无 quant_config.json)", "draft_dir": "/home/ziru/nano-vllm/models/Qwen3-0.6B", "draft_quant_modules": 0, "draft_ffn_bytes_before": 0, "draft_ffn_bytes_after": 0, "used_MB": 19827.7, "num_kvcache_blocks": 170, "num_draft_blocks": 0, "kv_tokens_target": 43520, "gen_tokens": 64}
+### CASE=qall [forced170_qall] FORCE_BLOCKS=170 2026-10-11T08:34:05Z
+###   exit=0
+@@C@@{"tag": "draft_qall (全线性层自动识别 int8)", "draft_dir": "/home/ziru/nano-vllm/models/Qwen3-0.6B-qall", "draft_quant_modules": 112, "draft_ffn_bytes_before": 880803840, "draft_ffn_bytes_after": 441090048, "used_MB": 19417.9, "num_kvcache_blocks": 170, "num_draft_blocks": 0, "kv_tokens_target": 43520, "gen_tokens": 64}
+### CASE=qall_direct [forced170_qall_direct] FORCE_BLOCKS=170 2026-10-11T08:34:25Z
+###   exit=0
+@@C@@{"tag": "draft_int8直载 (全线性层)", "draft_dir": "/home/ziru/nano-vllm/models/Qwen3-0.6B-int8-all", "draft_quant_modules": 112, "draft_ffn_bytes_before": 880803840, "draft_ffn_bytes_after": 441090048, "used_MB": 19409.6, "num_kvcache_blocks": 170, "num_draft_blocks": 0, "kv_tokens_target": 43520, "gen_tokens": 64}
+### CASE=int8dir [neg_int8dir] FOO=1 2026-10-11T08:34:47Z
+###   exit=0
+### check_quant_equiv (P9 改动后) 2026-10-11T08:34:53Z
+@@EQ@@{"plain": {"md5": "207269e15a365affced828de3a371645", "n": [256, 256], "head": [[750, 374, 68347, 17918, 982, 262, 470, 1372], [576, 12751, 20448, 572, 264, 1602, 7988, 5387]]}, "spec": {"md5": "b8c3e91e8038ecdbf63e8ad29a88001e", "n": [256, 256], "head": [[750, 1887, 4555, 198, 262, 1173, 492, 2271], [576, 12751, 20448, 572, 9223, 438, 264, 34444]]}}
+### check_quant_equiv (P9 之前的 model_runner = 只有 pinned_meta) 2026-10-11T08:35:29Z
+@@EQ@@{"plain": {"md5": "207269e15a365affced828de3a371645", "n": [256, 256], "head": [[750, 374, 68347, 17918, 982, 262, 470, 1372], [576, 12751, 20448, 572, 264, 1602, 7988, 5387]]}, "spec": {"md5": "b8c3e91e8038ecdbf63e8ad29a88001e", "n": [256, 256], "head": [[750, 1887, 4555, 198, 262, 1173, 492, 2271], [576, 12751, 20448, 572, 9223, 438, 264, 34444]]}}
+###   restored 2026-10-11T08:36:04Z
+### 251 CPU tests 2026-10-11T08:36:04Z
+PASS=251  FAIL=0
+### final verify done 2026-10-11T08:36:14Z

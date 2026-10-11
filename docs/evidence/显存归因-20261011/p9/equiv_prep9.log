@@ -1,0 +1,12 @@
+[spec] blocks=341, target 每block 36864 KB, 合计 11.99 GB
+[spec] draft model: /home/ziru/nano-vllm/models/Qwen3-0.6B (28 层, vocab 151936)
+[spec] draft KV cache: 28 层 x 170 blocks, 每block 28672 KB
+[spec] blocks=170, target 每block 36864 KB, 合计 10.62 GB
+[rank0]:W1011 08:35:55.308000 1929850 torch/_dynamo/convert_frame.py:1676] [0/8] torch._dynamo hit config.recompile_limit (8)
+[rank0]:W1011 08:35:55.308000 1929850 torch/_dynamo/convert_frame.py:1676] [0/8]    function: 'rms_forward' (/home/ziru/nano-vllm/p1-work/nanovllm/layers/layernorm.py:16)
+[rank0]:W1011 08:35:55.308000 1929850 torch/_dynamo/convert_frame.py:1676] [0/8]    last reason: 0/4: tensor 'x' rank mismatch. expected 3, actual 2
+[rank0]:W1011 08:35:55.308000 1929850 torch/_dynamo/convert_frame.py:1676] [0/8] To log all recompilation reasons, use TORCH_LOGS="recompiles".
+[rank0]:W1011 08:35:55.308000 1929850 torch/_dynamo/convert_frame.py:1676] [0/8] To diagnose recompilation issues, see https://pytorch.org/docs/main/compile/programming_model.recompilation.html
+[spec] draft CUDA graph 就绪 (bs=[1, 2, 4], 1 token/行)
+[spec] verify CUDA graph 就绪 (shapes=[(1, 6), (2, 6), (4, 6)], 7 query/请求, 共享图池)
+@@EQ@@{"plain": {"md5": "207269e15a365affced828de3a371645", "n": [256, 256], "head": [[750, 374, 68347, 17918, 982, 262, 470, 1372], [576, 12751, 20448, 572, 264, 1602, 7988, 5387]]}, "spec": {"md5": "b8c3e91e8038ecdbf63e8ad29a88001e", "n": [256, 256], "head": [[750, 1887, 4555, 198, 262, 1173, 492, 2271], [576, 12751, 20448, 572, 9223, 438, 264, 34444]]}}
