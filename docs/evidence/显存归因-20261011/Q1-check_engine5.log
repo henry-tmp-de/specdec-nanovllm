@@ -1,0 +1,9 @@
+##### CASE bf16
+[kv-budget] total=23.57GB used=9.05GB peak=9.965GB current=8.683GB
+@@C@@{"tag": "draft_bf16 (无 quant_config.json)", "draft_dir": "/home/ziru/nano-vllm/models/Qwen3-0.6B", "draft_quant_modules": 0, "draft_ffn_bytes_before": 0, "draft_ffn_bytes_after": 0, "used_MB": 20083.7, "num_kvcache_blocks": 174, "num_draft_blocks": 0, "kv_tokens_target": 44544, "gen_tokens": 64}
+##### CASE qffn
+  [snap:before apply_int8_quant] peak=8.965 current=8.675 used=9.310 reserved=8.998
+  [snap:after apply_int8_quant] peak=8.965 current=8.430 used=9.193 reserved=8.881
+[kv-budget] total=23.57GB used=9.21GB peak=9.719GB current=8.438GB
+@@C@@{"tag": "draft_qffn (自动识别 int8)", "draft_dir": "/home/ziru/nano-vllm/models/Qwen3-0.6B-qffn", "draft_quant_modules": 56, "draft_ffn_bytes_before": 528482304, "draft_ffn_bytes_after": 264642560, "used_MB": 19639.6, "num_kvcache_blocks": 171, "num_draft_blocks": 0, "kv_tokens_target": 43776, "gen_tokens": 64}
+ALLDONE

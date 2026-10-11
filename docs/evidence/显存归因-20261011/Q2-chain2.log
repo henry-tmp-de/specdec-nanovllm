@@ -1,0 +1,96 @@
+### [13:43:50] chain2 start
+### check_quant_engine CASE=bf16
+[spec] draft model: /home/ziru/nano-vllm/models/Qwen3-0.6B (28 层, vocab 151936)
+[kv-budget] total=23.57GB used=9.05GB peak=9.965GB current=8.683GB
+[spec] draft KV cache: 28 层 x 174 blocks, 每block 28672 KB
+[spec] blocks=174, target 每block 36864 KB, 合计 10.88 GB
+[spec] draft CUDA graph 就绪 (bs=[1, 2, 4], 1 token/行)
+[spec] verify CUDA graph 就绪 (shapes=[(1, 6), (2, 6), (4, 6)], 7 query/请求, 共享图池)
+[rank0]:W1010 13:44:06.737000 1489612 torch/_dynamo/convert_frame.py:1676] [0/8] torch._dynamo hit config.recompile_limit (8)
+[rank0]:W1010 13:44:06.737000 1489612 torch/_dynamo/convert_frame.py:1676] [0/8]    function: 'rms_forward' (/home/ziru/nano-vllm/p1-work/nanovllm/layers/layernorm.py:16)
+[rank0]:W1010 13:44:06.737000 1489612 torch/_dynamo/convert_frame.py:1676] [0/8]    last reason: 0/7: tensor 'x' rank mismatch. expected 2, actual 3
+[rank0]:W1010 13:44:06.737000 1489612 torch/_dynamo/convert_frame.py:1676] [0/8] To log all recompilation reasons, use TORCH_LOGS="recompiles".
+[rank0]:W1010 13:44:06.737000 1489612 torch/_dynamo/convert_frame.py:1676] [0/8] To diagnose recompilation issues, see https://pytorch.org/docs/main/compile/programming_model.recompilation.html
+@@C@@{"tag": "draft_bf16 (无 quant_config.json)", "draft_dir": "/home/ziru/nano-vllm/models/Qwen3-0.6B", "draft_quant_modules": 0, "draft_ffn_bytes_before": 0, "draft_ffn_bytes_after": 0, "used_MB": 20083.7, "num_kvcache_blocks": 174, "num_draft_blocks": 0, "kv_tokens_target": 44544, "gen_tokens": 64}
+@@DONE@@
+### check_quant_engine CASE=qall
+  [snap:before apply_int8_quant] peak=8.965 current=8.675 used=9.310 reserved=8.998
+  [snap:after apply_int8_quant] peak=8.965 current=8.276 used=9.228 reserved=8.916
+[int8] draft 量化 112 个模块 (Qwen3-0.6B-qall): 840.0 -> 420.7 MiB (0.501x), rel_err max=0.01639
+[spec] draft model: /home/ziru/nano-vllm/models/Qwen3-0.6B-qall (28 层, vocab 151936)
+[kv-budget] total=23.57GB used=9.24GB peak=9.565GB current=8.284GB
+[spec] draft KV cache: 28 层 x 170 blocks, 每block 28672 KB
+[spec] blocks=170, target 每block 36864 KB, 合计 10.62 GB
+[spec] draft CUDA graph 就绪 (bs=[1, 2, 4], 1 token/行)
+[spec] verify CUDA graph 就绪 (shapes=[(1, 6), (2, 6), (4, 6)], 7 query/请求, 共享图池)
+[rank0]:W1010 13:44:26.170000 1489992 torch/_dynamo/convert_frame.py:1676] [0/8] torch._dynamo hit config.recompile_limit (8)
+[rank0]:W1010 13:44:26.170000 1489992 torch/_dynamo/convert_frame.py:1676] [0/8]    function: 'rms_forward' (/home/ziru/nano-vllm/p1-work/nanovllm/layers/layernorm.py:16)
+[rank0]:W1010 13:44:26.170000 1489992 torch/_dynamo/convert_frame.py:1676] [0/8]    last reason: 0/7: tensor 'x' rank mismatch. expected 2, actual 3
+[rank0]:W1010 13:44:26.170000 1489992 torch/_dynamo/convert_frame.py:1676] [0/8] To log all recompilation reasons, use TORCH_LOGS="recompiles".
+[rank0]:W1010 13:44:26.170000 1489992 torch/_dynamo/convert_frame.py:1676] [0/8] To diagnose recompilation issues, see https://pytorch.org/docs/main/compile/programming_model.recompilation.html
+@@C@@{"tag": "draft_qall (全线性层自动识别 int8)", "draft_dir": "/home/ziru/nano-vllm/models/Qwen3-0.6B-qall", "draft_quant_modules": 112, "draft_ffn_bytes_before": 880803840, "draft_ffn_bytes_after": 441090048, "used_MB": 19417.9, "num_kvcache_blocks": 170, "num_draft_blocks": 0, "kv_tokens_target": 43520, "gen_tokens": 64}
+@@DONE@@
+### check_plain_ctrl CASE=bf16
+=== check_plain_ctrl CASE=bf16 draft=/home/ziru/nano-vllm/models/Qwen3-0.6B REPS=9 BS=[1] CTXS=[1024, 4096] dev=NVIDIA GeForce RTX 3090 ===
+[spec] blocks=341, target 每block 36864 KB, 合计 11.99 GB
+[draft] 量化模块数=0 字节 0.0 -> 0.0 MiB (0.000x)  KV 池块数=341 (87296 token)
+[transformers] Token indices sequence length is longer than the specified maximum sequence length for this model (298938 > 131072). Running this sequence through the model will result in indexing errors
+@@PC@@{"case": "bf16", "B": 1, "ctx": 1024, "outlen": 256, "reps": 9, "draft_quant_modules": 0, "num_kvcache_blocks": 341, "draft_quant_bytes_before": 0, "draft_quant_bytes_after": 0, "tok_per_s": {"median": 78.65293176411573, "min": 78.50790802744079, "max": 78.66753969068604, "range_pct": 0.20295704135224563}, "ms_per_token": {"median": 12.71408423781395, "min": 12.7117233350873, "max": 12.737570330500603, "range_pct": 0.2032941966549963}}
+@@PC@@{"case": "bf16", "B": 1, "ctx": 4096, "outlen": 256, "reps": 9, "draft_quant_modules": 0, "num_kvcache_blocks": 341, "draft_quant_bytes_before": 0, "draft_quant_bytes_after": 0, "tok_per_s": {"median": 77.09866859368732, "min": 77.072348499014, "max": 77.13471908452837, "range_pct": 0.08089709803299944}, "ms_per_token": {"median": 12.9703925922513, "min": 12.964330613613129, "max": 12.974821962416172, "range_pct": 0.08088690244666186}}
+
+=== 普通解码对照 (CASE=bf16) ===
+ B   ctx     tok/s  ms/token     组间范围%    KV块     量化模块
+ 1  1024     78.65   12.7141      0.20    341        0
+ 1  4096     77.10   12.9704      0.08    341        0
+@@DONE@@  写盘: /home/ziru/nano-vllm/qall-runs/plain_ctrl.json
+### check_plain_ctrl CASE=qall
+=== check_plain_ctrl CASE=qall draft=/home/ziru/nano-vllm/models/Qwen3-0.6B-qall REPS=9 BS=[1] CTXS=[1024, 4096] dev=NVIDIA GeForce RTX 3090 ===
+[spec] blocks=341, target 每block 36864 KB, 合计 11.99 GB
+[draft] 量化模块数=0 字节 0.0 -> 0.0 MiB (0.000x)  KV 池块数=341 (87296 token)
+[transformers] Token indices sequence length is longer than the specified maximum sequence length for this model (298938 > 131072). Running this sequence through the model will result in indexing errors
+@@PC@@{"case": "qall", "B": 1, "ctx": 1024, "outlen": 256, "reps": 9, "draft_quant_modules": 0, "num_kvcache_blocks": 341, "draft_quant_bytes_before": 0, "draft_quant_bytes_after": 0, "tok_per_s": {"median": 78.52191661190506, "min": 78.46968544068034, "max": 78.5498798278276, "range_pct": 0.10212994105024198}, "ms_per_token": {"median": 12.735297903418541, "min": 12.730764225125313, "max": 12.743774801492691, "range_pct": 0.10216153925920964}}
+@@PC@@{"case": "qall", "B": 1, "ctx": 4096, "outlen": 256, "reps": 9, "draft_quant_modules": 0, "num_kvcache_blocks": 341, "draft_quant_bytes_before": 0, "draft_quant_bytes_after": 0, "tok_per_s": {"median": 77.03108937460753, "min": 76.9935676986381, "max": 77.0685038167413, "range_pct": 0.09728035616733426}, "ms_per_token": {"median": 12.981771491467953, "min": 12.97546923160553, "max": 12.988097965717316, "range_pct": 0.09728051460531337}}
+
+=== 普通解码对照 (CASE=qall) ===
+ B   ctx     tok/s  ms/token     组间范围%    KV块     量化模块
+ 1  1024     78.52   12.7353      0.10    341        0
+ 1  4096     77.03   12.9818      0.10    341        0
+@@DONE@@  写盘: /home/ziru/nano-vllm/qall-runs/plain_ctrl.json
+### check_quant_equiv (默认路径逐字节等价)
+[spec] blocks=341, target 每block 36864 KB, 合计 11.99 GB
+[spec] draft model: /home/ziru/nano-vllm/models/Qwen3-0.6B (28 层, vocab 151936)
+[spec] draft KV cache: 28 层 x 170 blocks, 每block 28672 KB
+[spec] blocks=170, target 每block 36864 KB, 合计 10.62 GB
+[rank0]:W1010 13:47:33.522000 1491921 torch/_dynamo/convert_frame.py:1676] [0/8] torch._dynamo hit config.recompile_limit (8)
+[rank0]:W1010 13:47:33.522000 1491921 torch/_dynamo/convert_frame.py:1676] [0/8]    function: 'rms_forward' (/home/ziru/nano-vllm/p1-work/nanovllm/layers/layernorm.py:16)
+[rank0]:W1010 13:47:33.522000 1491921 torch/_dynamo/convert_frame.py:1676] [0/8]    last reason: 0/4: tensor 'x' rank mismatch. expected 3, actual 2
+[rank0]:W1010 13:47:33.522000 1491921 torch/_dynamo/convert_frame.py:1676] [0/8] To log all recompilation reasons, use TORCH_LOGS="recompiles".
+[rank0]:W1010 13:47:33.522000 1491921 torch/_dynamo/convert_frame.py:1676] [0/8] To diagnose recompilation issues, see https://pytorch.org/docs/main/compile/programming_model.recompilation.html
+[spec] draft CUDA graph 就绪 (bs=[1, 2, 4], 1 token/行)
+[spec] verify CUDA graph 就绪 (shapes=[(1, 6), (2, 6), (4, 6)], 7 query/请求, 共享图池)
+@@EQ@@{"plain": {"md5": "207269e15a365affced828de3a371645", "n": [256, 256], "head": [[750, 374, 68347, 17918, 982, 262, 470, 1372], [576, 12751, 20448, 572, 264, 1602, 7988, 5387]]}, "spec": {"md5": "b9a4915cb985dec81baacd8c7dd17c95", "n": [256, 256], "head": [[750, 1887, 4555, 198, 262, 1173, 955, 579], [576, 12751, 20448, 572, 9223, 504, 458, 14811]]}}
+### ablation scope=all BS=4 PROMPTS=synth
+=== bench_draft_int8 scope=all RUNS=9 K=6 BS=[4] CTXS=[1024, 4096] out=256 gran=per_channel dev=NVIDIA GeForce RTX 3090 ===
+[spec] draft model: /home/ziru/nano-vllm/models/Qwen3-0.6B (28 层, vocab 151936)
+[spec] draft KV cache: 28 层 x 174 blocks, 每block 28672 KB
+[spec] blocks=174, target 每block 36864 KB, 合计 10.88 GB
+[spec] draft CUDA graph 就绪 (bs=[1, 2, 4], 1 token/行)
+[spec] verify CUDA graph 就绪 (shapes=[(1, 6), (2, 6), (4, 6)], 7 query/请求, 共享图池)
+draft 总权重（去重）: 1.110 -> 0.701 GB (0.6311x)
+draft scope=all: 112 个模块, 840.0 -> 420.7 MiB (0.501x), 模块=['down_proj', 'gate_up_proj', 'o_proj', 'qkv_proj']
+[spec] draft CUDA graph 就绪 (bs=[1, 2, 4], 1 token/行)
+[spec] draft CUDA graph 就绪 (bs=[1, 2, 4], 1 token/行)
+[rank0]:W1010 13:47:56.111000 1492370 torch/_dynamo/convert_frame.py:1676] [0/8] torch._dynamo hit config.recompile_limit (8)
+[rank0]:W1010 13:47:56.111000 1492370 torch/_dynamo/convert_frame.py:1676] [0/8]    function: 'rms_forward' (/home/ziru/nano-vllm/p1-work/nanovllm/layers/layernorm.py:16)
+[rank0]:W1010 13:47:56.111000 1492370 torch/_dynamo/convert_frame.py:1676] [0/8]    last reason: 0/7: tensor 'x' rank mismatch. expected 2, actual 3
+[rank0]:W1010 13:47:56.111000 1492370 torch/_dynamo/convert_frame.py:1676] [0/8] To log all recompilation reasons, use TORCH_LOGS="recompiles".
+[rank0]:W1010 13:47:56.111000 1492370 torch/_dynamo/convert_frame.py:1676] [0/8] To diagnose recompilation issues, see https://pytorch.org/docs/main/compile/programming_model.recompilation.html
+@@B@@{"B": 4, "ctx": 1024, "outlen": 256, "runs": 9, "k": 6, "prompts": "synth", "draft_scope": "all", "draft_quant_modules": 112, "draft_quant_bytes_before": 880803840, "draft_quant_bytes_after": 441090048, "draft_total_bytes_bf16": 1192099840, "draft_total_bytes_int8": 752386048, "draft_quant_modules_used": ["down_proj", "gate_up_proj", "o_proj", "qkv_proj"], "U": {"tok_per_s": {"median": 276.44971598839635, "min": 276.2507627344853, "max": 277.3066338708453}, "ttft_ms": {"median": 168.26667170971632, "min": 167.19173965975642, "max": 168.70988439768553}, "ms_per_round": {"median": 3.617294365540147, "min": 3.606116399168968, "max": 3.61989950761199}, "rounds": {"median": 1024, "min": 1024, "max": 1024}, "wall_s": {"median": 3.7041094303131104, "min": 3.6926631927490234, "max": 3.7067770957946777}, "accept_rate": null, "raw_tok_per_s": [277.307, 277.274, 277.077, 277.004, 276.366, 276.45, 276.406, 276.251, 276.399], "raw_ms_per_round": [3.606, 3.607, 3.609, 3.61, 3.618, 3.617, 3.618, 3.62, 3.618]}, "S_bf16": {"tok_per_s": {"median": 516.1387165509221, "min": 346.10280806345907, "max": 525.2959500780368}, "ttft_ms": {"median": 168.5210452415049, "min": 167.89043601602316, "max": 170.22042023018003}, "ms_per_round": {"median": 13.405153880248198, "min": 13.17146823212907, "max": 18.263323807422026}, "rounds": {"median": 148.0, "min": 148.0, "max": 162.0}, "wall_s": {"median": 1.9839627742767334, "min": 1.9493772983551025, "max": 2.958658456802368}, "accept_rate": {"median": 0.9988814317673378, "min": 0.9537037037037037, "max": 1.0}, "raw_tok_per_s": [450.565, 525.156, 525.296, 346.103, 523.599, 506.543, 472.888, 523.402, 516.139], "raw_ms_per_round": [15.253, 13.175, 13.171, 18.263, 13.214, 13.567, 14.341, 13.219, 13.405]}, "S_int8": {"tok_per_s": {"median": 547.2144972302709, "min": 395.7689440002492, "max": 561.188251150314}, "ttft_ms": {"median": 179.2182349599898, "min": 178.7990271113813, "max": 179.9234626814723}, "ms_per_round": {"median": 12.643888189985946, "min": 12.329051623473296, "max": 15.873424845970481}, "rounds": {"median": 148.0, "min": 148.0, "max": 163.0}, "wall_s": {"median": 1.87129545211792, "min": 1.8246996402740479, "max": 2.5873682498931885}, "accept_rate": {"median": 0.9988814317673378, "min": 0.950920245398773, "max": 1.0}, "raw_tok_per_s": [561.188, 560.528, 537.105, 560.892, 395.769, 537.529, 537.721, 547.214, 559.186], "raw_ms_per_round": [12.329, 12.344, 12.882, 12.336, 15.873, 12.785, 12.781, 12.644, 12.373]}, "paired_ms_per_round_int8_over_bf16": {"median": 0.9368949809878679, "min": 0.6754282390867001, "max": 1.201244927797307}, "paired_tok_per_s_int8_over_U": {"median": 1.9808614890820002, "min": 1.4320477978262305, "max": 2.024850640975748}, "noise_floor_ms_per_round": {"median": 13.405153880248198, "range_pct": 37.98431275597322}}
+@@B@@{"B": 4, "ctx": 4096, "outlen": 256, "runs": 9, "k": 6, "prompts": "synth", "draft_scope": "all", "draft_quant_modules": 112, "draft_quant_bytes_before": 880803840, "draft_quant_bytes_after": 441090048, "draft_total_bytes_bf16": 1192099840, "draft_total_bytes_int8": 752386048, "draft_quant_modules_used": ["down_proj", "gate_up_proj", "o_proj", "qkv_proj"], "U": {"tok_per_s": {"median": 233.7482398541879, "min": 233.64999519096233, "max": 233.9207810214132}, "ttft_ms": {"median": 212.2357850894332, "min": 211.67454170063138, "max": 212.56569353863597}, "ms_per_round": {"median": 4.278107080608606, "min": 4.274951526895165, "max": 4.279905930161476}, "rounds": {"median": 1024, "min": 1024, "max": 1024}, "wall_s": {"median": 4.380781650543213, "min": 4.377550363540649, "max": 4.382623672485352}, "accept_rate": null, "raw_tok_per_s": [233.846, 233.748, 233.697, 233.921, 233.65, 233.788, 233.69, 233.854, 233.729], "raw_ms_per_round": [4.276, 4.278, 4.279, 4.275, 4.28, 4.277, 4.279, 4.276, 4.278]}, "S_bf16": {"tok_per_s": {"median": 361.9145752072219, "min": 358.7785378130398, "max": 361.98024643162296}, "ttft_ms": {"median": 213.04955706000328, "min": 212.575928773731, "max": 213.22170179337263}, "ms_per_round": {"median": 19.117547048104775, "min": 19.114078702153385, "max": 19.284651086137103}, "rounds": {"median": 148.0, "min": 148.0, "max": 148.0}, "wall_s": {"median": 2.829396963119507, "min": 2.828883647918701, "max": 2.854128360748291}, "accept_rate": {"median": 1.0, "min": 0.9988738738738738, "max": 1.0}, "raw_tok_per_s": [361.84, 361.849, 361.915, 361.927, 361.772, 361.98, 358.779, 361.961, 361.98], "raw_ms_per_round": [19.121, 19.121, 19.118, 19.117, 19.125, 19.114, 19.285, 19.115, 19.114]}, "S_int8": {"tok_per_s": {"median": 379.60904089786044, "min": 368.5885419496002, "max": 379.83242461750274}, "ttft_ms": {"median": 218.9060882665217, "min": 217.81181078404188, "max": 219.58852093666792}, "ms_per_round": {"median": 18.226433444667506, "min": 18.21571427422601, "max": 18.64540656941049}, "rounds": {"median": 148.0, "min": 148.0, "max": 149.0}, "wall_s": {"median": 2.697512149810791, "min": 2.695925712585449, "max": 2.778165578842163}, "accept_rate": {"median": 1.0, "min": 0.9977628635346756, "max": 1.0}, "raw_tok_per_s": [379.609, 379.691, 368.589, 379.832, 379.667, 379.135, 379.599, 379.454, 379.772], "raw_ms_per_round": [18.226, 18.223, 18.645, 18.216, 18.224, 18.249, 18.227, 18.234, 18.219]}, "paired_ms_per_round_int8_over_bf16": {"median": 0.9531505447266118, "min": 0.9451508226240535, "max": 0.9753032919178253}, "paired_tok_per_s_int8_over_U": {"median": 1.6237652035828862, "min": 1.5772038394259895, "max": 1.6249400218449546}, "noise_floor_ms_per_round": {"median": 19.117547048104775, "range_pct": 0.8922294453075632}}
+
+=== SUMMARY ===
+ B   ctx |    U tok/s     S_bf16     S_int8 |  ms/round bf16       int8      配对比 |     接受率 bf16     int8 |     噪声地板%
+ 4  1024 |      276.4      516.1      547.2 |         13.405     12.644   0.9369 |       0.9989   0.9989 |     37.98
+ 4  4096 |      233.7      361.9      379.6 |         19.118     18.226   0.9532 |       1.0000   1.0000 |      0.89
+@@DONE@@  写盘: /home/ziru/nano-vllm/qall-runs/ablation_all_synth_b4.json
+### CHAIN2 DONE [13:50:44]
