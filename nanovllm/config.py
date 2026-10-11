@@ -76,6 +76,17 @@ class Config:
     draft_quant_group_size: int = 128
     draft_quant_modules: tuple = ()
     draft_quant_config: dict | None = None
+    # ---------- 预量化直载（P9，只对开了 int8 的模型生效）----------
+    quant_direct_load: bool = False
+    #   True  = 量化层【在构造期】直接按 int8 分配权重、直接建 bf16 scale，
+    #           从「int8 checkpoint（带 <key>_scale 的 safetensors）」直载；
+    #           **GPU 上从头到尾不出现那一份 bf16 权重**。
+    #   False = 默认，老路径：BF16 载入 -> apply_int8_quant 就地替换（逐字节等价）。
+    #   ★ 动机（实测见 docs/显存归因排查报告-20261011.md §2.12）：
+    #     就地替换 + 量化时的 fp32 临时量会在 PyTorch 分配器里留下
+    #     0.589 GiB 的 inactive_split（不可回收碎片），设备已用量 used 反而变大，
+    #     KV 池因此少 4 块。两条路径产出的 (int8 权重, scale) 已对拍为逐位相同。
+    #   ★ 路径里带显式断言，只支持 TP=1 + per_channel + 有真 int8 checkpoint 的情况。
 
     spec_graph_bs: tuple = (1, 2, 4)
     #   捕获 CUDA 图的精确 batch 桶（draft 单步 decode 图 / 验证图共用）。

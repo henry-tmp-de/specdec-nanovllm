@@ -18,11 +18,72 @@ def _log_quant(which, path, stats):
     print(f"[int8] {which} 量化 {len(stats)} 个模块 "f"({os.path.basename(path.rstrip('/'))}): "
           f"{b/2**20:.1f} -> {a/2**20:.1f} MiB ({a/max(b,1):.3f}x), "
           f"rel_err max={max(s['rel_err'] for s in stats):.5f}")
+# =====================================================================
+# P9：预量化直载的统一入口（默认关闭 → 逐字节等于老路径）
+# =====================================================================
+def _log_quant_direct(which, path, stats):
+    b = sum(s["bytes_before"] for s in stats)
+    a = sum(s["bytes_after"] for s in stats)
+    print(f"[int8] {which} 预量化直载 {len(stats)} 个模块 "
+          f"({os.path.basename(path.rstrip('/'))}): "
+          f"{b/2**20:.1f} -> {a/2**20:.1f} MiB ({a/max(b,1):.3f}x)  [无 GPU 侧 bf16]")
+
+
+def _make_model(model_cls, hf_config, path, quant_weights, quant_modules,
+                granularity, group_size, direct_load):
+    """direct_load=False 时与「构造 + load_model + apply_int8_quant」逐字节等价。
+
+    返回 (model, stats, direct)。direct=True 表示权重是【直载】进来的
+    （已经跳过 bf16 阶段），调用方不要再跑 apply_int8_quant。
+    """
+    if quant_weights == "int8" and direct_load:
+        from nanovllm.utils.loader import build_model_int8
+        model, stats = build_model_int8(model_cls, hf_config, path, quant_modules,
+                                        granularity, group_size)
+        return model, stats, True
+    model = model_cls(hf_config)
+    load_model(model, path)
+    # ★ 量化不由这里做 —— 调用方的 `if config.draft_quant_weights == "int8"`
+    #   分支会照原样跑 apply_int8_quant。这里多做一次会把已经变成 int8 的
+    #   权重再量化一遍（apply_int8_quant 直接断言拒绝）。
+    return model, [], False
 from nanovllm.spec_decode.draft_proposer import DraftWindow
 from nanovllm.utils.context import set_context, get_context, reset_context
 from nanovllm.utils.loader import load_model
+import json
 
 
+# ===========================================================================
+#  显存归因打点（P9）—— 只在 NANOVLLM_MEM_TRACE=1 时生效。
+#  ★ 不设该环境变量时 _mem_snap 立即 return，不调用任何 CUDA API，
+#    默认路径与改动前逐字节一致（老路径一行没删）。
+#  ★ 全部打印【未舍入的原始字节数】，便于逐字节复算预算公式。
+# ===========================================================================
+_MEM_TRACE = os.environ.get("NANOVLLM_MEM_TRACE") == "1"
+
+
+def _mem_snap(tag):
+    """记一行 JSON 快照。used=total-free 是设备全局量（含 allocator 保留空间）；
+    I=reserved-current（分配器内保留空闲）；O=used-reserved（分配器之外）。"""
+    if not _MEM_TRACE:
+        return None
+    try:
+        torch.cuda.synchronize()
+        free, total = torch.cuda.mem_get_info()
+        s = torch.cuda.memory_stats()
+        c = s["allocated_bytes.all.current"]
+        r = s["reserved_bytes.all.current"]
+        p = s["allocated_bytes.all.peak"]
+        rec = dict(tag=tag, free=int(free), total=int(total), used=int(total - free),
+                   current=int(c), reserved=int(r), peak=int(p),
+                   retained_idle=int(r - c), outside_allocator=int(total - free - r),
+                   inactive_split=s.get("inactive_split_bytes.all.current"),
+                   allocator=str(torch.cuda.memory.get_allocator_backend()))
+        print("[mem] " + json.dumps(rec), flush=True)
+        return rec
+    except Exception as exc:                     # 打点失败绝不影响引擎
+        print("[mem] " + json.dumps(dict(tag=tag, error=repr(exc))), flush=True)
+        return None
 class ModelRunner:
 
     def __init__(self, config: Config, rank: int, event: Event | list[Event]):
@@ -41,6 +102,7 @@ class ModelRunner:
         torch.set_default_device("cuda")
         self.model = Qwen3ForCausalLM(hf_config)
         load_model(self.model, config.model)
+        _mem_snap("target_loaded")
         # ★ INT8：加载完之后【就地】替换（按 quant_config.json 点名的模块）。
         #   必须在 allocate_kv_cache 之前 —— KV 池大小按剩余显存算。
         self.quant_stats = []
@@ -85,16 +147,25 @@ class ModelRunner:
             assert self.draft_hf_config.vocab_size == hf_config.vocab_size, (
                 f"draft/target 词表不一致: {self.draft_hf_config.vocab_size} vs {hf_config.vocab_size}"
             )
-            self.draft_model = Qwen3ForCausalLM(self.draft_hf_config)
-            load_model(self.draft_model, config.draft_model)
+            self.draft_model, self.draft_quant_stats, _direct = _make_model(
+                Qwen3ForCausalLM, self.draft_hf_config, config.draft_model,
+                config.draft_quant_weights, config.draft_quant_modules,
+                config.draft_quant_granularity, config.draft_quant_group_size,
+                config.quant_direct_load)
+            _mem_snap("draft_loaded_before_quant")
             # ★ draft 的 INT8（与 target 独立）：量化 draft 在数学上完全安全 ——
             #   拒绝采样会把草稿猜错的地方修正回来，"相对 BF16 target 无损" 仍严格成立。
-            self.draft_quant_stats = []
-            if config.draft_quant_weights == "int8":
-                self.draft_quant_stats = apply_int8_quant(
-                    self.draft_model, config.draft_quant_modules,
-                    config.draft_quant_granularity, config.draft_quant_group_size)
-                _log_quant("draft", config.draft_model, self.draft_quant_stats)
+            if _direct:
+                # ★ 直载：权重已经是 int8 了，绝不能再跑一次就地量化
+                _log_quant_direct("draft", config.draft_model, self.draft_quant_stats)
+            else:
+                self.draft_quant_stats = []
+                if config.draft_quant_weights == "int8":
+                    self.draft_quant_stats = apply_int8_quant(
+                        self.draft_model, config.draft_quant_modules,
+                        config.draft_quant_granularity, config.draft_quant_group_size)
+                    _log_quant("draft", config.draft_model, self.draft_quant_stats)
+                _mem_snap("draft_after_quant")
             self.spec_proposer = DraftModelProposer(self.draft_model, k=config.spec_k,
                                                     block_size=self.block_size)
             print(f"[spec] draft model: {config.draft_model} "
@@ -110,6 +181,7 @@ class ModelRunner:
         if config.quant_weights == "int8" or config.draft_quant_weights == "int8":
             torch.cuda.empty_cache()
         self.allocate_kv_cache()
+        _mem_snap("after_allocate_kv_cache")
         if not self.enforce_eager:
             self.capture_cudagraph()
             # ★ 投机路径的两张图。必须放在 allocate_kv_cache 之后
@@ -119,6 +191,7 @@ class ModelRunner:
                     self.capture_draft_cudagraph()
                 self.capture_verify_cudagraph()
         torch.set_default_device("cpu")
+        _mem_snap("after_capture")
         torch.set_default_dtype(default_dtype)
 
         if self.world_size > 1:
@@ -174,6 +247,7 @@ class ModelRunner:
     def warmup_model(self):
         torch.cuda.empty_cache()
         torch.cuda.reset_peak_memory_stats()
+        _mem_snap("warmup_after_reset")
         max_num_batched_tokens, max_model_len = self.config.max_num_batched_tokens, self.config.max_model_len
         seq_len = min(max_num_batched_tokens, max_model_len)
         num_seqs = min(max_num_batched_tokens // seq_len, self.config.max_num_seqs)
@@ -181,9 +255,11 @@ class ModelRunner:
         for seq in seqs:
             seq.num_scheduled_tokens = seq_len
         self.run(seqs, True)
+        _mem_snap("warmup_after_prefill")
         torch.cuda.empty_cache()
 
     def allocate_kv_cache(self):
+        _mem_snap("kv_budget_entry")
         config = self.config
         hf_config = config.hf_config
         free, total = torch.cuda.mem_get_info()
@@ -191,6 +267,7 @@ class ModelRunner:
         peak = torch.cuda.memory_stats()["allocated_bytes.all.peak"]
         current = torch.cuda.memory_stats()["allocated_bytes.all.current"]
         budget = int(total * config.gpu_memory_utilization - used - peak + current)
+        _mem_snap("kv_budget_entry_raw")
 
         num_kv_heads = hf_config.num_key_value_heads // self.world_size
         head_dim = getattr(hf_config, "head_dim", hf_config.hidden_size // hf_config.num_attention_heads)
@@ -241,6 +318,19 @@ class ModelRunner:
             config.num_draft_blocks = 0
             config.draft_window_blocks = 0
             self.draft_window_blocks = 0
+        if _MEM_TRACE:
+            _pb = int(tgt_block_bytes + draft_block_bytes)
+            print("[mem] " + json.dumps(dict(
+                tag="kv_budget_computed",
+                gpu_memory_utilization=float(config.gpu_memory_utilization),
+                total=int(total), used=int(used), peak=int(peak), current=int(current),
+                budget=int(budget),
+                tgt_block_bytes=int(tgt_block_bytes),
+                draft_block_bytes=int(draft_block_bytes),
+                per_block_total=_pb,
+                blocks_floor=int(budget // _pb) if _pb else 0,
+                budget_mod_block=int(budget % _pb) if _pb else 0,
+                num_kvcache_blocks=int(config.num_kvcache_blocks))), flush=True)
         assert config.num_kvcache_blocks > 0, "KV cache 预算不足"
 
         self.kv_cache = torch.empty(

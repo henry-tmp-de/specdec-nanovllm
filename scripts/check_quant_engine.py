@@ -30,12 +30,14 @@ D_BF16 = os.path.expanduser("~/nano-vllm/models/Qwen3-0.6B")
 D_QDIR = os.path.expanduser("~/nano-vllm/models/Qwen3-0.6B-qffn")     # bf16 权重 + quant_config.json(ffn)
 D_QALL = os.path.expanduser("~/nano-vllm/models/Qwen3-0.6B-qall")     # bf16 权重 + quant_config.json(全线性层)
 D_INT8 = os.path.expanduser("~/nano-vllm/models/Qwen3-0.6B-int8-ffn")  # 真·int8 checkpoint
+# 真·int8 checkpoint（全线性层 196 个张量）—— 预量化直载用
+D_QALL_INT8 = os.path.expanduser("~/nano-vllm/models/Qwen3-0.6B-int8-all")
 
 P = ("def calculate_sum(numbers):\n    total = 0\n    for num in numbers:\n"
      "        total += num\n    return total\n\n")
 
 
-def build(draft, tag):
+def build(draft, tag, direct=False):
     # 打点：KV 预算公式 = 0.9*total - used - peak + current（见 allocate_kv_cache）
     from nanovllm.engine.model_runner import ModelRunner
     _orig = ModelRunner.allocate_kv_cache
@@ -49,6 +51,30 @@ def build(draft, tag):
         return _orig(self)
 
     ModelRunner.allocate_kv_cache = traced
+    # ★ 同容量对照（P9）：把 KV 池强制到 FORCE_BLOCKS 块，两条路径在【同样大的池子】
+    #   下比「capture 后 / 生成峰值」—— 排除「池子小所以总占用小」这个混淆。
+    #   做法：反解利用率 u 使 budget == FORCE_BLOCKS*per_block（budget = int(T*u)-used-peak+cur）。
+    _fb = int(os.environ.get("FORCE_BLOCKS", "0") or 0)
+    if _fb:
+        _orig2 = ModelRunner.allocate_kv_cache
+
+        def _forced(self, _fb=_fb, _orig2=_orig2):
+            c = self.config
+            hf, dhf = c.hf_config, self.draft_hf_config
+            bs = c.kvcache_block_size
+            hd = lambda h: getattr(h, "head_dim", h.hidden_size // h.num_attention_heads)
+            per = (2 * hf.num_hidden_layers * bs * hf.num_key_value_heads * hd(hf) * hf.dtype.itemsize
+                   + 2 * dhf.num_hidden_layers * bs * dhf.num_key_value_heads * hd(dhf) * dhf.dtype.itemsize)
+            free, total = torch.cuda.mem_get_info()
+            st = torch.cuda.memory_stats()
+            need = (_fb * per + (total - free) + st["allocated_bytes.all.peak"]
+                    - st["allocated_bytes.all.current"] + per // 2)
+            c.gpu_memory_utilization = need / total
+            print(f"[force-blocks] 目标 {_fb} 块 -> util={c.gpu_memory_utilization:.6f} "
+                  f"per_block={per}")
+            return _orig2(self)
+
+        ModelRunner.allocate_kv_cache = _forced
     # 定位 peak 是从哪一步涨起来的
     from nanovllm.utils import loader as _ld
     from nanovllm.layers import quant as _q
@@ -76,9 +102,13 @@ def build(draft, tag):
     _q.apply_int8_quant = _a2
     import nanovllm.engine.model_runner as _mr
     _mr.apply_int8_quant = _a2
+    # ★ 修 bug：runner 顶部 `from ...loader import load_model` 提前绑定了函数，
+    #   只改 _ld.load_model 不会影响 runner 内的调用；必须同时改 module 属性。
+    _mr.load_model = _l2
     llm = LLM(TARGET, enforce_eager=False, max_model_len=8192,
               max_num_batched_tokens=16384, spec_k=6, spec_method="draft",
-              draft_model=draft, spec_batch_threshold=0)
+draft_model=draft, spec_batch_threshold=0,
+              quant_direct_load=direct)
     mr = llm.model_runner
     st = getattr(mr, "draft_quant_stats", [])
     out = llm.generate([P], SamplingParams(temperature=1.0, max_tokens=64,
@@ -116,6 +146,9 @@ def main():
                                    ensure_ascii=False))
     elif case == "qffn":
         print("@@C@@" + json.dumps(build(D_QDIR, "draft_qffn (自动识别 int8)"),
+                                   ensure_ascii=False))
+    elif case == "qall_direct":
+        print("@@C@@" + json.dumps(build(D_QALL_INT8, "draft_int8直载 (全线性层)", direct=True),
                                    ensure_ascii=False))
     elif case == "qall":
         print("@@C@@" + json.dumps(build(D_QALL, "draft_qall (全线性层自动识别 int8)"),
