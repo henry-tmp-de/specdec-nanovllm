@@ -84,6 +84,13 @@ def _mem_snap(tag):
     except Exception as exc:                     # 打点失败绝不影响引擎
         print("[mem] " + json.dumps(dict(tag=tag, error=repr(exc))), flush=True)
         return None
+# 分布式 rendezvous 端口。默认 "2333" —— 与原版逐字节一致（默认行为一行不变）。
+# ★ 只有为了「同一台机器上并行跑多个互相独立的引擎实例」才需要覆盖它：
+#   原版硬编码 tcp://localhost:2333，两个实例会抢同一个端口，只能串行。
+#   给每个实例一个端口即可并行（不同 CUDA_VISIBLE_DEVICES + 不同 NANOVLLM_PORT）。
+_RENDEZVOUS_PORT = os.environ.get("NANOVLLM_PORT", "2333")
+
+
 class ModelRunner:
 
     def __init__(self, config: Config, rank: int, event: Event | list[Event]):
@@ -95,7 +102,8 @@ class ModelRunner:
         self.rank = rank
         self.event = event
 
-        dist.init_process_group("nccl", "tcp://localhost:2333", world_size=self.world_size, rank=rank)
+        dist.init_process_group("nccl", f"tcp://localhost:{_RENDEZVOUS_PORT}",
+                                world_size=self.world_size, rank=rank)
         torch.cuda.set_device(rank)
         default_dtype = torch.get_default_dtype()
         torch.set_default_dtype(hf_config.dtype)

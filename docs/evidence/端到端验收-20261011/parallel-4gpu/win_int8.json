@@ -1,0 +1,1086 @@
+{
+  "group": "win_int8",
+  "window": 4608,
+  "draft": "qall",
+  "direct": false,
+  "draft_model": "/home/ziru/nano-vllm/models/Qwen3-0.6B-qall",
+  "variants": [
+    "U",
+    "S5"
+  ],
+  "k": 6,
+  "outlen": 256,
+  "max_seqs": 8,
+  "max_model_len": 8192,
+  "seed": 20261011,
+  "blocks": {
+    "num_kvcache_blocks": 191,
+    "num_draft_blocks": 144,
+    "draft_window_blocks": 18
+  },
+  "draft_quant_weights": "int8",
+  "quant_direct_load": false,
+  "cells": [
+    {
+      "B": 1,
+      "ctx": 1024,
+      "outlen": 256,
+      "k": 6,
+      "runs": 5,
+      "prompt": "wikitext2",
+      "seed": 20261011,
+      "block_table": [
+        191,
+        144,
+        18
+      ],
+      "variants": {
+        "U": {
+          "tok_per_s": {
+            "median": 22.726845200526807,
+            "min": 22.705390060636912,
+            "max": 22.7541450527132,
+            "range_pct": 0.21452600062219151
+          },
+          "ttft_ms": {
+            "median": 84.08711664378643,
+            "min": 83.53918325155973,
+            "max": 85.22016648203135,
+            "range_pct": 1.999097242913759
+          },
+          "ms_per_round": {
+            "median": 44.17337997286928,
+            "min": 44.120381860172046,
+            "max": 44.21512098873363,
+            "range_pct": 0.2144710878356436
+          },
+          "ms_per_round_steady": {
+            "median": 43.83813826308593,
+            "min": 43.78740306518326,
+            "max": 43.87949245402545,
+            "range_pct": 0.21006683333478673
+          },
+          "ms_per_round_maxB": {
+            "median": 43.80968026816845,
+            "min": 43.75790199264884,
+            "max": 43.819491285830736,
+            "range_pct": 0.140583754103876
+          },
+          "tok_per_s_maxB": {
+            "median": 22.811187692294265,
+            "min": 22.789689307544876,
+            "max": 22.837618355931486,
+            "range_pct": 0.21011202499903517
+          },
+          "maxB": 1,
+          "rounds": {
+            "median": 255,
+            "min": 255,
+            "max": 255,
+            "range_pct": 0.0
+          },
+          "rounds_by_B": {
+            "1": 254
+          },
+          "tok_per_round": {
+            "median": 1.003921568627451,
+            "min": 1.003921568627451,
+            "max": 1.003921568627451,
+            "range_pct": 0.0
+          },
+          "wall_s": {
+            "median": 11.264211893081665,
+            "min": 11.250697374343872,
+            "max": 11.274855852127075,
+            "range_pct": 0.21447108783563415
+          },
+          "accept_rate": null,
+          "preempt": 0,
+          "draft_forwards": {
+            "median": 0,
+            "min": 0,
+            "max": 0,
+            "range_pct": null
+          },
+          "catchup_forwards": {
+            "median": 0,
+            "min": 0,
+            "max": 0,
+            "range_pct": null
+          },
+          "graphed_forwards": {
+            "median": 0,
+            "min": 0,
+            "max": 0,
+            "range_pct": null
+          },
+          "verify_graph_hits": 0,
+          "verify_graph_fallbacks": {},
+          "raw_ms_per_round": [
+            44.2151,
+            44.188,
+            44.1734,
+            44.1204,
+            44.1464
+          ],
+          "raw_ms_per_round_maxB": [
+            43.8195,
+            43.8097,
+            43.8104,
+            43.7579,
+            43.7748
+          ],
+          "raw_tok_per_s": [
+            22.705,
+            22.719,
+            22.727,
+            22.754,
+            22.741
+          ],
+          "out_md5": "2d48da97007ba2d7788eca701ade312f",
+          "out_md5_all_same": true,
+          "noise_floor_pct": 0.2144710878356436,
+          "noise_floor_maxB_pct": 0.140583754103876
+        },
+        "S5": {
+          "tok_per_s": {
+            "median": 122.3274118250466,
+            "min": 122.0229246881843,
+            "max": 122.64831266619758,
+            "range_pct": 0.5112410772719632
+          },
+          "ttft_ms": {
+            "median": 84.86063964664936,
+            "min": 83.65306071937084,
+            "max": 85.01915633678436,
+            "range_pct": 1.609810653209541
+          },
+          "ms_per_round": {
+            "median": 32.19606692974384,
+            "min": 32.111828143780045,
+            "max": 32.276406654944786,
+            "range_pct": 0.5111758263016218
+          },
+          "ms_per_round_steady": {
+            "median": 30.847732559777796,
+            "min": 30.783007678110152,
+            "max": 30.931739529478364,
+            "range_pct": 0.48214840776382356
+          },
+          "ms_per_round_maxB": {
+            "median": 30.156284105032682,
+            "min": 30.04310792312026,
+            "max": 30.15985246747732,
+            "range_pct": 0.38713172999182044
+          },
+          "tok_per_s_maxB": {
+            "median": 127.13657291990768,
+            "min": 126.79128492797504,
+            "max": 127.40389246593509,
+            "range_pct": 0.48184996959605786
+          },
+          "maxB": 1,
+          "rounds": {
+            "median": 65,
+            "min": 65,
+            "max": 65,
+            "range_pct": 0.0
+          },
+          "rounds_by_B": {
+            "1": 64
+          },
+          "tok_per_round": {
+            "median": 3.9384615384615387,
+            "min": 3.9384615384615387,
+            "max": 3.9384615384615387,
+            "range_pct": 0.0
+          },
+          "wall_s": {
+            "median": 2.0927443504333496,
+            "min": 2.087268829345703,
+            "max": 2.097966432571411,
+            "range_pct": 0.5111758263016134
+          },
+          "accept_rate": {
+            "median": 0.7692307692307693,
+            "min": 0.7692307692307693,
+            "max": 0.7692307692307693,
+            "range_pct": 0.0
+          },
+          "preempt": 0,
+          "draft_forwards": {
+            "median": 390,
+            "min": 390,
+            "max": 390,
+            "range_pct": 0.0
+          },
+          "catchup_forwards": {
+            "median": 19,
+            "min": 19,
+            "max": 19,
+            "range_pct": 0.0
+          },
+          "graphed_forwards": {
+            "median": 409,
+            "min": 409,
+            "max": 409,
+            "range_pct": 0.0
+          },
+          "verify_graph_hits": 65,
+          "verify_graph_fallbacks": {},
+          "raw_ms_per_round": [
+            32.1118,
+            32.1961,
+            32.2409,
+            32.2764,
+            32.139
+          ],
+          "raw_ms_per_round_maxB": [
+            30.133,
+            30.1563,
+            30.1599,
+            30.1563,
+            30.0431
+          ],
+          "raw_tok_per_s": [
+            122.648,
+            122.327,
+            122.157,
+            122.023,
+            122.545
+          ],
+          "out_md5": "79a07097b7fee28c3be04b570f84f37c",
+          "out_md5_all_same": true,
+          "noise_floor_pct": 0.5111758263016218,
+          "noise_floor_maxB_pct": 0.38713172999182044
+        }
+      },
+      "paired": {
+        "S5/U": {
+          "ms_per_round": {
+            "median": 0.7286159697504891,
+            "min": 0.7262634914413645,
+            "max": 0.7315532027178816,
+            "range_pct": 0.7259944190255055
+          },
+          "ms_per_round_maxB": {
+            "median": 0.6883489611436461,
+            "min": 0.6863102133066036,
+            "max": 0.6891620194701936,
+            "range_pct": 0.4142965740591743
+          },
+          "tok_per_s": {
+            "median": 5.384286216537857,
+            "min": 5.362667962496544,
+            "max": 5.401726741476519,
+            "range_pct": 0.7254216698214565
+          },
+          "tok_per_s_maxB": {
+            "median": 5.573215240458883,
+            "min": 5.551861098293739,
+            "max": 5.59041813807247,
+            "range_pct": 0.6918275737643286
+          }
+        }
+      }
+    },
+    {
+      "B": 1,
+      "ctx": 4096,
+      "outlen": 256,
+      "k": 6,
+      "runs": 5,
+      "prompt": "wikitext2",
+      "seed": 20261011,
+      "block_table": [
+        191,
+        144,
+        18
+      ],
+      "variants": {
+        "U": {
+          "tok_per_s": {
+            "median": 22.513604275275323,
+            "min": 22.499998512212287,
+            "max": 22.526212298123742,
+            "range_pct": 0.11643531435898757
+          },
+          "ttft_ms": {
+            "median": 186.02827843278646,
+            "min": 184.78070199489594,
+            "max": 186.90413888543844,
+            "range_pct": 1.1414591955758608
+          },
+          "ms_per_round": {
+            "median": 44.59177465999828,
+            "min": 44.56681644215303,
+            "max": 44.618739333807255,
+            "range_pct": 0.1164405140861102
+          },
+          "ms_per_round_steady": {
+            "median": 43.856740181194986,
+            "min": 43.838309776771254,
+            "max": 43.88561067134729,
+            "range_pct": 0.1078531928743635
+          },
+          "ms_per_round_maxB": {
+            "median": 43.83479477837682,
+            "min": 43.8240272924304,
+            "max": 43.86086901649833,
+            "range_pct": 0.08404675841233775
+          },
+          "tok_per_s_maxB": {
+            "median": 22.80151228450816,
+            "min": 22.786512132390023,
+            "max": 22.81109844544858,
+            "range_pct": 0.10782755438226199
+          },
+          "maxB": 1,
+          "rounds": {
+            "median": 255,
+            "min": 255,
+            "max": 255,
+            "range_pct": 0.0
+          },
+          "rounds_by_B": {
+            "1": 254
+          },
+          "tok_per_round": {
+            "median": 1.003921568627451,
+            "min": 1.003921568627451,
+            "max": 1.003921568627451,
+            "range_pct": 0.0
+          },
+          "wall_s": {
+            "median": 11.37090253829956,
+            "min": 11.364538192749023,
+            "max": 11.37777853012085,
+            "range_pct": 0.11644051408610677
+          },
+          "accept_rate": null,
+          "preempt": 0,
+          "draft_forwards": {
+            "median": 0,
+            "min": 0,
+            "max": 0,
+            "range_pct": null
+          },
+          "catchup_forwards": {
+            "median": 0,
+            "min": 0,
+            "max": 0,
+            "range_pct": null
+          },
+          "graphed_forwards": {
+            "median": 0,
+            "min": 0,
+            "max": 0,
+            "range_pct": null
+          },
+          "verify_graph_hits": 0,
+          "verify_graph_fallbacks": {},
+          "raw_ms_per_round": [
+            44.5668,
+            44.6187,
+            44.6164,
+            44.5918,
+            44.585
+          ],
+          "raw_ms_per_round_maxB": [
+            43.8257,
+            43.8609,
+            43.8503,
+            43.8348,
+            43.824
+          ],
+          "raw_tok_per_s": [
+            22.526,
+            22.5,
+            22.501,
+            22.514,
+            22.517
+          ],
+          "out_md5": "778142bba7fa93d840ca01505da807ef",
+          "out_md5_all_same": true,
+          "noise_floor_pct": 0.1164405140861102,
+          "noise_floor_maxB_pct": 0.08404675841233775
+        },
+        "S5": {
+          "tok_per_s": {
+            "median": 81.47479524345954,
+            "min": 81.23224784788698,
+            "max": 81.63658392981398,
+            "range_pct": 0.49627136922379395
+          },
+          "ttft_ms": {
+            "median": 186.91100552678108,
+            "min": 186.2606704235077,
+            "max": 187.01396975666285,
+            "range_pct": 0.4030256704425147
+          },
+          "ms_per_round": {
+            "median": 37.40566685086205,
+            "min": 37.33153570265997,
+            "max": 37.51735460190546,
+            "range_pct": 0.4967667064628405
+          },
+          "ms_per_round_steady": {
+            "median": 35.149906818048066,
+            "min": 35.07825377655317,
+            "max": 35.26544972625842,
+            "range_pct": 0.5325645688742795
+          },
+          "ms_per_round_maxB": {
+            "median": 35.03661695867777,
+            "min": 34.94868893176317,
+            "max": 35.16560327261686,
+            "range_pct": 0.6191075499941109
+          },
+          "tok_per_s_maxB": {
+            "median": 87.06256263200422,
+            "min": 86.77731285464898,
+            "max": 87.24040208355335,
+            "range_pct": 0.531903972160514
+          },
+          "maxB": 1,
+          "rounds": {
+            "median": 84,
+            "min": 84,
+            "max": 84,
+            "range_pct": 0.0
+          },
+          "rounds_by_B": {
+            "1": 83
+          },
+          "tok_per_round": {
+            "median": 3.0476190476190474,
+            "min": 3.0476190476190474,
+            "max": 3.0476190476190474,
+            "range_pct": 0.0
+          },
+          "wall_s": {
+            "median": 3.142076015472412,
+            "min": 3.1358489990234375,
+            "max": 3.1514577865600586,
+            "range_pct": 0.49676670646283866
+          },
+          "accept_rate": {
+            "median": 0.6785714285714286,
+            "min": 0.6785714285714286,
+            "max": 0.6785714285714286,
+            "range_pct": 0.0
+          },
+          "preempt": 0,
+          "draft_forwards": {
+            "median": 504,
+            "min": 504,
+            "max": 504,
+            "range_pct": 0.0
+          },
+          "catchup_forwards": {
+            "median": 6,
+            "min": 6,
+            "max": 6,
+            "range_pct": 0.0
+          },
+          "graphed_forwards": {
+            "median": 510,
+            "min": 510,
+            "max": 510,
+            "range_pct": 0.0
+          },
+          "verify_graph_hits": 84,
+          "verify_graph_fallbacks": {},
+          "raw_ms_per_round": [
+            37.4057,
+            37.3346,
+            37.3315,
+            37.4082,
+            37.5174
+          ],
+          "raw_ms_per_round_maxB": [
+            35.0366,
+            34.9487,
+            34.9592,
+            35.0853,
+            35.1656
+          ],
+          "raw_tok_per_s": [
+            81.475,
+            81.63,
+            81.637,
+            81.469,
+            81.232
+          ],
+          "out_md5": "445f84b3c4542e3fb83e0b98b860b8b6",
+          "out_md5_all_same": true,
+          "noise_floor_pct": 0.4967667064628405,
+          "noise_floor_maxB_pct": 0.6191075499941109
+        }
+      },
+      "paired": {
+        "S5/U": {
+          "ms_per_round": {
+            "median": 0.8389041355537744,
+            "min": 0.8367231335039902,
+            "max": 0.8414788975524677,
+            "range_pct": 0.5669019673312485
+          },
+          "ms_per_round_maxB": {
+            "median": 0.7994538551169441,
+            "min": 0.79680794556572,
+            "max": 0.8024274683374643,
+            "range_pct": 0.7029202168175477
+          },
+          "tok_per_s": {
+            "median": 3.618666492459667,
+            "min": 3.607594075792023,
+            "max": 3.628098906506221,
+            "range_pct": 0.566640522328441
+          },
+          "tok_per_s_maxB": {
+            "median": 3.818280188860824,
+            "min": 3.8054601617677677,
+            "max": 3.828598320650617,
+            "range_pct": 0.6059837868983796
+          }
+        }
+      }
+    },
+    {
+      "B": 4,
+      "ctx": 1024,
+      "outlen": 256,
+      "k": 6,
+      "runs": 5,
+      "prompt": "wikitext2",
+      "seed": 20261011,
+      "block_table": [
+        191,
+        144,
+        18
+      ],
+      "variants": {
+        "U": {
+          "tok_per_s": {
+            "median": 101.31150919773978,
+            "min": 101.3035470804921,
+            "max": 101.49245846215234,
+            "range_pct": 0.1864658646941388
+          },
+          "ttft_ms": {
+            "median": 255.60842314735055,
+            "min": 254.9593150615692,
+            "max": 255.91293210163713,
+            "range_pct": 0.3730773142472616
+          },
+          "ms_per_round": {
+            "median": 39.63701958749809,
+            "min": 39.566351385677564,
+            "max": 39.640134923598346,
+            "range_pct": 0.18614804717571237
+          },
+          "ms_per_round_steady": {
+            "median": 38.62814024442763,
+            "min": 38.55838539724157,
+            "max": 38.633192163400764,
+            "range_pct": 0.19365873087815347
+          },
+          "ms_per_round_maxB": {
+            "median": 38.60548883676529,
+            "min": 38.54638757184148,
+            "max": 38.623195607215166,
+            "range_pct": 0.19895625644957746
+          },
+          "tok_per_s_maxB": {
+            "median": 103.55145173153986,
+            "min": 103.53791069300787,
+            "max": 103.7387836339785,
+            "range_pct": 0.1939837033780996
+          },
+          "maxB": 4,
+          "rounds": {
+            "median": 255,
+            "min": 255,
+            "max": 255,
+            "range_pct": 0.0
+          },
+          "rounds_by_B": {
+            "4": 254
+          },
+          "tok_per_round": {
+            "median": 4.015686274509804,
+            "min": 4.015686274509804,
+            "max": 4.015686274509804,
+            "range_pct": 0.0
+          },
+          "wall_s": {
+            "median": 10.107439994812012,
+            "min": 10.089419603347778,
+            "max": 10.108234405517578,
+            "range_pct": 0.18614804717571554
+          },
+          "accept_rate": null,
+          "preempt": 0,
+          "draft_forwards": {
+            "median": 0,
+            "min": 0,
+            "max": 0,
+            "range_pct": null
+          },
+          "catchup_forwards": {
+            "median": 0,
+            "min": 0,
+            "max": 0,
+            "range_pct": null
+          },
+          "graphed_forwards": {
+            "median": 0,
+            "min": 0,
+            "max": 0,
+            "range_pct": null
+          },
+          "verify_graph_hits": 0,
+          "verify_graph_fallbacks": {},
+          "raw_ms_per_round": [
+            39.6079,
+            39.6394,
+            39.637,
+            39.5664,
+            39.6401
+          ],
+          "raw_ms_per_round_maxB": [
+            38.5803,
+            38.6055,
+            38.6101,
+            38.5464,
+            38.6232
+          ],
+          "raw_tok_per_s": [
+            101.386,
+            101.305,
+            101.312,
+            101.492,
+            101.304
+          ],
+          "out_md5": "43fdb4e9459d9b7dfe2c89cf6f9a22da",
+          "out_md5_all_same": true,
+          "noise_floor_pct": 0.18614804717571237,
+          "noise_floor_maxB_pct": 0.19895625644957746
+        },
+        "S5": {
+          "tok_per_s": {
+            "median": 88.1940601145969,
+            "min": 88.13694915782914,
+            "max": 88.36782511835155,
+            "range_pct": 0.26178175743629145
+          },
+          "ttft_ms": {
+            "median": 255.95909636467695,
+            "min": 255.18638640642166,
+            "max": 258.8332500308752,
+            "range_pct": 1.4247837550018878
+          },
+          "ms_per_round": {
+            "median": 123.51871551351344,
+            "min": 123.27583039060552,
+            "max": 123.5987531377914,
+            "range_pct": 0.2614362899123217
+          },
+          "ms_per_round_steady": {
+            "median": 121.62639823571969,
+            "min": 121.40319620569547,
+            "max": 121.72009993184318,
+            "range_pct": 0.26055505280484814
+          },
+          "ms_per_round_maxB": {
+            "median": 42.34958812594414,
+            "min": 42.34386049211025,
+            "max": 42.444135062396526,
+            "range_pct": 0.236778147612831
+          },
+          "tok_per_s_maxB": {
+            "median": 280.4754593140636,
+            "min": 279.85510488298723,
+            "max": 280.5686461874869,
+            "range_pct": 0.25440418432496503
+          },
+          "maxB": 4,
+          "rounds": {
+            "median": 94,
+            "min": 94,
+            "max": 94,
+            "range_pct": 0.0
+          },
+          "rounds_by_B": {
+            "1": 1,
+            "3": 28,
+            "4": 64
+          },
+          "tok_per_round": {
+            "median": 10.893617021276595,
+            "min": 10.893617021276595,
+            "max": 10.893617021276595,
+            "range_pct": 0.0
+          },
+          "wall_s": {
+            "median": 11.610759258270264,
+            "min": 11.587928056716919,
+            "max": 11.618282794952393,
+            "range_pct": 0.2614362899123256
+          },
+          "accept_rate": {
+            "median": 0.6618357487922706,
+            "min": 0.6618357487922706,
+            "max": 0.6618357487922706,
+            "range_pct": 0.0
+          },
+          "preempt": 0,
+          "draft_forwards": {
+            "median": 564,
+            "min": 564,
+            "max": 564,
+            "range_pct": 0.0
+          },
+          "catchup_forwards": {
+            "median": 38,
+            "min": 38,
+            "max": 38,
+            "range_pct": 0.0
+          },
+          "graphed_forwards": {
+            "median": 433,
+            "min": 433,
+            "max": 433,
+            "range_pct": 0.0
+          },
+          "verify_graph_hits": 66,
+          "verify_graph_fallbacks": {
+            "shape_not_captured(B=3,k=6)": 28
+          },
+          "raw_ms_per_round": [
+            123.5379,
+            123.5988,
+            123.5187,
+            123.2758,
+            123.3317
+          ],
+          "raw_ms_per_round_maxB": [
+            42.4213,
+            42.3493,
+            42.3439,
+            42.3496,
+            42.4441
+          ],
+          "raw_tok_per_s": [
+            88.18,
+            88.137,
+            88.194,
+            88.368,
+            88.328
+          ],
+          "out_md5": "8502265098dce9aad1f6da00024639b9",
+          "out_md5_all_same": true,
+          "noise_floor_pct": 0.2614362899123217,
+          "noise_floor_maxB_pct": 0.236778147612831
+        }
+      },
+      "paired": {
+        "S5/U": {
+          "ms_per_round": {
+            "median": 3.1162462969963687,
+            "min": 3.1112835312802605,
+            "max": 3.11902173806752,
+            "range_pct": 0.24831820240646973
+          },
+          "ms_per_round_maxB": {
+            "median": 1.0986655506177947,
+            "min": 1.0967039572533563,
+            "max": 1.0995585136732409,
+            "range_pct": 0.25982032642048053
+          },
+          "tok_per_s": {
+            "median": 0.8705236040108706,
+            "min": 0.8697489742817827,
+            "max": 0.8719121642798443,
+            "range_pct": 0.24849297458390693
+          },
+          "tok_per_s_maxB": {
+            "median": 2.7049332765708893,
+            "min": 2.7029240112132804,
+            "max": 2.7096732937878643,
+            "range_pct": 0.24951752536905752
+          }
+        }
+      }
+    },
+    {
+      "B": 4,
+      "ctx": 4096,
+      "outlen": 256,
+      "k": 6,
+      "runs": 5,
+      "prompt": "wikitext2",
+      "seed": 20261011,
+      "block_table": [
+        191,
+        144,
+        18
+      ],
+      "variants": {
+        "U": {
+          "tok_per_s": {
+            "median": 97.09705834818041,
+            "min": 97.04867634878633,
+            "max": 97.15824329953082,
+            "range_pct": 0.11284270873747548
+          },
+          "ttft_ms": {
+            "median": 713.7973769567907,
+            "min": 708.7587038986385,
+            "max": 716.2821674719453,
+            "range_pct": 1.0540054945820048
+          },
+          "ms_per_round": {
+            "median": 41.3574452493705,
+            "min": 41.33140059078441,
+            "max": 41.378063314101276,
+            "range_pct": 0.11282786699106849
+          },
+          "ms_per_round_steady": {
+            "median": 38.552699834255016,
+            "min": 38.53121183548621,
+            "max": 38.572563122459286,
+            "range_pct": 0.1072591210235647
+          },
+          "ms_per_round_maxB": {
+            "median": 38.52233150973916,
+            "min": 38.513239938765764,
+            "max": 38.555567152798176,
+            "range_pct": 0.10987708265194299
+          },
+          "tok_per_s_maxB": {
+            "median": 103.75408252072407,
+            "min": 103.70065342302746,
+            "max": 103.81194386199157,
+            "range_pct": 0.10726367219513999
+          },
+          "maxB": 4,
+          "rounds": {
+            "median": 255,
+            "min": 255,
+            "max": 255,
+            "range_pct": 0.0
+          },
+          "rounds_by_B": {
+            "4": 254
+          },
+          "tok_per_round": {
+            "median": 4.015686274509804,
+            "min": 4.015686274509804,
+            "max": 4.015686274509804,
+            "range_pct": 0.0
+          },
+          "wall_s": {
+            "median": 10.546148538589478,
+            "min": 10.539507150650024,
+            "max": 10.551406145095825,
+            "range_pct": 0.11282786699107354
+          },
+          "accept_rate": null,
+          "preempt": 0,
+          "draft_forwards": {
+            "median": 0,
+            "min": 0,
+            "max": 0,
+            "range_pct": null
+          },
+          "catchup_forwards": {
+            "median": 0,
+            "min": 0,
+            "max": 0,
+            "range_pct": null
+          },
+          "graphed_forwards": {
+            "median": 0,
+            "min": 0,
+            "max": 0,
+            "range_pct": null
+          },
+          "verify_graph_hits": 0,
+          "verify_graph_fallbacks": {},
+          "raw_ms_per_round": [
+            41.3577,
+            41.3781,
+            41.3314,
+            41.3574,
+            41.357
+          ],
+          "raw_ms_per_round_maxB": [
+            38.5462,
+            38.5556,
+            38.5132,
+            38.5221,
+            38.5223
+          ],
+          "raw_tok_per_s": [
+            97.096,
+            97.049,
+            97.158,
+            97.097,
+            97.098
+          ],
+          "out_md5": "1e0355f6f9013048d9bff34867a908df",
+          "out_md5_all_same": true,
+          "noise_floor_pct": 0.11282786699106849,
+          "noise_floor_maxB_pct": 0.10987708265194299
+        },
+        "S5": {
+          "tok_per_s": {
+            "median": 127.8567812151089,
+            "min": 127.7616560345056,
+            "max": 128.35534241267266,
+            "range_pct": 0.4643370281379283
+          },
+          "ttft_ms": {
+            "median": 711.4441297017038,
+            "min": 709.5644371584058,
+            "max": 712.7237082459033,
+            "range_pct": 0.4440645379732208
+          },
+          "ms_per_round": {
+            "median": 80.89859798701123,
+            "min": 80.5843695245608,
+            "max": 80.9588311898588,
+            "range_pct": 0.46287781817692575
+          },
+          "ms_per_round_steady": {
+            "median": 73.81473704032143,
+            "min": 73.53345262913071,
+            "max": 73.88924740787063,
+            "range_pct": 0.4820104941179517
+          },
+          "ms_per_round_maxB": {
+            "median": 62.06368748098612,
+            "min": 61.7875000461936,
+            "max": 62.23945040255785,
+            "range_pct": 0.7282041636709228
+          },
+          "tok_per_s_maxB": {
+            "median": 188.04181340736716,
+            "min": 187.7514724890841,
+            "max": 188.69731371622,
+            "range_pct": 0.5029951636803586
+          },
+          "maxB": 4,
+          "rounds": {
+            "median": 99,
+            "min": 99,
+            "max": 99,
+            "range_pct": 0.0
+          },
+          "rounds_by_B": {
+            "1": 6,
+            "2": 9,
+            "3": 6,
+            "4": 77
+          },
+          "tok_per_round": {
+            "median": 10.343434343434344,
+            "min": 10.343434343434344,
+            "max": 10.343434343434344,
+            "range_pct": 0.0
+          },
+          "wall_s": {
+            "median": 8.008961200714111,
+            "min": 7.9778525829315186,
+            "max": 8.01492428779602,
+            "range_pct": 0.46287781817692525
+          },
+          "accept_rate": {
+            "median": 0.6421845574387948,
+            "min": 0.6421845574387948,
+            "max": 0.6421845574387948,
+            "range_pct": 0.0
+          },
+          "preempt": 0,
+          "draft_forwards": {
+            "median": 594,
+            "min": 594,
+            "max": 594,
+            "range_pct": 0.0
+          },
+          "catchup_forwards": {
+            "median": 34,
+            "min": 34,
+            "max": 34,
+            "range_pct": 0.0
+          },
+          "graphed_forwards": {
+            "median": 592,
+            "min": 592,
+            "max": 592,
+            "range_pct": 0.0
+          },
+          "verify_graph_hits": 93,
+          "verify_graph_fallbacks": {
+            "shape_not_captured(B=3,k=6)": 6
+          },
+          "raw_ms_per_round": [
+            80.5844,
+            80.8373,
+            80.9588,
+            80.8986,
+            80.9559
+          ],
+          "raw_ms_per_round_maxB": [
+            61.7875,
+            62.175,
+            62.2395,
+            62.02,
+            62.0637
+          ],
+          "raw_tok_per_s": [
+            128.355,
+            127.954,
+            127.762,
+            127.857,
+            127.766
+          ],
+          "out_md5": "a82626c87994ae9cd17fe6bde268ba32",
+          "out_md5_all_same": true,
+          "noise_floor_pct": 0.46287781817692575,
+          "noise_floor_maxB_pct": 0.7282041636709228
+        }
+      },
+      "paired": {
+        "S5/U": {
+          "ms_per_round": {
+            "median": 1.956083058303573,
+            "min": 1.9484732956746345,
+            "max": 1.9587729917846055,
+            "range_pct": 0.5265469718296901
+          },
+          "ms_per_round_maxB": {
+            "median": 1.6111093240889447,
+            "min": 1.6029448948047693,
+            "max": 1.6160533494848952,
+            "range_pct": 0.813629123991229
+          },
+          "tok_per_s": {
+            "median": 1.3167935608989014,
+            "min": 1.3149852415571883,
+            "max": 1.3219362982676919,
+            "range_pct": 0.5278774833739662
+          },
+          "tok_per_s_maxB": {
+            "median": 1.8118375054663793,
+            "min": 1.8085729397253405,
+            "max": 1.8196347610893495,
+            "range_pct": 0.6105305431991059
+          }
+        }
+      }
+    }
+  ]
+}

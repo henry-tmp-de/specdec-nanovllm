@@ -1,0 +1,5 @@
+win serial_wall=364s
+win_int8 serial_wall=384s
+win_int8_direct serial_wall=385s
+core serial_wall=768s
+SERIAL_DONE

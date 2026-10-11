@@ -1,0 +1,4 @@
+win 364
+win_int8 384
+win_int8_direct 385
+core 768
