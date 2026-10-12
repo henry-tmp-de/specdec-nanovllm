@@ -108,6 +108,12 @@ class Config:
     #   ★ 依据（实测）：docs/端到端验收.md §6 + 本轮 p13_prefill_probe —— 冷启动下
     #     draft prefill 让 target prefill 多花 20%~26%（16K 时 +739 ms），
     #     热缓存（只补未命中的尾巴）下是恒定 +31.5 ms。
+    #   ★ P12 补：`spec_batch_threshold` 的门控在 prefill 时刻看不到【未来】的解码批，
+    #     但我们知道【此刻已经在解码的批】。Scheduler 每轮开工前把它写进下面的字段；
+    #     prefill 时若它已经 > 阈值 ⇒ 下一步解码一定还在阈值之上 ⇒ 这趟 draft prefill
+    #     是确定白跑的，可以一起跳过（`_draft_prefill_needed` 里读它）。
+    #     ★ 运行期瞬态字段（Scheduler 写、ModelRunner 读），不参与 Config 的语义。
+    _sched_running_decode_b: int = 0
     spec_prefill_chunk_tokens: int = 0
     #   >0 = 把 prefill 切成每轮最多这么多 token 的块，并在两次块之间【让一轮给 decode】。
     #        一条长 prompt 到场时，正在解码的请求不再被饿死整段 prefill。

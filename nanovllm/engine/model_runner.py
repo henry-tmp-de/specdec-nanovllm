@@ -393,7 +393,14 @@ class ModelRunner:
         block_tables = torch.tensor(block_tables, dtype=torch.int32, pin_memory=True).cuda(non_blocking=True)
         return block_tables
 
-    def prepare_prefill(self, seqs: list[Sequence]):
+    def prepare_prefill(self, seqs: list[Sequence], advance_draft: bool = True):
+        """把本轮的 prefill 输入拼好、并设好 attention context。
+
+        advance_draft=False（P12）：**不要**推进 draft KV 的有效水位 —— 调用方
+        已经决定这轮不跑 draft 前向（跳过开关 + 确定不投机），水位一推就是
+        "盖了个没写过的章"，之后翻回投机时 proposer 会拿脏 KV 提候选。
+        默认 True ⇒ 老路径逐字节不变（warmup / 滑窗重建都走默认值）。
+        """
         input_ids = []
         positions = []
         cu_seqlens_q = [0]
@@ -422,7 +429,9 @@ class ModelRunner:
             #     draft 侧的物理块可能残留「被拒绝候选」的 KV（见 12.5 任务 D），
             #     不能仅凭 target 前缀命中就假定 draft 侧也有效；
             #     保守留成缺口，让 proposer 在下次提议前补齐（补齐计入运行时间）。
-            seq.advance_draft_watermark(start, end)
+            # ★ P12：本轮的 draft 前向被跳过时不盖章（见 advance_draft 的说明）。
+            if advance_draft:
+                seq.advance_draft_watermark(start, end)
 
             if not seq.block_table:    # warmup
                 continue
@@ -633,12 +642,23 @@ class ModelRunner:
         （`model_runner.run()` 原来那句 `if self.draft_model is not None` 不看 spec_k，
         只要进程加载了 draft 就白跑一遍 —— 见 docs/端到端验收.md §6 与本轮上界表。）
 
-        ★ 只覆盖"确定不投机"的情形。`spec_batch_threshold` 那种按【解码批大小】判的
-          门控在 prefill 时刻还不知道未来的解码批，保守起见仍然照跑（不在这里猜）。
+        ★ P12 补：`spec_batch_threshold` 那种按【解码批大小】判的门控，在 prefill
+          时刻确实看不到**未来**的解码批 —— 但看得到【此刻已经在解码的批】，
+          而下一步解码批 ≥ 它。所以只要它已经 > 阈值，下一步的解码轮一定还关着
+          投机 ⇒ 这趟 draft prefill 是确定白跑的，一起跳过。
+          （Scheduler 每轮把它写进 `config._sched_running_decode_b`。）
+          ★ 边界（诚实）：抢占（preempt）可能让解码批临时缩回阈值以内，那时投机
+            会重新打开 —— 但这只是"少跳过一趟"，draft KV 由 proposer 正常 catchup
+            补齐（P12 已把"跳过时不许盖章"修掉），不会出错。
         """
         if not getattr(self.config, "spec_skip_draft_prefill_when_off", False):
             return True
-        return self.config.spec_k > 0
+        if self.config.spec_k <= 0:
+            return False
+        thr = int(getattr(self.config, "spec_batch_threshold", 0) or 0)
+        if thr and int(getattr(self.config, "_sched_running_decode_b", 0) or 0) > thr:
+            return False
+        return True
 
     @torch.inference_mode()
     def _run_draft_prefill_window(self, seqs):
@@ -766,14 +786,25 @@ class ModelRunner:
            投机验证       -> list[list[int]]        每序列若干个
         """
         if is_prefill:
-            input_ids, positions = self.prepare_prefill(seqs)
+            # ★★ P12 修：`prepare_prefill` 里的 `advance_draft_watermark` 会把
+            #   draft KV 的"有效水位"推到本 chunk 的末尾 —— 它是个**盖章**，
+            #   前提是"这趟 draft 前向跑了"。P13 的跳过开关让 draft 前向不跑，
+            #   但这个章还是照盖：水位被推到 end，而 draft 的 KV 一个字没写。
+            #   后果（实测）：运行期把 spec_k 从 0 翻回正数后，proposer 相信
+            #   水位、不做补齐，拿【未初始化】的 draft KV 提候选 ⇒ 接受率崩
+            #   （每轮交付 2.77 → 1.21 个 token），而 verify 前向照付 ⇒ 比不投机还慢。
+            #   ⇒ 跳过 draft prefill 的那一轮，**不盖这个章**（水位不动），
+            #     之后真正需要时由 proposer 的正常 catchup 路径补齐。
+            #   ★ 默认路径（开关关）`_draft_prefill_needed()` 恒 True ⇒ 与老行为逐字节一致。
+            draft_needed = self._draft_prefill_needed()
+            input_ids, positions = self.prepare_prefill(seqs, advance_draft=draft_needed)
             if self.draft_model is not None:
                 # ★ draft 模型也要跑一遍 prefill，把它的 KV cache 建起来
                 #   （关闭滑窗时 draft 与 target 共用 block_table，但各自写进自己的 cache；
                 #    打开滑窗时 draft 用自己的环形块表，见 _run_draft_prefill_window）
                 #   ★ P13：`_draft_prefill_needed()` 默认恒 True（老路径一行不变）；
                 #     打开开关且本引擎确定不投机（spec_k<=0）时整趟跳过。
-                if self._draft_prefill_needed() and \
+                if draft_needed and \
                         self._run_draft_prefill(seqs, input_ids, positions):
                     # 滑窗路径 set 过自己的 context 又 reset 了 → 重建 target 的
                     input_ids, positions = self.prepare_prefill(seqs)

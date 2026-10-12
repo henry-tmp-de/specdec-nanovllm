@@ -79,11 +79,30 @@ class Scheduler:
         # ★ getattr 兜底：部分 CPU 单测用 `Scheduler.__new__` 绕开 __init__ 铺对象
         #   （见 tests/test_spec_gate.py:mk_sched），不会带这两个新字段。
         chunk = getattr(self, "prefill_chunk_tokens", 0) or 0
+        # ★★ P12：没有可让路的解码请求时，分块【只有代价、没有收益】。
+        #   "让路"这一步（yield_to_decode）本来就门控在 `bool(self.running)` 上：
+        #   running 空 ⇒ 块与块之间不会插入任何 decode 轮 ⇒ 分块只是把同一份
+        #   prefill 拆成 N 个小批去做，白付"小批效率低"的代价，没人受益。
+        #   实测（无解码请求、ctx=16384、单条长 prompt）：C=256 prefill 墙钟 +24.5%、
+        #   C=512 +20.3%、C=128 +70.4%（对照：C=4096 只 +4.3%）。
+        #   ⇒ 只在"确实有解码请求可让路"时才切块；一旦 running 变空，
+        #     上一轮留下的 pending 块会在下一轮拿到完整预算、一次拼完。
+        #   ★ 默认路径（prefill_chunk_tokens=0）行为逐字节不变。
+        if chunk and not getattr(self, "running", None):
+            chunk = 0
         yield_to_decode = (chunk > 0
                            and getattr(self, "_prefill_chunk_pending", False)
                            and bool(self.running))
         if self.waiting and not yield_to_decode:
             self._prefill_chunk_pending = False
+            # ★ P12：把「此刻已经在解码的批大小」记到 config 上，供 ModelRunner 的
+            #   `_draft_prefill_needed()` 判"这趟 draft prefill 会不会白跑"
+            #   （spec_batch_threshold 门控在 prefill 时刻看不到未来，但能看到现在）。
+            #   getattr/setattr 兜底：CPU 单测用 SimpleNamespace 铺 config。
+            try:
+                self.config._sched_running_decode_b = len(self.running)
+            except AttributeError:
+                pass
             # prefill
             while self.waiting and len(scheduled_seqs) < self.max_num_seqs:
                 seq = self.waiting[0]
