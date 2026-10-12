@@ -690,7 +690,15 @@ class ModelRunner:
             if end <= 0:
                 continue
             w = DraftWindow(seq.draft_block_table, bs, M, P)
-            b0 = w.b0(end - 1)                   # 尾部窗口起点块（恒 ≥ P）
+            if getattr(self.config, "spec_draft_win_align", False):
+                # ★ 修复开关（默认关）：尾部窗口对齐到【第一个生成位置 end】
+                #   所在的块 —— 也就是解码期绝大多数查询会用的那个 b0，
+                #   而不是最后一个 prompt 位置 end-1 的 b0（两者在 end 是
+                #   块边界时差一个块；差异正是「滑动」这一次对齐漂移）。
+                b0 = w.b0(end)
+                seq.draft_win_start = b0 * bs
+            else:
+                b0 = w.b0(end - 1)               # 尾部窗口起点块（恒 ≥ P）
             head_end = min(P * bs, end)          # 常驻段覆盖 [0, head_end)
             w0 = b0 * bs                         # 尾部窗口起点
             # 两段：[0, head_end) 与 [w0, end)；w0 ≥ P*bs 保证两段不重叠。
@@ -753,6 +761,11 @@ class ModelRunner:
         P = max(0, int(getattr(self, "draft_head_blocks", 0) or 0)) if M else 0
         start, catchup, valid_from = window_request_geom(
             seq.draft_valid_len, seq.token_ids, self.block_size, M, P)
+        if M and getattr(self.config, "spec_draft_win_align", False):
+            # ★ 窗口下界的地板 = prefill 那一刻写下环里那些块的起点
+            #   ⇒ 读端声明的可见区间与那些块被写下时的上下文【同一个对齐】。
+            #   默认关时这一行不执行，老路径逐字节不变。
+            valid_from = max(valid_from, int(getattr(seq, "draft_win_start", 0)))
         return dict(block_table=list(seq.block_table),
                     draft_ring=list(seq.draft_block_table) if M else [],
                     window_blocks=M, head_blocks=P, valid_from=valid_from,
