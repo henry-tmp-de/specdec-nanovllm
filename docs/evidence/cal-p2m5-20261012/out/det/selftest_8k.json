@@ -1,0 +1,46 @@
+{
+  "L": 8192,
+  "cfg": "w0",
+  "P": 0,
+  "M": 0,
+  "T": 1.0,
+  "NWIN": 16,
+  "window_tokens": null,
+  "query_per_win": 2048,
+  "back": 1792,
+  "fwd": 256,
+  "alpha_gen": {
+    "n": 4096,
+    "tv_mean": 0.34615,
+    "tv_se": 0.00433,
+    "alpha": 0.65385
+  },
+  "alpha_all": {
+    "n": 32768,
+    "tv_mean": 0.34534,
+    "tv_se": 0.00149,
+    "alpha": 0.65466
+  },
+  "alpha_gen_per_window": [
+    0.73408,
+    0.64858,
+    0.57714,
+    0.64261,
+    0.66624,
+    0.68244,
+    0.65543,
+    0.6872,
+    0.60852,
+    0.69004,
+    0.62021,
+    0.63587,
+    0.68396,
+    0.69455,
+    0.63311,
+    0.60156
+  ],
+  "alpha_gen_window_se": 0.01023,
+  "note": "alpha = 1 − mean TV(target, draft)；逐位置一步接受概率；alpha_gen 只数 t>=L-1 的生成位（与自由生成 out=256 对齐）",
+  "selftest_max_dlogits": 0.25,
+  "selftest_pass": false
+}

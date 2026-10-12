@@ -1,0 +1,17 @@
+[cmp] window=1280(M=5) head=2 ctx=8192 first_fg pos=[8192] cl=[1537] bt=[[0, 1, 3, 4, 5, 6, 2]]
+Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]Loading weights:  27%|██▋       | 83/311 [00:00<00:00, 824.81it/s]Loading weights:  76%|███████▌  | 236/311 [00:00<00:00, 1221.65it/s]Loading weights: 100%|██████████| 311/311 [00:00<00:00, 1230.14it/s]
+Loading weights:   0%|          | 0/398 [00:00<?, ?it/s]Loading weights:   0%|          | 1/398 [00:00<01:06,  6.01it/s]Loading weights:   7%|▋         | 27/398 [00:00<00:03, 122.71it/s]Loading weights:  12%|█▏        | 49/398 [00:00<00:02, 160.31it/s]Loading weights:  20%|█▉        | 79/398 [00:00<00:01, 202.68it/s]Loading weights:  26%|██▌       | 104/398 [00:00<00:01, 213.35it/s]Loading weights:  34%|███▍      | 135/398 [00:00<00:01, 238.99it/s]Loading weights:  40%|████      | 160/398 [00:00<00:01, 237.23it/s]Loading weights:  47%|████▋     | 187/398 [00:00<00:00, 245.25it/s]Loading weights:  53%|█████▎    | 212/398 [00:01<00:00, 244.99it/s]Loading weights:  60%|█████▉    | 237/398 [00:01<00:00, 239.88it/s]Loading weights:  67%|██████▋   | 267/398 [00:01<00:00, 252.09it/s]Loading weights:  74%|███████▎  | 293/398 [00:01<00:00, 250.27it/s]Loading weights:  81%|████████  | 322/398 [00:01<00:00, 258.26it/s]Loading weights:  87%|████████▋ | 348/398 [00:01<00:00, 254.65it/s]Loading weights:  95%|█████████▍| 377/398 [00:01<00:00, 260.77it/s]Loading weights: 100%|██████████| 398/398 [00:01<00:00, 231.75it/s]
+[cmp] 引擎自己那一步 TV(draft, target) = 0.16799
+[cmp] 上下文                       token  TV(eng_q, HF_q)  TV(HF_q, HF_p)
+[cmp] full                       8193         0.10368         0.22925
+[cmp] tail256                     256         0.36330         0.35524
+[cmp] tail512                     512         0.23916         0.32051
+[cmp] tail768                     768         0.29195         0.35617
+[cmp] tail1024                   1024         0.07386         0.19899
+[cmp] tail1280                   1280         0.10878         0.25292
+[cmp] tail1536                   1536         0.04315         0.14998
+[cmp] tail1792                   1792         0.13311         0.24749
+[cmp] head2+win                  1792         0.10881         0.25340
+[cmp] eng_chunk_anchor           1281         0.05651         0.19995
+[cmp] target: TV(HF_p, engine_p) = 0.02044  (argmax HF=330 eng=330)
+[cmp] draft argmax: engine=330  cand(full)=330

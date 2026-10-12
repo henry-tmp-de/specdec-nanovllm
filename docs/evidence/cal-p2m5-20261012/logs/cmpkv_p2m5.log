@@ -1,0 +1,21 @@
+[kv] window=1280 head=2 ctx=8192 → prefill 段 = [(0, 512), (6912, 8192)]
+Loading weights:   0%|          | 0/311 [00:00<?, ?it/s]Loading weights:  34%|███▍      | 105/311 [00:00<00:00, 1044.24it/s]Loading weights:  85%|████████▍ | 263/311 [00:00<00:00, 1349.94it/s]Loading weights: 100%|██████████| 311/311 [00:00<00:00, 1326.07it/s]
+[kv] 抽样 16 个位置：引擎环里的 V 与离线算出的 V 最大差 = 0.00391
+      pos=0 -> blk=0 off=0  max|ΔV| = 0.00391
+      pos=1 -> blk=0 off=1  max|ΔV| = 0.00391
+      pos=2 -> blk=0 off=2  max|ΔV| = 0.00391
+      pos=3 -> blk=0 off=3  max|ΔV| = 0.00195
+      pos=448 -> blk=1 off=192  max|ΔV| = 0.00391
+      pos=449 -> blk=1 off=193  max|ΔV| = 0.00391
+      pos=450 -> blk=1 off=194  max|ΔV| = 0.00391
+      pos=451 -> blk=1 off=195  max|ΔV| = 0.00391
+      pos=7296 -> blk=3 off=128  max|ΔV| = 0.00208
+      pos=7297 -> blk=3 off=129  max|ΔV| = 0.00195
+      pos=7298 -> blk=3 off=130  max|ΔV| = 0.00391
+      pos=7299 -> blk=3 off=131  max|ΔV| = 0.00391
+      pos=8188 -> blk=6 off=252  max|ΔV| = 0.00391
+      pos=8189 -> blk=6 off=253  max|ΔV| = 0.00391
+      pos=8190 -> blk=6 off=254  max|ΔV| = 0.00391
+      pos=8191 -> blk=6 off=255  max|ΔV| = 0.00391
+[kv] 全段扫描（每 7 个取 1）：max|ΔV| = 0.00781 @ pos=70
+[kv] 对照 pos=7296: 与 HF 同位置 Δ=0.00208；与 HF 位置 7040 Δ=1.00195；与 HF 位置 7552 Δ=0.83398

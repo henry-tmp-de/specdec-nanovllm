@@ -1,0 +1,156 @@
+{
+  "group": "lc_w0",
+  "window": 0,
+  "head": 0,
+  "draft": "bf16",
+  "direct": false,
+  "draft_model": "/home/ziru/nano-vllm/models/Qwen3-0.6B",
+  "variants": [
+    "L"
+  ],
+  "k": 6,
+  "outlen": 256,
+  "max_seqs": 4,
+  "max_model_len": 16640,
+  "max_num_batched_tokens": 16640,
+  "seed": 20261011,
+  "blocks": {
+    "num_kvcache_blocks": 173,
+    "num_draft_blocks": 0,
+    "draft_window_blocks": 0,
+    "draft_head_blocks": 0
+  },
+  "draft_quant_weights": null,
+  "quant_direct_load": false,
+  "cells": [
+    {
+      "B": 4,
+      "ctx": 8192,
+      "outlen": 256,
+      "k": 6,
+      "runs": 3,
+      "prompt": "wikitext2",
+      "seed": 20261011,
+      "block_table": [
+        173,
+        0,
+        0
+      ],
+      "head_blocks": 0,
+      "variants": {
+        "L": {
+          "tok_per_s": {
+            "median": 99.67424713460466,
+            "min": 99.56944628812246,
+            "max": 99.8530625074469,
+            "range_pct": 0.2845431267129822
+          },
+          "ttft_ms": {
+            "median": 269.35064466670156,
+            "min": 268.6798609793186,
+            "max": 270.56087413802743,
+            "range_pct": 0.6983510884246831
+          },
+          "ms_per_round": {
+            "median": 105.91202175494323,
+            "min": 105.72235608838268,
+            "max": 106.02349841717592,
+            "range_pct": 0.28433252788810814
+          },
+          "ms_per_round_steady": {
+            "median": 103.22728925772633,
+            "min": 103.0372154879539,
+            "max": 103.32224903201374,
+            "range_pct": 0.27612227939862205
+          },
+          "ms_per_round_maxB": {
+            "median": 93.53593830019236,
+            "min": 93.49142201244831,
+            "max": 93.89009838923812,
+            "range_pct": 0.4262280189142962
+          },
+          "tok_per_s_maxB": {
+            "median": 128.85037761477588,
+            "min": 128.69819649301886,
+            "max": 129.24580092814807,
+            "range_pct": 0.42499249537815836
+          },
+          "maxB": 4,
+          "rounds": {
+            "median": 97,
+            "min": 97,
+            "max": 97,
+            "range_pct": 0.0
+          },
+          "rounds_by_B": {
+            "1": 3,
+            "2": 12,
+            "3": 11,
+            "4": 70
+          },
+          "tok_per_round": {
+            "median": 10.556701030927835,
+            "min": 10.556701030927835,
+            "max": 10.556701030927835,
+            "range_pct": 0.0
+          },
+          "wall_s": {
+            "median": 10.273466110229492,
+            "min": 10.25506854057312,
+            "max": 10.284279346466064,
+            "range_pct": 0.2843325278881152
+          },
+          "accept_rate": {
+            "median": 0.6719961240310077,
+            "min": 0.6719961240310077,
+            "max": 0.6719961240310077,
+            "range_pct": 0.0
+          },
+          "preempt": 0,
+          "draft_forwards": {
+            "median": 582,
+            "min": 582,
+            "max": 582,
+            "range_pct": 0.0
+          },
+          "catchup_forwards": {
+            "median": 37,
+            "min": 37,
+            "max": 37,
+            "range_pct": 0.0
+          },
+          "graphed_forwards": {
+            "median": 553,
+            "min": 553,
+            "max": 553,
+            "range_pct": 0.0
+          },
+          "verify_graph_hits": 86,
+          "verify_graph_fallbacks": {
+            "shape_not_captured(B=3,k=6)": 11
+          },
+          "raw_ms_per_round": [
+            106.0235,
+            105.7224,
+            105.912
+          ],
+          "raw_ms_per_round_maxB": [
+            93.4914,
+            93.5359,
+            93.8901
+          ],
+          "raw_tok_per_s": [
+            99.569,
+            99.853,
+            99.674
+          ],
+          "out_md5": "a3040a003ea33e0d01d610670efaf92e",
+          "out_md5_all_same": true,
+          "noise_floor_pct": 0.28433252788810814,
+          "noise_floor_maxB_pct": 0.4262280189142962
+        }
+      },
+      "paired": {}
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+det_alpha.py --- offline FIXED-CONTEXT deterministic instrument: alpha = 1 - TV(p,q)
+wikitext2, 16 windows x 2048 positions (256 of them are 'generation' positions, t>=L-1)
+alpha_gen = only the generation positions (aligned with free-generation out=256)
+NOTE: this offline instrument rebuilds the draft context from the engine's window
+      semantics; it agrees with the engine on w0/p2m5 (<=1%) but is OPTIMISTIC by 0.25
+      on P=0 -- it is equivalent to the 'window never slides' ideal limit
+      (see docs/优化台账.md 2.7.2)
+w0       L=8192   P=0 M=0   win=None  alpha_gen=0.65385 (N=4096, se=0.00433, win_se=0.01023) alpha_all=0.65466
+w0       L=8192   P=0 M=0   win=None  alpha_gen=0.65385 (N=4096, se=0.00433, win_se=0.01023) alpha_all=0.65466
+m5       L=8192   P=0 M=5   win=1280  alpha_gen=0.62122 (N=4096, se=0.00450, win_se=0.00961) alpha_all=0.63165
+p2m5     L=8192   P=2 M=5   win=1792  alpha_gen=0.62106 (N=4096, se=0.00449, win_se=0.00962) alpha_all=0.63151
+w0       L=16384  P=0 M=0   win=None  alpha_gen=0.66840 (N=4096, se=0.00411, win_se=0.0147) alpha_all=0.66194
+m5       L=16384  P=0 M=5   win=1280  alpha_gen=0.62240 (N=4096, se=0.00439, win_se=0.01284) alpha_all=0.63107
+p2m5     L=16384  P=2 M=5   win=1792  alpha_gen=0.62263 (N=4096, se=0.00439, win_se=0.01282) alpha_all=0.63110
+p2m12    L=16384  P=2 M=12  win=3584  alpha_gen=0.65183 (N=4096, se=0.00421, win_se=0.01143) alpha_all=0.65127
+p2m18    L=16384  P=2 M=18  win=5120  alpha_gen=0.66038 (N=4096, se=0.00416, win_se=0.01364) alpha_all=0.65660
+p2m33    L=16384  P=2 M=33  win=8960  alpha_gen=0.66915 (N=4096, se=0.00410, win_se=0.01478) alpha_all=0.66131
+p2m48    L=16384  P=2 M=48  win=12800 alpha_gen=0.66778 (N=4096, se=0.00411, win_se=0.01479) alpha_all=0.66086
+p2m63    L=16384  P=2 M=63  win=16640 alpha_gen=0.66840 (N=4096, se=0.00411, win_se=0.0147) alpha_all=0.66194

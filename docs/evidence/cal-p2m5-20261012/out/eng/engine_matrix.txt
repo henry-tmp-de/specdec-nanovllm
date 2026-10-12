@@ -1,0 +1,30 @@
+engine_alpha.py —— 引擎内确定性仪器 α = 1 − TV(p,q)（挂在 verify_batch 上，拿引擎自己的 p/q 算）
+ctx/B=4/k=6/out=256/max_num_seqs=4/max_model_len=16640/温度 1.0/单卡 3090/wikitext2
+a_step = 所有 (轮,位置) 的 1−TV 均值；a_step1 = 只看每轮第 1 个候选
+★ face_accept_rate 是本脚本按 accepted/proposed(=6) 算的【轮级接受长度占比】，不是项目口径；项目口径的 accept_rate = accept_mask.mean() ≈ a_step（见 harness_*.json）
+
+p0m5_c7680     ctx=7680   P=0 M=5   N=3750   se=0.00586  a_step=0.37055  a_step1=0.33677  tok/r=1.638  face_accept_rate=0.10640
+p2m5_c7680     ctx=7680   P=2 M=5   N=2286   se=0.00527  a_step=0.63342  a_step1=0.63819  tok/r=2.688  face_accept_rate=0.28346
+p0m5_c7936     ctx=7936   P=0 M=5   N=4026   se=0.00526  a_step=0.35164  a_step1=0.29538  tok/r=1.526  face_accept_rate=0.08768
+w0_8k          ctx=8192   P=0 M=0   N=2178   se=0.00561  a_step=0.65511  a_step1=0.65053  tok/r=2.821  face_accept_rate=0.30808
+w0             ctx=8192   P=0 M=0   N=2094   se=0.00586  a_step=0.66617  a_step1=0.67737  tok/r=2.934  face_accept_rate=0.32330
+m5_8k          ctx=8192   P=0 M=5   N=3756   se=0.00566  a_step=0.36552  a_step1=0.32802  tok/r=1.636  face_accept_rate=0.10490
+p0m5_k3        ctx=8192   P=0 M=5   N=2025   se=0.00784  a_step=0.36826  a_step1=0.30698  tok/r=1.517  face_accept_rate=0.17037
+p0m5           ctx=8192   P=0 M=5   N=3720   se=0.00568  a_step=0.36875  a_step1=0.32185  tok/r=1.652  face_accept_rate=0.10806
+p1m5_8k        ctx=8192   P=1 M=5   N=2406   se=0.00556  a_step=0.62927  a_step1=0.60979  tok/r=2.554  face_accept_rate=0.26101
+p2m5_8k        ctx=8192   P=2 M=5   N=2340   se=0.00573  a_step=0.62618  a_step1=0.63202  tok/r=2.626  face_accept_rate=0.27265
+p2m5           ctx=8192   P=2 M=5   N=2214   se=0.00543  a_step=0.65122  a_step1=0.66383  tok/r=2.775  face_accept_rate=0.29810
+p4m5_8k        ctx=8192   P=4 M=5   N=2328   se=0.00580  a_step=0.61640  a_step1=0.60340  tok/r=2.639  face_accept_rate=0.27491
+p0m12_8k       ctx=8192   P=0 M=12  N=3522   se=0.00611  a_step=0.43641  a_step1=0.40011  tok/r=1.744  face_accept_rate=0.12294
+p0m18_c8192    ctx=8192   P=0 M=18  N=3108   se=0.00675  a_step=0.47618  a_step1=0.43155  tok/r=1.977  face_accept_rate=0.16345
+p0m33_8k       ctx=8192   P=0 M=33  N=2088   se=0.00575  a_step=0.64182  a_step1=0.63345  tok/r=2.942  face_accept_rate=0.32423
+p2m33_8k       ctx=8192   P=2 M=33  N=2010   se=0.00576  a_step=0.65660  a_step1=0.66154  tok/r=3.057  face_accept_rate=0.34677
+p0m5_c8448     ctx=8448   P=0 M=5   N=3990   se=0.00546  a_step=0.35296  a_step1=0.31234  tok/r=1.540  face_accept_rate=0.09073
+p2m5_c8448     ctx=8448   P=2 M=5   N=2274   se=0.00549  a_step=0.62166  a_step1=0.60450  tok/r=2.702  face_accept_rate=0.28452
+p0m5_c8704     ctx=8704   P=0 M=5   N=3798   se=0.00554  a_step=0.35680  a_step1=0.33235  tok/r=1.618  face_accept_rate=0.10295
+w0_16k         ctx=16384  P=0 M=0   N=1992   se=0.00564  a_step=0.66568  a_step1=0.68513  tok/r=3.084  face_accept_rate=0.34839
+m5_16k         ctx=16384  P=0 M=5   N=3738   se=0.00546  a_step=0.37112  a_step1=0.35812  tok/r=1.644  face_accept_rate=0.10754
+p2m5_16k       ctx=16384  P=2 M=5   N=2136   se=0.00561  a_step=0.66872  a_step1=0.66074  tok/r=2.876  face_accept_rate=0.31461
+p2m12_16k      ctx=16384  P=2 M=12  N=2412   se=0.00547  a_step=0.62573  a_step1=0.60581  tok/r=2.547  face_accept_rate=0.25746
+p2m18_16k      ctx=16384  P=2 M=18  N=2280   se=0.00579  a_step=0.62509  a_step1=0.62744  tok/r=2.695  face_accept_rate=0.28158
+p2m33_16k      ctx=16384  P=2 M=33  N=2256   se=0.00536  a_step=0.62652  a_step1=0.62071  tok/r=2.723  face_accept_rate=0.28856

@@ -1,0 +1,23 @@
+[spec] draft model: /home/ziru/nano-vllm/models/Qwen3-0.6B (28 层, vocab 151936)
+[spec] draft 滑窗开启: W=1280 token = 5 块/序列 + 常驻 0 块, draft 池 20 块 (0.55 GB), target 池 293 块
+[spec] draft KV cache: 28 层 x 20 blocks, 每block 28672 KB
+[spec] blocks=293, target 每block 36864 KB, 合计 10.85 GB
+[spec] draft CUDA graph 就绪 (bs=[1, 2, 4], 1 token/行)
+[spec] verify CUDA graph 就绪 (shapes=[(1, 6), (2, 6), (4, 6)], 7 query/请求, 共享图池)
+[transformers] Token indices sequence length is longer than the specified maximum sequence length for this model (298938 > 131072). Running this sequence through the model will result in indexing errors
+[dbg] TAG=p0m5 window=1280 head=0 M=5 P=0 num_draft_blocks=20
+[dbg] PREFILL seq len=8192 ring=[0, 1, 2, 3, 4] tokens[:4]=[284, 8397, 425, 10965]
+[rank0]:W1012 06:30:37.208000 2609675 torch/_dynamo/convert_frame.py:1676] [0/8] torch._dynamo hit config.recompile_limit (8)
+[rank0]:W1012 06:30:37.208000 2609675 torch/_dynamo/convert_frame.py:1676] [0/8]    function: 'rms_forward' (/home/ziru/nano-vllm/cal-work/nanovllm/layers/layernorm.py:16)
+[rank0]:W1012 06:30:37.208000 2609675 torch/_dynamo/convert_frame.py:1676] [0/8]    last reason: 0/7: tensor 'x' rank mismatch. expected 2, actual 3
+[rank0]:W1012 06:30:37.208000 2609675 torch/_dynamo/convert_frame.py:1676] [0/8] To log all recompilation reasons, use TORCH_LOGS="recompiles".
+[rank0]:W1012 06:30:37.208000 2609675 torch/_dynamo/convert_frame.py:1676] [0/8] To diagnose recompilation issues, see https://pytorch.org/docs/main/compile/programming_model.recompilation.html
+[dbg] B0LOG(前8): [{"pos": 8191, "valid_from": 0, "b0": 27, "P": 0, "M": 5, "bs": 256}, {"pos": 8192, "valid_from": 6912, "b0": 28, "P": 0, "M": 5, "bs": 256}, {"pos": 8192, "valid_from": 6912, "b0": 28, "P": 0, "M": 5, "bs": 256}, {"pos": 8193, "valid_from": 6912, "b0": 28, "P": 0, "M": 5, "bs": 256}, {"pos": 8193, "valid_from": 6912, "b0": 28, "P": 0, "M": 5, "bs": 256}, {"pos": 8194, "valid_from": 6912, "b0": 28, "P": 0, "M": 5, "bs": 256}, {"pos": 8194, "valid_from": 6912, "b0": 28, "P": 0, "M": 5, "bs": 256}, {"pos": 8195, "valid_from": 6912, "b0": 28, "P": 0, "M": 5, "bs": 256}]
+[dbg] 前 3 次 draft decode 前向:
+      pos [8192] ctx_len [1025] bt [[3, 4, 0, 1, 2]]
+      pos [8193] ctx_len [1026] bt [[3, 4, 0, 1, 2]]
+      pos [8194] ctx_len [1027] bt [[3, 4, 0, 1, 2]]
+      pos [8195] ctx_len [1028] bt [[3, 4, 0, 1, 2]]
+      pos [8196] ctx_len [1029] bt [[3, 4, 0, 1, 2]]
+      pos [8197] ctx_len [1030] bt [[3, 4, 0, 1, 2]]
+[dbg] context_len: min=1025 max=1048 前 24 个=[1025, 1026, 1027, 1028, 1029, 1030, 1031, 1032, 1033, 1034, 1035, 1036, 1037, 1033, 1034, 1035, 1036, 1037, 1038, 1035, 1036, 1037, 1038, 1039]

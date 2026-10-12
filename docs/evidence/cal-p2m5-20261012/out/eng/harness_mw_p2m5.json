@@ -1,0 +1,156 @@
+{
+  "group": "mw_p2m5",
+  "window": 1280,
+  "head": 2,
+  "draft": "bf16",
+  "direct": false,
+  "draft_model": "/home/ziru/nano-vllm/models/Qwen3-0.6B",
+  "variants": [
+    "L"
+  ],
+  "k": 6,
+  "outlen": 256,
+  "max_seqs": 4,
+  "max_model_len": 16640,
+  "max_num_batched_tokens": 16640,
+  "seed": 20261011,
+  "blocks": {
+    "num_kvcache_blocks": 287,
+    "num_draft_blocks": 28,
+    "draft_window_blocks": 5,
+    "draft_head_blocks": 2
+  },
+  "draft_quant_weights": null,
+  "quant_direct_load": false,
+  "cells": [
+    {
+      "B": 4,
+      "ctx": 8192,
+      "outlen": 256,
+      "k": 6,
+      "runs": 3,
+      "prompt": "wikitext2",
+      "seed": 20261011,
+      "block_table": [
+        287,
+        28,
+        5
+      ],
+      "head_blocks": 2,
+      "variants": {
+        "L": {
+          "tok_per_s": {
+            "median": 127.0971310896302,
+            "min": 126.97633506729044,
+            "max": 127.58875836745034,
+            "range_pct": 0.4818545429857237
+          },
+          "ttft_ms": {
+            "median": 364.07577339559793,
+            "min": 363.7043470516801,
+            "max": 364.69401186332107,
+            "range_pct": 0.2718293509097697
+          },
+          "ms_per_round": {
+            "median": 80.56830167770386,
+            "min": 80.25785446166992,
+            "max": 80.64494848251343,
+            "range_pct": 0.4804544874136632
+          },
+          "ms_per_round_steady": {
+            "median": 76.99600869620389,
+            "min": 76.69935290786353,
+            "max": 77.08103194682285,
+            "range_pct": 0.49571275891101774
+          },
+          "ms_per_round_maxB": {
+            "median": 68.43758840113878,
+            "min": 68.30023974180222,
+            "max": 68.65706574171782,
+            "range_pct": 0.5213889154365093
+          },
+          "tok_per_s_maxB": {
+            "median": 160.41428116010894,
+            "min": 160.2394076677996,
+            "max": 161.06360667567472,
+            "range_pct": 0.5137940349914847
+          },
+          "maxB": 4,
+          "rounds": {
+            "median": 100,
+            "min": 100,
+            "max": 100,
+            "range_pct": 0.0
+          },
+          "rounds_by_B": {
+            "1": 5,
+            "2": 7,
+            "3": 6,
+            "4": 81
+          },
+          "tok_per_round": {
+            "median": 10.24,
+            "min": 10.24,
+            "max": 10.24,
+            "range_pct": 0.0
+          },
+          "wall_s": {
+            "median": 8.056830167770386,
+            "min": 8.025785446166992,
+            "max": 8.064494848251343,
+            "range_pct": 0.4804544874136632
+          },
+          "accept_rate": {
+            "median": 0.6639269406392694,
+            "min": 0.6639269406392694,
+            "max": 0.6639269406392694,
+            "range_pct": 0.0
+          },
+          "preempt": 0,
+          "draft_forwards": {
+            "median": 600,
+            "min": 600,
+            "max": 600,
+            "range_pct": 0.0
+          },
+          "catchup_forwards": {
+            "median": 34,
+            "min": 34,
+            "max": 34,
+            "range_pct": 0.0
+          },
+          "graphed_forwards": {
+            "median": 597,
+            "min": 597,
+            "max": 597,
+            "range_pct": 0.0
+          },
+          "verify_graph_hits": 94,
+          "verify_graph_fallbacks": {
+            "shape_not_captured(B=3,k=6)": 6
+          },
+          "raw_ms_per_round": [
+            80.6449,
+            80.5683,
+            80.2579
+          ],
+          "raw_ms_per_round_maxB": [
+            68.6571,
+            68.4376,
+            68.3002
+          ],
+          "raw_tok_per_s": [
+            126.976,
+            127.097,
+            127.589
+          ],
+          "out_md5": "9123531a9370b27d1e2b06bb58dd3bd8",
+          "out_md5_all_same": true,
+          "noise_floor_pct": 0.4804544874136632,
+          "noise_floor_maxB_pct": 0.5213889154365093
+        }
+      },
+      "paired": {}
+    }
+  ]
+}
