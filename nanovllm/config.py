@@ -65,6 +65,10 @@ class Config:
     #     全上下文 vs W 的消融；见 ModelRunner._window_blocks / _draft_request。
     # ---------- P7-D：滑窗 + 开头常驻段（**新增选项**，默认 0 = 老行为）----------
     spec_draft_head_blocks: int = 0
+    # ★ 滑窗「对齐修复」：默认 False = 老行为（一行不变）。开启后 draft prefill
+    #   把尾部窗口对齐到【第一个生成位置】所在块的 b0，并把这个起点作为解码期
+    #   窗口下界的地板，保证「写的起点」与「读的起点」一致。
+    spec_draft_win_align: bool = False
     #   >0 = draft 的上下文 = 【开头 P 个块（常驻）】 + 【最近 M 个块（滑窗）】。
     #        纯滑窗（本字段 0）只留最近 M 块，序列【最开头】那几个块对整串有定位
     #        作用，小窗口下丢了它们接受率会掉；常驻段把这段拿回来。

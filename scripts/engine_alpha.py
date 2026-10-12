@@ -107,6 +107,8 @@ def main():
         kw["spec_draft_window"] = window
     if head:
         kw["spec_draft_head_blocks"] = head
+    if os.environ.get("ALIGN", "0") == "1":
+        kw["spec_draft_win_align"] = True
     llm = LLM(TGT, **kw)
 
     tok = AutoTokenizer.from_pretrained(TGT)
