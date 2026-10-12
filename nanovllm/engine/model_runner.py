@@ -133,6 +133,8 @@ class ModelRunner:
         # B 步：draft 滑窗的块数 M（0 = 关闭，draft 与 target 共用 block_table）。
         # 真正的取值在 allocate_kv_cache 里按预算定；warmup 会先用旧路径跑一遍。
         self.draft_window_blocks = 0
+        # P7-D：开头常驻段块数 P（0 = 不常驻 = 老行为）。同样在 allocate_kv_cache 定。
+        self.draft_head_blocks = 0
         self._verify_extra = None
         # P6 消融开关（默认走批量；设 False 退回逐请求/仅 B=1 图）
         self.batch_draft = config.spec_batch_draft
@@ -302,22 +304,28 @@ class ModelRunner:
         # 打开滑窗后走另一条：draft 只要 max_num_seqs * M 块（每序列私有的
         #   块级环形缓冲），target 拿走剩下的全部预算 → 容量上升。
         W = self._window_tokens()
+        P = self._head_blocks()
         if draft_block_bytes and W > 0:
             assert W % self.block_size == 0, (
                 f"spec_draft_window={W} 必须是 kvcache_block_size={self.block_size} 的整数倍")
             M = W // self.block_size
-            draft_pool = M * config.max_num_seqs
+            # ★ P7-D：每条序列拿 (P + M) 块 —— 开头 P 块常驻 + 最近 M 块的环。
+            #   P=0 时就是原来的 M*max_num_seqs，逐字节等价。
+            draft_pool = (M + P) * config.max_num_seqs
             room = budget - draft_pool * draft_block_bytes
             assert room >= tgt_block_bytes, (
                 f"draft 滑窗池放不下：{draft_pool} 块 x {draft_block_bytes/2**20:.0f} MiB "
                 f"= {draft_pool*draft_block_bytes/2**30:.2f} GB，而 KV 预算只有 "
-                f"{budget/2**30:.2f} GB（max_num_seqs={config.max_num_seqs}, M={M}）。"
-                f" 减小 spec_draft_window / max_num_seqs 或调大 gpu_memory_utilization")
+                f"{budget/2**30:.2f} GB（max_num_seqs={config.max_num_seqs}, M={M}, P={P}）。"
+                f" 减小 spec_draft_window / spec_draft_head_blocks / max_num_seqs "
+                f"或调大 gpu_memory_utilization")
             config.num_kvcache_blocks = int(room // tgt_block_bytes)
             config.num_draft_blocks = draft_pool
             config.draft_window_blocks = M
+            config.draft_head_blocks = P
             self.draft_window_blocks = M
-            print(f"[spec] draft 滑窗开启: W={W} token = {M} 块/序列, "
+            self.draft_head_blocks = P
+            print(f"[spec] draft 滑窗开启: W={W} token = {M} 块/序列 + 常驻 {P} 块, "
                   f"draft 池 {draft_pool} 块 ({(draft_pool*draft_block_bytes)/2**30:.2f} GB), "
                   f"target 池 {config.num_kvcache_blocks} 块")
         else:
@@ -325,7 +333,9 @@ class ModelRunner:
             config.num_kvcache_blocks = budget // per_block_total
             config.num_draft_blocks = 0
             config.draft_window_blocks = 0
+            config.draft_head_blocks = 0
             self.draft_window_blocks = 0
+            self.draft_head_blocks = 0
         if _MEM_TRACE:
             _pb = int(tgt_block_bytes + draft_block_bytes)
             print("[mem] " + json.dumps(dict(
@@ -568,6 +578,18 @@ class ModelRunner:
             return 0
         return w
 
+    def _head_blocks(self) -> int:
+        """P7-D：draft 上下文里【开头常驻】的块数 P（0 = 不常驻 = 老行为）。
+
+        ★ 和 spec_draft_window 不同，这个开关决定池子大小（(P+M)*max_num_seqs），
+          所以它在 init 期定死、运行期不再翻；`allocate_kv_cache` 会把它存进
+          `self.draft_head_blocks`，运行路径只读那个字段。
+        ★ 只在滑窗开着（W>0）时才有效。
+        """
+        if self._window_tokens() <= 0:
+            return 0
+        return max(0, int(getattr(self.config, "spec_draft_head_blocks", 0) or 0))
+
     def _run_draft_prefill(self, seqs, input_ids, positions) -> bool:
         """prefill 时也把 draft 模型跑一遍，填它自己的 KV cache。
 
@@ -620,38 +642,52 @@ class ModelRunner:
 
     @torch.inference_mode()
     def _run_draft_prefill_window(self, seqs):
-        """滑窗路径的 draft prefill：只跑「最近 M 个块」，用 draft 自己的块表。
+        """滑窗路径的 draft prefill：跑「开头 P 块（常驻） + 最近 M 个块」。
 
         ★ 为什么不是整个 prompt：滑窗只保留最近 M 个块，更老的 token 反正会被
           环覆盖，跑它们纯属浪费。按【块边界】对齐地取最后 M 个块 [b0*bs, end)，
           一次 varlen 前向算完。
-        ★ 块表必须旋转：paged 内核要求 key index j ↔ block_table[j//bs]，
-          且必须【从窗口最老的块开始递增】，causal 掩码才对（见 DraftWindow）。
-        ★ RoPE：positions 用【绝对位置】range(b0*bs, end) —— 丢的是 KV，不是位置。
+        ★ P7-D（P>0）：再多喂开头 P 个块 [0, P*bs) —— 它常驻、永不轮转，
+          给 draft 一段「全局锚点」。两段按【绝对位置递增】顺序拼成一个 chunk，
+          chunk 内的 local-causal 掩码于是恰好等于「开头 ∪ 尾部窗口」的可见集：
+          尾部 query 能看到开头 + 它之前的尾部，开头 query 只能看到更早的开头。
+          ★ 段间若有空档（b0 > P），chunk 里把空档【跳过】——被跳过的位置既不读
+            也不写（它们的 KV 是陈旧的，但 b0 ≥ P 保证谁也读不到它们）。
+        ★ 块表必须旋转：paged 解码要求 key index j ↔ block_table[j//bs]，
+          且必须【按绝对块号递增】，causal 掩码才对（见 DraftWindow）。
+        ★ RoPE：positions 用【绝对位置】—— 丢的是 KV，不是位置。
         ★ 诚实的近似：这一趟是「把超出窗口的上下文直接截掉」，
           所以窗口里靠前的那些位置拿到的是缩短了的上下文（比流式滑窗更短）。
           每向前解码一步窗口就往前挪，这些位置很快就会滑出去。
         """
         bs = self.block_size
         M = self.draft_window_blocks
+        P = max(0, int(getattr(self, "draft_head_blocks", 0) or 0))
         ids, poss, slots, cu = [], [], [], [0]
         maxlen = 0
         for seq in seqs:
             end = seq.num_cached_tokens + seq.num_scheduled_tokens
             if end <= 0:
                 continue
-            b0 = max(0, (end - 1) // bs - M + 1)
-            w0 = b0 * bs
-            if w0 >= end:
+            w = DraftWindow(seq.draft_block_table, bs, M, P)
+            b0 = w.b0(end - 1)                   # 尾部窗口起点块（恒 ≥ P）
+            head_end = min(P * bs, end)          # 常驻段覆盖 [0, head_end)
+            w0 = b0 * bs                         # 尾部窗口起点
+            # 两段：[0, head_end) 与 [w0, end)；w0 ≥ P*bs 保证两段不重叠。
+            segs = []
+            if head_end > 0:
+                segs.append((0, head_end))
+            if w0 < end:
+                segs.append((w0, end))
+            if not segs:
                 continue
-            w = DraftWindow(seq.draft_block_table, bs, M)
-            ids.extend(seq.token_ids[w0:end])
-            poss.extend(range(w0, end))
-            slots.extend(w.slot(p) for p in range(w0, end))
-            cu.append(cu[-1] + (end - w0))
-            maxlen = max(maxlen, end - w0)
-            # 窗口是按 token_ids 整体重算的 → 从 0 到 end 都算「已处理」
-            # （比它更老的 token 本来就滑出窗口了，水位语义不受影响）
+            for (a, b) in segs:
+                ids.extend(seq.token_ids[a:b])
+                poss.extend(range(a, b))
+                slots.extend(w.slot(p) for p in range(a, b))
+                cu.append(cu[-1] + (b - a))
+                maxlen = max(maxlen, b - a)
+            # 窗口是整段重算的 → 从 0 到 end 都算「已处理」（常驻段 + 尾部都写了）
             seq.draft_valid_len = end
         if not ids:
             return
@@ -691,12 +727,15 @@ class ModelRunner:
         #   运行期把开关翻回全上下文时，这里自动退回老路径（两边都能退）。
         # ★ 现场读开关：spec_draft_window 翻回 0 时，就算池子里还给这条序列留着
         #   滑窗块，也一律退回全上下文路径（两个方向都能即时生效）。
-        M = len(seq.draft_block_table) if self._window_tokens() > 0 else 0
+        # ★ P7-D：块表现在是 (P+M) 项 —— P 段常驻 + M 段环。M 从 self 读（不是
+        #   len(table)），否则会把常驻段数当成环长。
+        M = self.draft_window_blocks if self._window_tokens() > 0 else 0
+        P = max(0, int(getattr(self, "draft_head_blocks", 0) or 0)) if M else 0
         start, catchup, valid_from = window_request_geom(
-            seq.draft_valid_len, seq.token_ids, self.block_size, M)
+            seq.draft_valid_len, seq.token_ids, self.block_size, M, P)
         return dict(block_table=list(seq.block_table),
                     draft_ring=list(seq.draft_block_table) if M else [],
-                    window_blocks=M, valid_from=valid_from,
+                    window_blocks=M, head_blocks=P, valid_from=valid_from,
                     context_len=len(seq),
                     last_token=seq.last_token, temperature=seq.temperature,
                     catchup_start=start, catchup_tokens=catchup)

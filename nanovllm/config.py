@@ -21,6 +21,7 @@ class Config:
     # 在此声明，否则运行时赋值会 AttributeError）。
     num_draft_blocks: int = 0        # draft 池的物理块数（滑窗档下 << num_kvcache_blocks）
     draft_window_blocks: int = 0     # 每条序列滑窗的块数 M（0 = 未启用滑窗）
+    draft_head_blocks: int = 0       # 每条序列【常驻的开头块】数 P（0 = 不常驻，= 老行为）
 
     # ---------- 投机解码 ----------
     spec_k: int = 0              # 0 = 关闭（默认，保证与原版行为一致）
@@ -62,6 +63,17 @@ class Config:
     #   ★ draft 池 = max_num_seqs * W/block_size 块，max_num_seqs 越大越吃预算。
     #   ★ 开关在【每次用到 draft 时现场读】，所以同一份二进制里翻转它就能做
     #     全上下文 vs W 的消融；见 ModelRunner._window_blocks / _draft_request。
+    # ---------- P7-D：滑窗 + 开头常驻段（**新增选项**，默认 0 = 老行为）----------
+    spec_draft_head_blocks: int = 0
+    #   >0 = draft 的上下文 = 【开头 P 个块（常驻）】 + 【最近 M 个块（滑窗）】。
+    #        纯滑窗（本字段 0）只留最近 M 块，序列【最开头】那几个块对整串有定位
+    #        作用，小窗口下丢了它们接受率会掉；常驻段把这段拿回来。
+    #   ★ 只影响 draft：target 一个字节不动，"相对 BF16 target 无损"不受影响。
+    #   ★ draft 池随之从 M*max_num_seqs 变成 (P+M)*max_num_seqs 块 —— 容量优势会
+    #     变小，所以判据仍是 (P+M) * max_num_seqs < 普通投机的池块数。
+    #   ★ 与 spec_draft_window 一样是【init 期定池子大小】的开关：翻转要换进程。
+    #   ★ 只有 M>0（滑窗开着）时才有效；序列短到 M 段已经盖住开头时，
+    #     P 段与 M 段不重叠（见 DraftWindow.b0 的 max(P, ...)）。
     # ---------- INT8 权重量化（W8A16）----------
     # target 与 draft 各有独立开关。默认都是 None = 原 BF16 路径、逐字节等价、
     # 老代码一行不删。模型目录里有 quant_config.json 时【自动开启】并按其中

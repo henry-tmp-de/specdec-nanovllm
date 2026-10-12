@@ -66,6 +66,8 @@ def main():
               draft_model=draft_dir, spec_batch_threshold=0)
     if g["window"]:
         kw["spec_draft_window"] = g["window"]
+    if g.get("head"):
+        kw["spec_draft_head_blocks"] = g["head"]
     if g["direct"]:
         kw["quant_direct_load"] = True
     llm = LLM(TARGET, **kw)
@@ -134,7 +136,8 @@ def main():
         out.append(measure("with_draft_prefill_window0", 0))
 
     print("@@PREFILL@@" + json.dumps(dict(
-        group=GROUP, ctx=CTX, B=B, window=g["window"], draft=g["draft"],
+        group=GROUP, ctx=CTX, B=B, window=g["window"], head=g.get("head", 0), draft=g["draft"],
+        draft_blocks=mr.config.num_draft_blocks, target_blocks=mr.config.num_kvcache_blocks,
         gpu=os.environ.get("CUDA_VISIBLE_DEVICES"), port=os.environ.get("NANOVLLM_PORT"),
         results=out), ensure_ascii=False))
 

@@ -16,7 +16,8 @@ class Scheduler:
         self.block_manager = BlockManager(
             config.num_kvcache_blocks, config.kvcache_block_size,
             num_draft_blocks=getattr(config, "num_draft_blocks", 0),
-            draft_window_blocks=getattr(config, "draft_window_blocks", 0))
+            draft_window_blocks=getattr(config, "draft_window_blocks", 0),
+            draft_head_blocks=getattr(config, "draft_head_blocks", 0))
         self.waiting: deque[Sequence] = deque()
         self.running: deque[Sequence] = deque()
         # ---------- 投机解码 ----------

@@ -36,7 +36,8 @@ class Block:
 class BlockManager:
 
     def __init__(self, num_blocks: int, block_size: int,
-                 num_draft_blocks: int = 0, draft_window_blocks: int = 0):
+                 num_draft_blocks: int = 0, draft_window_blocks: int = 0,
+                 draft_head_blocks: int = 0):
         self.block_size = block_size
         self.blocks: list[Block] = [Block(i) for i in range(num_blocks)]
         self.hash_to_block_id: dict[int, int] = dict()
@@ -50,20 +51,31 @@ class BlockManager:
         #   跨请求共享没有意义。
         # ★ target 的块共享/前缀缓存机制完全不受影响（另一套 blocks / 另一个池子）。
         self.draft_window_blocks = int(draft_window_blocks)
+        # ---------- P7-D：开头常驻段（P 块）----------
+        # draft 的上下文 = 开头 P 块（常驻，永不轮转） + 最近 M 块（环）。
+        # ★ 池子大小 = (P + M) * max_num_seqs（由 ModelRunner 按预算算好后填进来）。
+        # ★ P=0 时逐字节等价于老行为（纯滑窗）。
+        self.draft_head_blocks = int(draft_head_blocks)
         self.draft_free: deque[int] = deque(range(num_draft_blocks))
         self.draft_used: set[int] = set()
 
     # ------------------------------------------------------------------
     def draft_acquire(self, seq: Sequence) -> bool:
-        """给一条序列分配 draft 滑窗的 M 个块（幂等：已有就直接返回 True）。"""
+        """给一条序列分配 draft 滑窗的 (P+M) 个块（幂等：已有就直接返回 True）。
+
+        ★ 前 P 个是【开头常驻段】（绝对块号 b<P 写这里，永不轮转），
+          后 M 个是【最近窗口的环】（绝对块号 b>=P 落 ring[P + (b-P)%M]）。
+          P=0 时就是原来的 M 个环块 —— 逐字节等价。
+        """
         M = self.draft_window_blocks
         if M <= 0:
             return False
         if seq.draft_block_table:
             return True
-        if len(self.draft_free) < M:
+        need = self.draft_head_blocks + M
+        if len(self.draft_free) < need:
             return False
-        for _ in range(M):
+        for _ in range(need):
             b = self.draft_free.popleft()
             self.draft_used.add(b)
             seq.draft_block_table.append(b)
@@ -79,6 +91,7 @@ class BlockManager:
 
     def draft_pool_usage(self):
         return dict(window_blocks=self.draft_window_blocks,
+                    head_blocks=self.draft_head_blocks,
                     total=len(self.draft_free) + len(self.draft_used),
                     free=len(self.draft_free), used=len(self.draft_used))
 

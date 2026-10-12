@@ -1,0 +1,18 @@
+[spec] draft model: /home/ziru/nano-vllm/models/Qwen3-0.6B (28 层, vocab 151936)
+[spec] draft 滑窗开启: W=1280 token = 5 块/序列 + 常驻 0 块, draft 池 20 块 (0.55 GB), target 池 293 块
+[spec] draft KV cache: 28 层 x 20 blocks, 每block 28672 KB
+[spec] blocks=293, target 每block 36864 KB, 合计 10.85 GB
+[spec] draft CUDA graph 就绪 (bs=[1, 2, 4], 1 token/行)
+[spec] verify CUDA graph 就绪 (shapes=[(1, 6), (2, 6), (4, 6)], 7 query/请求, 共享图池)
+[transformers] Token indices sequence length is longer than the specified maximum sequence length for this model (298938 > 131072). Running this sequence through the model will result in indexing errors
+[rank0]:W1012 05:41:23.303000 2570656 torch/_dynamo/convert_frame.py:1676] [0/8] torch._dynamo hit config.recompile_limit (8)
+[rank0]:W1012 05:41:23.303000 2570656 torch/_dynamo/convert_frame.py:1676] [0/8]    function: 'rms_forward' (/home/ziru/nano-vllm/mwin-work/nanovllm/layers/layernorm.py:16)
+[rank0]:W1012 05:41:23.303000 2570656 torch/_dynamo/convert_frame.py:1676] [0/8]    last reason: 0/7: tensor 'x' rank mismatch. expected 2, actual 3
+[rank0]:W1012 05:41:23.303000 2570656 torch/_dynamo/convert_frame.py:1676] [0/8] To log all recompilation reasons, use TORCH_LOGS="recompiles".
+[rank0]:W1012 05:41:23.303000 2570656 torch/_dynamo/convert_frame.py:1676] [0/8] To diagnose recompilation issues, see https://pytorch.org/docs/main/compile/programming_model.recompilation.html
+[rank0]:W1012 05:41:27.297000 2570656 torch/_dynamo/convert_frame.py:1676] [2/8] torch._dynamo hit config.recompile_limit (8)
+[rank0]:W1012 05:41:27.297000 2570656 torch/_dynamo/convert_frame.py:1676] [2/8]    function: 'add_rms_forward' (/home/ziru/nano-vllm/mwin-work/nanovllm/layers/layernorm.py:28)
+[rank0]:W1012 05:41:27.297000 2570656 torch/_dynamo/convert_frame.py:1676] [2/8]    last reason: 2/7: 2 <= x.size()[0] <= 2147483647  # x = x.float().add_(residual.float())  # mwin-work/nanovllm/layers/layernorm.py:35 in add_rms_forward (user code shown is first use of this value--the guard itself is not due user code but due to 0/1 specialization in the framework; to avoid specialization try torch._dynamo.decorators.mark_unbacked(tensor, dim)) and (_functorch/_aot_autograd/aot_autograd_result.py:567 in wrap_post_compile)
+[rank0]:W1012 05:41:27.297000 2570656 torch/_dynamo/convert_frame.py:1676] [2/8] To log all recompilation reasons, use TORCH_LOGS="recompiles".
+[rank0]:W1012 05:41:27.297000 2570656 torch/_dynamo/convert_frame.py:1676] [2/8] To diagnose recompilation issues, see https://pytorch.org/docs/main/compile/programming_model.recompilation.html
+@@PREFILL@@{"group": "mw_m5", "ctx": 8192, "B": 1, "window": 1280, "head": 0, "draft": "bf16", "draft_blocks": 20, "target_blocks": 293, "gpu": "1", "port": "2701", "results": [{"tag": "with_draft_prefill", "window": 1280, "n": 3, "prefill_ms": 90.56, "min_ms": 90.52, "max_ms": 92.27, "hook_ttft_ms": 91.34, "wall_ms": 136.41, "n_batches": 2}, {"tag": "no_draft_prefill", "window": 1280, "n": 3, "prefill_ms": 56.79, "min_ms": 56.68, "max_ms": 57.01, "hook_ttft_ms": 57.55, "wall_ms": 102.38, "n_batches": 2}]}

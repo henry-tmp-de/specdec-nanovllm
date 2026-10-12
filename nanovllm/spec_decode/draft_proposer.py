@@ -55,7 +55,8 @@ from torch import nn
 _PAD_BLOCK = -1
 
 
-def window_valid_from(draft_valid_len: int, block_size: int, window_blocks: int) -> int:
+def window_valid_from(draft_valid_len: int, block_size: int, window_blocks: int,
+                      head_blocks: int = 0) -> int:
     """draft 环形窗口里【最老一个仍然可信的块】的起始位置。
 
     draft 只保留最近 `window_blocks` 个块的 KV，而且块是按绝对块号递增写进
@@ -64,6 +65,9 @@ def window_valid_from(draft_valid_len: int, block_size: int, window_blocks: int)
 
         newest = (draft_valid_len - 1) // block_size
         start  = max(0, newest - M + 1)
+
+    ★ P7-D（head_blocks = P > 0）：开头 P 个块是【常驻段】，永不轮转，
+      所以窗口的下界恒 ≥ P（`max(P, ...)`）；P=0 时逐字节等价于老行为。
 
     它同时是「查询能看到的最早位置」的下界：比它更老的块要么没写过、
     要么内容已经被环覆盖，一律不许读。
@@ -77,11 +81,12 @@ def window_valid_from(draft_valid_len: int, block_size: int, window_blocks: int)
     if draft_valid_len <= 0 or window_blocks <= 0:
         return 0
     newest = (int(draft_valid_len) - 1) // block_size
-    return max(0, newest - window_blocks + 1) * block_size
+    return max(int(head_blocks), newest - window_blocks + 1) * block_size
 
 
 def clip_gap_to_window(start: int, gap: List[int], block_size: int,
-                       window_blocks: int, token_ids: Optional[List[int]] = None
+                       window_blocks: int, token_ids: Optional[List[int]] = None,
+                       head_blocks: int = 0
                        ) -> Tuple[int, List[int]]:
     """把补齐缺口夹到「最近 window_blocks 个块」之内。
 
@@ -112,7 +117,9 @@ def clip_gap_to_window(start: int, gap: List[int], block_size: int,
         return start, gap
     end = int(start) + len(gap)                 # = len(token_ids) - 1
     eb = end // block_size
-    s_min = max(0, eb - window_blocks + 1) * block_size
+    # ★ P7-D：补齐只补【尾部窗口】那一段；开头 P 块是常驻段（prefill 时已写好），
+    #   补它属于重复劳动，所以下界同样抬到 head_blocks。
+    s_min = max(int(head_blocks), eb - window_blocks + 1) * block_size
     if start < s_min:
         drop = min(s_min - start, len(gap))
         start, gap = start + drop, gap[drop:]
@@ -128,37 +135,61 @@ def clip_gap_to_window(start: int, gap: List[int], block_size: int,
 class DraftWindow:
     """draft 滑窗的纯算术（无 torch，可在 CPU 上单测）。
 
-    bs = block_size，M = window_blocks（环里的块数），ring = M 个物理块 id。
+    bs = block_size，M = window_blocks（环里的块数），ring = P+M 个物理块 id。
 
+    纯滑窗（P = head_blocks = 0，老行为）：
       · 写槽      slot(p)   = ring[(p // bs) % M] * bs + (p % bs)
       · 窗口起点  b0(p)     = max(valid_from // bs, p // bs - M + 1, 0)
       · 可见长度  clen(p)   = p - b0(p)*bs + 1      （≤ M*bs）
       · 块表      bt(p)     = [ ring[(b0 + t) % M] for t in range(M) ]
-        必须【从 b0 起、按绝对块号递增】—— key index j ↔ 绝对位置 b0*bs + j，
-        causal 结构才对。因为 softmax 对 key 的顺序不敏感，只要「集合恰好是
-        窗口」就等价；但 causal 掩码是按 index 比较的，顺序错就会看到未来。
+
+    ★ P7-D（head_blocks = P > 0）：draft 的上下文 = 开头 P 块（常驻） + 最近 M 块（环）。
+      ring 的前 P 个是常驻段、后 M 个是环：
+      · 写槽      slot(p)   = ring[b] * bs + p%bs                    当 b = p//bs < P
+                            = ring[P + (b-P) % M] * bs + p%bs       当 b ≥ P
+      · 窗口起点  b0(p)     = max(P, valid_from // bs, p // bs - M + 1)
+                            （恒 ≥ P ⇒ 常驻段与环段【永不重叠】；序列短到 M 段
+                              够到开头时也只是 b0 被夹在 P，两段首尾相接）
+      · 可见长度  clen(p)   = P*bs + (p + 1 - b0(p)*bs)
+      · 块表      bt(p)     = ring[0:P] + [ ring[P + (b0+t-P) % M] for t in range(M) ]
+        ★ 必须【按绝对块号递增】—— key index j ↔ 绝对位置 b0*bs + j 的映射才对
+          （paged 解码路径是单 query、集合正确即可；但块表次序仍保持递增，把它
+           当成不变量守着，免得哪天换成多 query 静默错）。
+        ★ 块表恒给 P+M 项：前 P 项是常驻段，后 M 项是环。解码内核只读
+          ceil(clen/bs) = P + ceil((end-b0*bs)/bs) 项，多出来的项不会被读。
 
     ★ RoPE：positions 张量照旧传【绝对位置】，丢的只是 KV，不是位置编号。
     """
 
-    def __init__(self, ring, block_size: int, window_blocks: int):
+    def __init__(self, ring, block_size: int, window_blocks: int, head_blocks: int = 0):
         self.ring = [int(x) for x in ring]
         self.bs = int(block_size)
         self.M = int(window_blocks)
-        assert self.M >= 1 and len(self.ring) == self.M, (self.ring, self.M)
+        self.P = max(0, int(head_blocks))
+        assert self.M >= 1 and len(self.ring) == self.P + self.M, (self.ring, self.P, self.M)
+
+    def _blk(self, b: int) -> int:
+        """绝对块号 b 落在哪个物理块。"""
+        if self.P and b < self.P:
+            return self.ring[b]
+        return self.ring[self.P + (b - self.P) % self.M]
 
     def b0(self, pos: int, valid_from: int = 0) -> int:
-        return max(int(valid_from) // self.bs, int(pos) // self.bs - self.M + 1, 0)
+        return max(self.P, int(valid_from) // self.bs,
+                   int(pos) // self.bs - self.M + 1)
 
     def slot(self, pos: int) -> int:
-        return self.ring[(int(pos) // self.bs) % self.M] * self.bs + int(pos) % self.bs
+        b, off = divmod(int(pos), self.bs)
+        return self._blk(b) * self.bs + off
 
     def block_table(self, pos: int, valid_from: int = 0) -> List[int]:
         b0 = self.b0(pos, valid_from)
-        return [self.ring[(b0 + t) % self.M] for t in range(self.M)]
+        return (list(self.ring[:self.P])
+                + [self._blk(b0 + t) for t in range(self.M)])
 
     def ctx_len(self, pos: int, valid_from: int = 0) -> int:
-        return int(pos) - self.b0(pos, valid_from) * self.bs + 1
+        b0 = self.b0(pos, valid_from)
+        return self.P * self.bs + (int(pos) + 1 - b0 * self.bs)
 
 
 def catchup_gap(draft_valid_len: int, token_ids: List[int]) -> Tuple[int, List[int]]:
@@ -188,7 +219,7 @@ def catchup_gap(draft_valid_len: int, token_ids: List[int]) -> Tuple[int, List[i
 
 
 def window_request_geom(draft_valid_len: int, token_ids: List[int],
-                        block_size: int, window_blocks: int
+                        block_size: int, window_blocks: int, head_blocks: int = 0
                         ) -> Tuple[int, List[int], int]:
     """滑窗档下 `ModelRunner._draft_request` 的【纯算术】部分（无 torch，可 CPU 单测）。
 
@@ -222,11 +253,12 @@ def window_request_geom(draft_valid_len: int, token_ids: List[int],
     if window_blocks <= 0:
         return start, gap, 0
     true_start = start                       # clip 之前的缺口起点
-    start, gap = clip_gap_to_window(start, gap, block_size, window_blocks, token_ids)
+    start, gap = clip_gap_to_window(start, gap, block_size, window_blocks,
+                                    token_ids, head_blocks)
     end = len(token_ids) - 1
     assert len(gap) == end - start, (
         f"窗口补齐区间与起点不自洽: start={start} len(gap)={len(gap)} end={end}")
-    wvf = window_valid_from(draft_valid_len, block_size, window_blocks)
+    wvf = window_valid_from(draft_valid_len, block_size, window_blocks, head_blocks)
     # ★ 下界怎么取，只有两种情形，不能无条件 max：
     #   · clip 把起点【前移】了（缺口伸到窗口之外）：更老的位置根本没写过，
     #     读了就是脏 KV → 下界必须跟到 start。
@@ -471,7 +503,8 @@ class DraftModelProposer:
         if M <= 0:
             bt = list(r["block_table"])
             return self._slot(bt, pos), bt, int(pos) + 1
-        w = DraftWindow(r["draft_ring"], bs, M)
+        P = int(r.get("head_blocks") or 0)
+        w = DraftWindow(r["draft_ring"], bs, M, P)
         vf = int(r.get("valid_from", 0)) if valid_from is None else int(valid_from)
         return w.slot(pos), w.block_table(pos, vf), w.ctx_len(pos, vf)
 

@@ -135,6 +135,24 @@ LC_GROUPS = {
     "lc_w1280": dict(window=1280,          draft="bf16", direct=False, variants=["L"],
                      max_seqs=LC_MAX_SEQS, maxlen=MAXLEN_LC, maxntok=MAXLEN_LC),
 }
+
+# ---- ★ M 扫描 + P7-D 二维网格（本轮）--------------------------------------
+# 目标：在 8K 下找「容量 ↔ 接受率 ↔ TTFT」的拐点，并回答
+#   「要求接受率 ≥ 0.75（普通投机 0.781），draft 池最小能压到多少块？」
+# 纪律：max_num_seqs 一律 = 真实并发（B≤4 ⇒ 4），绝不为任何对照撑池子。
+#   draft 池 = (P+M) * max_num_seqs；判据： (P+M)*4 < 173 ⟺ 省显存。
+# 命名：mw_mMM = 纯滑窗(P=0)窗口 M 块；mw_pPmMM = 常驻 P 块 + 滑窗 M 块。
+MW_GROUPS = {}
+for _M in (3, 5, 8, 12, 18, 24, 33):
+    MW_GROUPS["mw_m%d" % _M] = dict(
+        window=_M * 256, head=0, draft="bf16", direct=False, variants=["L"],
+        max_seqs=LC_MAX_SEQS, maxlen=MAXLEN_LC, maxntok=MAXLEN_LC)
+for _P in (1, 2, 4, 8):
+    for _M in (3, 5, 8, 12, 18):
+        MW_GROUPS["mw_p%dm%d" % (_P, _M)] = dict(
+            window=_M * 256, head=_P, draft="bf16", direct=False, variants=["L"],
+            max_seqs=LC_MAX_SEQS, maxlen=MAXLEN_LC, maxntok=MAXLEN_LC)
+LC_GROUPS.update(MW_GROUPS)
 GROUPS.update(LC_GROUPS)
 # ★ `--all` 仍然只跑【原来那四个组】—— 加长上下文组【不改变】老组的复算行为。
 ALL_GROUPS = ["core", "win", "win_int8", "win_int8_direct"]
@@ -198,10 +216,13 @@ def run_group(gname, args):
               draft_model=draft_dir, spec_batch_threshold=0)
     if g["window"]:
         kw["spec_draft_window"] = g["window"]
+    if g.get("head"):
+        kw["spec_draft_head_blocks"] = g["head"]
     if g["direct"]:
         kw["quant_direct_load"] = True
 
-    print(f"=== acceptance_matrix group={gname} window={g['window']} draft={g['draft']} "
+    print(f"=== acceptance_matrix group={gname} window={g['window']} head={g.get('head', 0)} "
+          f"draft={g['draft']} "
           f"direct={g['direct']} runs={args.runs} variants={g['variants']} "
           f"gpu={os.environ.get('CUDA_VISIBLE_DEVICES')} port={os.environ.get('NANOVLLM_PORT','2333')} "
           f"dev={torch.cuda.get_device_name(0)} ===", flush=True)
@@ -212,6 +233,7 @@ def run_group(gname, args):
     cfg = mr.config
     print(f"[load] {time.time()-t_load:.1f}s  blocks={cfg.num_kvcache_blocks} "
           f"draft_blocks={cfg.num_draft_blocks} window_blocks={cfg.draft_window_blocks} "
+          f"head_blocks={cfg.draft_head_blocks} "
           f"draft_quant={cfg.draft_quant_weights} direct={cfg.quant_direct_load}", flush=True)
 
     # ---- 统计钩子：接受率 + 逐轮耗时(按 active B 分档) + 结构性计数 ----
@@ -378,6 +400,7 @@ def run_group(gname, args):
                         prompt="wikitext2", seed=SEED,
                         block_table=[cfg.num_kvcache_blocks, cfg.num_draft_blocks,
                                      cfg.draft_window_blocks],
+                        head_blocks=cfg.draft_head_blocks,
                         variants={}, paired={})
             for v in variants:
                 cell["variants"][v] = {
@@ -425,13 +448,15 @@ def run_group(gname, args):
             cells.append(cell)
             print("@@" + gname + "@@" + json.dumps(cell, ensure_ascii=False), flush=True)
 
-    out = dict(group=gname, window=g["window"], draft=g["draft"], direct=g["direct"],
+    out = dict(group=gname, window=g["window"], head=g.get("head", 0), draft=g["draft"],
+               direct=g["direct"],
                draft_model=draft_dir, variants=variants, k=K, outlen=OUTLEN,
                max_seqs=g.get("max_seqs", MAX_SEQS), max_model_len=g.get("maxlen", MAXLEN),
                max_num_batched_tokens=g.get("maxntok", 16384), seed=SEED,
                blocks=dict(num_kvcache_blocks=cfg.num_kvcache_blocks,
                            num_draft_blocks=cfg.num_draft_blocks,
-                           draft_window_blocks=cfg.draft_window_blocks),
+                           draft_window_blocks=cfg.draft_window_blocks,
+                           draft_head_blocks=cfg.draft_head_blocks),
                draft_quant_weights=cfg.draft_quant_weights,
                quant_direct_load=cfg.quant_direct_load,
                cells=cells)
