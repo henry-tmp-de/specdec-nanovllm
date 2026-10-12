@@ -88,6 +88,24 @@ class Config:
     #     KV 池因此少 4 块。两条路径产出的 (int8 权重, scale) 已对拍为逐位相同。
     #   ★ 路径里带显式断言，只支持 TP=1 + per_channel + 有真 int8 checkpoint 的情况。
 
+    # ---------- P13：调度 / 延迟侧 ----------
+    spec_skip_draft_prefill_when_off: bool = False
+    #   True  = 本引擎这一轮【绝不会投机】时（spec_k <= 0），prefill 阶段不再白跑 draft 前向。
+    #   False = 默认，老行为：只要进程加载了 draft，prefill 就无条件多跑一遍 0.6B
+    #           （model_runner.run 里那句 `if self.draft_model is not None` 不看 spec_k）。
+    #   ★ 依据（实测）：docs/端到端验收.md §6 + 本轮 p13_prefill_probe —— 冷启动下
+    #     draft prefill 让 target prefill 多花 20%~26%（16K 时 +739 ms），
+    #     热缓存（只补未命中的尾巴）下是恒定 +31.5 ms。
+    spec_prefill_chunk_tokens: int = 0
+    #   >0 = 把 prefill 切成每轮最多这么多 token 的块，并在两次块之间【让一轮给 decode】。
+    #        一条长 prompt 到场时，正在解码的请求不再被饿死整段 prefill。
+    #        ★ 一轮内仍然只有一种执行路径（要么 prefill 要么 decode），不混路径。
+    #   0  = 默认，老行为：prefill 排他，且只对第一条序列分块（`schedule()` 原逻辑）。
+    #   ★ 依据（实测 p13_itl_probe，3 条解码 + 突来一条长 prompt）：
+    #     解码请求那一轮的 ITL 尖刺 = 10.8×（1K）→ 249.4×（16K）【无 draft】，
+    #     15.9× → 312.0×（带 draft），且那一轮解码请求拿到的 token 数 = 0。
+    #     停止条件（方案 §6.3）是"只有 2–3 倍就收手" ⇒ 远未触及，值得做。
+
     spec_graph_bs: tuple = (1, 2, 4)
     #   捕获 CUDA 图的精确 batch 桶（draft 单步 decode 图 / 验证图共用）。
     #   按 12.2「新增图先只覆盖精确 B=2/4，保留 B=1 原路径」——

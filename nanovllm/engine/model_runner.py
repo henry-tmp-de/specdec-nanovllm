@@ -586,11 +586,37 @@ class ModelRunner:
         #   已经分到的滑窗块就不再被使用 —— 开关在两个方向上都能即时生效。
         if (self.draft_window_blocks and self._window_tokens() > 0
                 and seqs and all(s.draft_block_table for s in seqs)):
-            self._run_draft_prefill_window(seqs)
+            # ★ 分块 prefill（P13，默认关闭）：只有【这条序列本步就把 prompt 拼完了】
+            #   才值得跑窗口 prefill —— 窗口路径按 token_ids 重算整个窗口，
+            #   中间块每块都重跑一遍 = N 倍浪费；而 draft 的 KV 只有在这条序列
+            #   真正开始解码时才用得上（那时 prompt 已经拼完）。
+            #   ★ 全部拼完时（= 不分块时的常态）走的是原分支，逐字节不变。
+            ready = [s for s in seqs
+                     if s.num_cached_tokens + s.num_scheduled_tokens >= s.num_tokens]
+            if len(ready) == len(seqs):
+                self._run_draft_prefill_window(seqs)
+                return True
+            if not ready:
+                return False                      # 中间块：先不建 draft KV
+            self._run_draft_prefill_window(ready)  # 只给拼完的那些建
             return True
         with torch.inference_mode():
             self.draft_model(input_ids, positions)
         return False
+
+    def _draft_prefill_needed(self) -> bool:
+        """本批 prefill 还要不要建 draft KV（P13，默认关闭 = 恒 True，老路径不变）。
+
+        打开后：`spec_k <= 0` ⇒ 本引擎【这一轮绝不会投机】⇒ 这趟 0.6B 前向是纯浪费。
+        （`model_runner.run()` 原来那句 `if self.draft_model is not None` 不看 spec_k，
+        只要进程加载了 draft 就白跑一遍 —— 见 docs/端到端验收.md §6 与本轮上界表。）
+
+        ★ 只覆盖"确定不投机"的情形。`spec_batch_threshold` 那种按【解码批大小】判的
+          门控在 prefill 时刻还不知道未来的解码批，保守起见仍然照跑（不在这里猜）。
+        """
+        if not getattr(self.config, "spec_skip_draft_prefill_when_off", False):
+            return True
+        return self.config.spec_k > 0
 
     @torch.inference_mode()
     def _run_draft_prefill_window(self, seqs):
@@ -706,7 +732,10 @@ class ModelRunner:
                 # ★ draft 模型也要跑一遍 prefill，把它的 KV cache 建起来
                 #   （关闭滑窗时 draft 与 target 共用 block_table，但各自写进自己的 cache；
                 #    打开滑窗时 draft 用自己的环形块表，见 _run_draft_prefill_window）
-                if self._run_draft_prefill(seqs, input_ids, positions):
+                #   ★ P13：`_draft_prefill_needed()` 默认恒 True（老路径一行不变）；
+                #     打开开关且本引擎确定不投机（spec_k<=0）时整趟跳过。
+                if self._draft_prefill_needed() and \
+                        self._run_draft_prefill(seqs, input_ids, positions):
                     # 滑窗路径 set 过自己的 context 又 reset 了 → 重建 target 的
                     input_ids, positions = self.prepare_prefill(seqs)
             elif self.spec_proposer is not None:

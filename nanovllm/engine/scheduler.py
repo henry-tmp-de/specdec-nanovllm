@@ -29,6 +29,12 @@ class Scheduler:
         #       不一定会生效，正是同步关系容易踩空的地方。
         #   合成一个之后，两处读到的永远是同一个值，改哪边都生效。
         self.spec_batch_threshold = config.spec_batch_threshold
+        # ---------- P13：分块 prefill 让路 ----------
+        #   prefill_chunk_tokens = 0（默认）⇒ 老行为：prefill 排他 + 只对第一条序列分块。
+        #   >0 ⇒ 每轮 prefill 最多这么多 token，块之间让一轮给 decode（见 schedule()）。
+        self.prefill_chunk_tokens = int(getattr(config, "spec_prefill_chunk_tokens", 0) or 0)
+        # 上一轮是否留下了"还没拼完的 prefill 块"。默认路径只写不读，行为逐字节不变。
+        self._prefill_chunk_pending = False
         # n-gram 提议器。由 ModelRunner 注入（引擎建好后才有），
         # 这样 token_ids 更新后能立刻把新 token 加进索引。
         self.spec_proposer = None
@@ -62,56 +68,88 @@ class Scheduler:
         scheduled_seqs = []
         num_batched_tokens = 0
 
-        # prefill
-        while self.waiting and len(scheduled_seqs) < self.max_num_seqs:
-            seq = self.waiting[0]
-            remaining = self.max_num_batched_tokens - num_batched_tokens
-            if remaining == 0:
-                break
-            if not seq.block_table:
-                num_cached_blocks = self.block_manager.can_allocate(seq)
-                if num_cached_blocks == -1:
+        # ★★ P13 分块 prefill 让路（默认关闭，prefill_chunk_tokens=0 时这一整段都是老行为）：
+        #   上一轮留下了一个"还没拼完的 prefill 块"，且此刻还有请求在解码
+        #   → 这一轮先给 decode，别让一条长 prompt 把解码请求饿死整段 prefill。
+        #   实测：3 条解码 + 突来一条 16K prompt，解码那一轮的 ITL 尖刺 249×（无 draft）/312×（有 draft），
+        #   而且那一轮解码请求拿到的 token 数 = 0（被完全饿死）。
+        #   ★ 一轮内仍然只有一种执行路径（要么全是 prefill、要么全是 decode），不混路径
+        #     —— 这个项目被"一轮内混路径"坑过 3 次（最典型：spec_enabled 门控快照 bug）。
+        # ★ getattr 兜底：部分 CPU 单测用 `Scheduler.__new__` 绕开 __init__ 铺对象
+        #   （见 tests/test_spec_gate.py:mk_sched），不会带这两个新字段。
+        chunk = getattr(self, "prefill_chunk_tokens", 0) or 0
+        yield_to_decode = (chunk > 0
+                           and getattr(self, "_prefill_chunk_pending", False)
+                           and bool(self.running))
+        if self.waiting and not yield_to_decode:
+            self._prefill_chunk_pending = False
+            # prefill
+            while self.waiting and len(scheduled_seqs) < self.max_num_seqs:
+                seq = self.waiting[0]
+                remaining = self.max_num_batched_tokens - num_batched_tokens
+                if remaining == 0:
                     break
-                num_tokens = seq.num_tokens - num_cached_blocks * self.block_size
-            else:
-                num_tokens = seq.num_tokens - seq.num_cached_tokens
-            if remaining < num_tokens and scheduled_seqs:  # only allow chunked prefill for the first seq
-                break
-            if not seq.block_table:
-                self.block_manager.allocate(seq, num_cached_blocks)
-                # ---------- 前缀缓存命中时，draft 侧能不能跟着复用？----------
-                # ★ 不能拿 num_cached_blocks 直接当 draft 的有效量：前缀缓存
-                #   （hash_to_block_id）存的是 target 的 KV 块，draft 的 KV 在
-                #   另一套物理缓冲里，命中 target 缓存不代表 draft 那块也有这段
-                #   前缀的内容。所以只认 draft 自己的块标记（Block.draft_hash）。
-                #   连续有效多少块，draft 水位就推到哪；其余留给 proposer 补齐。
-                # ★ 窗口模式（B）下不适用：draft 的 KV 在自己的小池子里，跟 target
-                #   的前缀缓存块不再对应；窗口会在 draft prefill 时按 token_ids
-                #   整体重算（见 ModelRunner._run_draft_prefill_window）。
-                if not self.block_manager.draft_window_blocks:
-                    nb = self.block_manager.draft_valid_cached_blocks(seq, num_cached_blocks)
-                    if nb:
-                        seq.draft_valid_len = max(seq.draft_valid_len, nb * self.block_size)
-                # 窗口模式：给这条序列分配它自己的滑窗块（池子够大就不会失败；
-                # 不够说明 max_num_seqs * W/block_size 超过了预算，配置问题要显式报出来）
-                if self.block_manager.draft_window_blocks and not self.block_manager.draft_acquire(seq):
-                    # ★ 优雅回退：池子不够就【整条序列】退回全上下文 draft
-                    #   （draft_block_table 留空 → _draft_request 自然走老路径）。
-                    #   半新半旧才是危险的，这里宁可退一整条。
-                    self._window_fallbacks = getattr(self, "_window_fallbacks", 0) + 1
-                    if self._window_fallbacks in (1, 2, 10, 100):
-                        print(f"[spec] draft 滑窗池不足，第 {self._window_fallbacks} 次"
-                              f"回退到全上下文（seq {seq.seq_id}）")
-            seq.num_scheduled_tokens = min(num_tokens, remaining)
-            num_batched_tokens += seq.num_scheduled_tokens
-            if seq.num_cached_tokens + seq.num_scheduled_tokens == seq.num_tokens:
-                seq.status = SequenceStatus.RUNNING
-                self.waiting.popleft()
-                self.running.append(seq)
-            scheduled_seqs.append(seq)
+                if not seq.block_table:
+                    num_cached_blocks = self.block_manager.can_allocate(seq)
+                    if num_cached_blocks == -1:
+                        break
+                    num_tokens = seq.num_tokens - num_cached_blocks * self.block_size
+                else:
+                    num_tokens = seq.num_tokens - seq.num_cached_tokens
+                if remaining < num_tokens and scheduled_seqs:  # only allow chunked prefill for the first seq
+                    break
+                # ★ 本轮的 prefill 预算上限：0 = 不分块（= remaining，老行为）
+                budget = min(remaining, chunk) if chunk else remaining
+                if not seq.block_table:
+                    self.block_manager.allocate(seq, num_cached_blocks)
+                    # ---------- 前缀缓存命中时，draft 侧能不能跟着复用？----------
+                    # ★ 不能拿 num_cached_blocks 直接当 draft 的有效量：前缀缓存
+                    #   （hash_to_block_id）存的是 target 的 KV 块，draft 的 KV 在
+                    #   另一套物理缓冲里，命中 target 缓存不代表 draft 那块也有这段
+                    #   前缀的内容。所以只认 draft 自己的块标记（Block.draft_hash）。
+                    #   连续有效多少块，draft 水位就推到哪；其余留给 proposer 补齐。
+                    # ★ 窗口模式（B）下不适用：draft 的 KV 在自己的小池子里，跟 target
+                    #   的前缀缓存块不再对应；窗口会在 draft prefill 时按 token_ids
+                    #   整体重算（见 ModelRunner._run_draft_prefill_window）。
+                    if not self.block_manager.draft_window_blocks:
+                        nb = self.block_manager.draft_valid_cached_blocks(seq, num_cached_blocks)
+                        if nb:
+                            seq.draft_valid_len = max(seq.draft_valid_len, nb * self.block_size)
+                    # 窗口模式：给这条序列分配它自己的滑窗块（池子够大就不会失败；
+                    # 不够说明 max_num_seqs * W/block_size 超过了预算，配置问题要显式报出来）
+                    if self.block_manager.draft_window_blocks and not self.block_manager.draft_acquire(seq):
+                        # ★ 优雅回退：池子不够就【整条序列】退回全上下文 draft
+                        #   （draft_block_table 留空 → _draft_request 自然走老路径）。
+                        #   半新半旧才是危险的，这里宁可退一整条。
+                        self._window_fallbacks = getattr(self, "_window_fallbacks", 0) + 1
+                        if self._window_fallbacks in (1, 2, 10, 100):
+                            print(f"[spec] draft 滑窗池不足，第 {self._window_fallbacks} 次"
+                                  f"回退到全上下文（seq {seq.seq_id}）")
+                seq.num_scheduled_tokens = min(num_tokens, budget)
+                num_batched_tokens += seq.num_scheduled_tokens
+                if seq.num_cached_tokens + seq.num_scheduled_tokens == seq.num_tokens:
+                    seq.status = SequenceStatus.RUNNING
+                    self.waiting.popleft()
+                    self.running.append(seq)
+                    scheduled_seqs.append(seq)
+                else:
+                    # ★★ 分块：这条本步拼不完 ⇒ 【本轮到此为止】，必须立刻 break。
+                    #   它没被 popleft，还留在 self.waiting[0]；不 break 的话这个 while
+                    #   会再取到【同一条】，把它的 num_scheduled_tokens 又覆盖一遍、
+                    #   再 append 一份 —— 于是 scheduled_seqs 里出现同一序列的多份副本，
+                    #   prepare_prefill 会把这段 chunk 重复拼 N 次。
+                    #   （实测：max_num_batched_tokens=16640 时一份 2048 的 chunk 被拼了 7 遍 =
+                    #    14336 token，单个 prefill 轮 2055ms；而 max_num_batched_tokens=4352
+                    #    恰好被原来那句 `remaining < num_tokens and scheduled_seqs` 的守卫
+                    #    兜住，所以只在"预算充裕"的配置下暴露。）
+                    self._prefill_chunk_pending = True
+                    scheduled_seqs.append(seq)
+                    break
 
-        if scheduled_seqs:
-            return scheduled_seqs, True
+            if scheduled_seqs:
+                return scheduled_seqs, True
+        # 走到这里：要么 waiting 空，要么这一轮让给了 decode → 清掉分块标记
+        self._prefill_chunk_pending = False
 
         # decode
         # ★★ 门控在【本轮开始时】取一次快照，全轮复用同一个决定。
