@@ -34,6 +34,7 @@
 import json
 import os
 import sys
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -97,6 +98,22 @@ def main():
 
     cap = {"on": False, "rows": [], "acc": 0, "prop": 0, "rounds": 0,
            "nacc": [], "k": [], "rtv": []}
+    # ★ 成本账：数 realign 触发的次数与重算 token 数（monkeypatch，引擎不改）
+    RC = {"n": 0, "tail_tokens": 0}
+    try:
+        from nanovllm.engine.model_runner import ModelRunner as _MR
+        _orig_real = _MR._realign_draft_windows
+
+        def _real_patch(self, todo):
+            bs = self.block_size
+            for (seq, w, b0, end) in todo:
+                RC["n"] += 1
+                head_end = min(w.P * bs, end)
+                RC["tail_tokens"] += max(0, end - b0 * bs) + head_end
+            return _orig_real(self, todo)
+        _MR._realign_draft_windows = _real_patch
+    except Exception as _e:      # 老树没有这个方法 → 跳过
+        print("[eng] realign counter skipped:", _e)
     install_patch(cap)
 
     kw = dict(enforce_eager=False, max_model_len=MAXLEN,
@@ -109,6 +126,8 @@ def main():
         kw["spec_draft_head_blocks"] = head
     if os.environ.get("ALIGN", "0") == "1":
         kw["spec_draft_win_align"] = True
+    if os.environ.get("REALIGN", "0") == "1":
+        kw["spec_draft_win_realign"] = True
     llm = LLM(TGT, **kw)
 
     tok = AutoTokenizer.from_pretrained(TGT)
@@ -121,7 +140,9 @@ def main():
     llm.generate([prompts[0]], SamplingParams(temperature=1.0, max_tokens=16,
                                               ignore_eos=True), use_tqdm=False)
     cap["on"] = True
+    _t0 = time.time()
     res = llm.generate(prompts, sp, use_tqdm=False)
+    _wall = time.time() - _t0
     cap["on"] = False
 
     tv = torch.cat(cap["rows"], dim=0)          # (N, maxk)
@@ -148,6 +169,11 @@ def main():
         "round_tv_last40": [round(v, 4) for v in cap["rtv"][-40:]],
         "round_tv_bucket": [round(sum(cap["rtv"][i:i + 50]) / len(cap["rtv"][i:i + 50]), 4)
                             for i in range(0, len(cap["rtv"]), 50)],
+        "wall_s": round(_wall, 3),
+        "realign_calls": RC["n"],
+        "realign_tail_tokens": RC["tail_tokens"],
+        "ms_per_round": round(1000.0 * _wall / max(1, cap["rounds"]), 3),
+        "ms_per_token": round(1000.0 * _wall / max(1, sum(len(r["token_ids"]) for r in res)), 3),
     }
     print("@@EA@@" + json.dumps(out, ensure_ascii=False), flush=True)
     if OUT:

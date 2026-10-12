@@ -272,6 +272,36 @@ def window_request_geom(draft_valid_len: int, token_ids: List[int],
     return start, gap, (start if dropped else wvf)
 
 
+def window_realign_target(draft_win_start: int, end: int, block_size: int,
+                          window_blocks: int, head_blocks: int = 0):
+    """`spec_draft_win_realign` 的【纯算术】：判断要不要「漂移重算」，返回新地板。
+
+    背景：`spec_draft_win_align` 把窗口下界的地板钉在 prefill 那一刻的对齐上
+    （`draft_win_start`）。解码往前走、序列跨进下一个块时，`DraftWindow.b0` 的
+    自然项 `pos//bs − M + 1` 会超过地板 —— 那一刻环里被保留的块仍编码着
+    「更早一个块」的上下文，与读端声明的窗口不再是同一个对齐。
+
+    这里只做判断（无 torch，可 CPU 单测）：
+
+    · end <= 0            → (False, max(0, draft_win_start))
+    · 自然起点 b0_nat = max(P, (end−1)//bs − M + 1)
+      b0_nat*bs > 地板    → (True,  b0_nat*bs)    ← 需要按新起点重算窗口
+      否则                → (False, draft_win_start)（地板不动，老行为）
+
+    ★ 调用方（ModelRunner）在 need=True 时用 new_win_start 把这扇窗口重算一遍，
+      再把这条序列的地板推进到 new_win_start。
+    """
+    floor = max(0, int(draft_win_start))
+    if window_blocks <= 0 or end <= 0:
+        return False, floor
+    b0_nat = max(max(0, int(head_blocks)),
+                 (int(end) - 1) // int(block_size) - int(window_blocks) + 1)
+    new_start = b0_nat * int(block_size)
+    if new_start > floor:
+        return True, new_start
+    return False, floor
+
+
 class DraftModelProposer:
     """用小模型自回归生成 k 个候选，返回 token 和它们在 draft 下的真实概率。
 

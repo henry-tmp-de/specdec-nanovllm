@@ -47,7 +47,7 @@ def _make_model(model_cls, hf_config, path, quant_weights, quant_modules,
     #   分支会照原样跑 apply_int8_quant。这里多做一次会把已经变成 int8 的
     #   权重再量化一遍（apply_int8_quant 直接断言拒绝）。
     return model, [], False
-from nanovllm.spec_decode.draft_proposer import DraftWindow
+from nanovllm.spec_decode.draft_proposer import DraftWindow, window_realign_target
 from nanovllm.utils.context import set_context, get_context, reset_context
 from nanovllm.utils.loader import load_model
 import json
@@ -738,6 +738,90 @@ class ModelRunner:
         finally:
             reset_context()
 
+    # ------------------------------------------------------------------
+    # ★ spec_draft_win_realign（默认关）：第二次及以后的「对齐漂移」修复
+    # ------------------------------------------------------------------
+    def _maybe_realign_draft_window(self, seqs) -> int:
+        """检测并修掉「第二次及以后的漂移」（默认关 = 一行不执行）。
+
+        `spec_draft_win_align` 只把【第一次】漂移对齐了：prefill 写下环里那些块时
+        用的起点 = 第一个生成位置所在块的 b0。但解码继续往前、序列跨进下一个块时，
+        `DraftWindow.b0` 的自然项 `p//bs − M + 1` 会超过那次对齐的地板 ——
+        环里被保留的块仍编码着「更早一个块」的上下文，与读端声明的窗口不一致。
+        实测（8K/out=512，引擎内确定性 α）：ALIGN=1, P=0, M=5 从 **0.644 → 0.458**。
+
+        修法：一旦检测到自然起点要前进，就用【新起点】把这扇窗口重算一遍
+        （一次 local-causal 前向，≤ M*bs 个 token），并把地板推进到新起点 ⇒
+        「环里的内容 = 读端声明的窗口」这条不变量在【每个】块上都成立，而不是只在第一块上。
+
+        ★ 默认关（`spec_draft_win_realign=False`）时整个函数第一行就返回 0，
+          老路径一个字节都不动。返回本次重算的序列条数（供校验/计数）。
+        """
+        if not getattr(self.config, "spec_draft_win_realign", False):
+            return 0
+        if not self.draft_window_blocks or self._window_tokens() <= 0:
+            return 0
+        M = self.draft_window_blocks
+        P = max(0, int(getattr(self, "draft_head_blocks", 0) or 0))
+        bs = self.block_size
+        todo = []
+        for seq in seqs:
+            if not seq.draft_block_table:
+                continue
+            end = len(seq)
+            need, new_start = window_realign_target(
+                getattr(seq, "draft_win_start", 0), end, bs, M, P)
+            if not need:
+                continue
+            seq.draft_win_start = new_start
+            w = DraftWindow(seq.draft_block_table, bs, M, P)
+            todo.append((seq, w, new_start // bs, end))
+        if todo:
+            self._realign_draft_windows(todo)
+        return len(todo)
+
+    @torch.inference_mode()
+    def _realign_draft_windows(self, todo):
+        """按【新的对齐起点】把若干条序列的滑窗重算一遍（只被上面的开关调用）。
+
+        与 `_run_draft_prefill_window` 同一套写法（本地 k/v + 因果、按 slot 写入环），
+        唯一区别是起点由调用方给定（新的 b0 块），而不是 `w.b0(end-1)`。
+        ★ 这个函数【只在 spec_draft_win_realign 打开时才会被调用】，默认路径不碰它。
+        """
+        bs = self.block_size
+        ids, poss, slots, cu = [], [], [], [0]
+        maxlen = 0
+        for (seq, w, b0, end) in todo:
+            P = w.P
+            head_end = min(P * bs, end)
+            w0 = b0 * bs
+            segs = []
+            if head_end > 0:
+                segs.append((0, head_end))
+            if w0 < end:
+                segs.append((w0, end))
+            if not segs:
+                continue
+            for (a, b) in segs:
+                ids.extend(seq.token_ids[a:b])
+                poss.extend(range(a, b))
+                slots.extend(w.slot(p) for p in range(a, b))
+                cu.append(cu[-1] + (b - a))
+                maxlen = max(maxlen, b - a)
+            # 整段重算 ⇒ 从 0 到 end 都算「已处理」（与窗口 prefill 的语义一致）
+            seq.draft_valid_len = end
+        if not ids:
+            return
+        dev = next(self.draft_model.parameters()).device
+        cu = torch.tensor(cu, dtype=torch.int32, device=dev)
+        set_context(True, cu, cu, maxlen, maxlen,
+                    torch.tensor(slots, dtype=torch.int32, device=dev), None, None)
+        try:
+            self.draft_model(torch.tensor(ids, dtype=torch.int64, device=dev),
+                             torch.tensor(poss, dtype=torch.int64, device=dev))
+        finally:
+            reset_context()
+
     def _draft_request(self, seq: Sequence) -> dict:
         """把一条请求的 draft 提议元数据打包给 proposer（P6 任务 D 的接口）。
 
@@ -835,6 +919,11 @@ class ModelRunner:
                     seq.draft_tokens = []
                     seq.draft_logits = None
             if self.draft_model is not None and to_prop:
+                # ★ spec_draft_win_realign（默认关）：先把「第二次及以后的漂移」
+                #   修掉（检测 → 按新起点重算窗口 → 推进地板），再取请求元数据，
+                #   否则 valid_from 读到的是旧地板。默认关时该函数第一行就返回 0，
+                #   老路径一个字节不动。
+                self._maybe_realign_draft_window(to_prop)
                 reqs = [self._draft_request(s) for s in to_prop]
                 if self.batch_draft:
                     # ---------- P6 任务 A：批量 draft ----------

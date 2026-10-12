@@ -230,6 +230,8 @@ def main():
         kw["spec_draft_head_blocks"] = head
     if os.environ.get("ALIGN", "0") == "1":
         kw["spec_draft_win_align"] = True
+    if os.environ.get("REALIGN", "0") == "1":
+        kw["spec_draft_win_realign"] = True
     llm = LLM(TARGET, **kw)
 
     tok = AutoTokenizer.from_pretrained(TARGET)
