@@ -1,0 +1,2 @@
+@@DIAG@@{"window": 0, "maxlen": 8192, "ctx": 4096, "B": 1, "seqs": 4, "blocks": [174, 0, 0], "wall_s": 3.3860886096954346, "alpha": 0.6551724137931034, "md5": "5234d24d6aa53767ecaa03ac446e72f7", "md5_same": true, "ntok": 256}
+@@DIAG@@{"window": 8448, "maxlen": 8192, "ctx": 4096, "B": 1, "seqs": 4, "blocks": [206, 132, 33], "wall_s": 16.307822704315186, "alpha": 0.7071428571428572, "md5": "9ec8bc29b3349049b175e9601a73d514", "md5_same": true, "ntok": 256}
