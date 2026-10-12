@@ -59,8 +59,10 @@ def main():
 
     g = GROUPS[GROUP]
     draft_dir = DRAFT_QALL if g["draft"] == "qall" else DRAFT_BF16
-    kw = dict(enforce_eager=False, max_model_len=8192, max_num_batched_tokens=16384,
-              max_num_seqs=8, spec_k=6, spec_method="draft",
+    # ★ 组内可选键（长上下文组带 maxlen/maxntok/max_seqs=4）；老组行为不变
+    kw = dict(enforce_eager=False, max_model_len=g.get("maxlen", 8192),
+              max_num_batched_tokens=g.get("maxntok", 16384),
+              max_num_seqs=g.get("max_seqs", 8), spec_k=6, spec_method="draft",
               draft_model=draft_dir, spec_batch_threshold=0)
     if g["window"]:
         kw["spec_draft_window"] = g["window"]
@@ -124,7 +126,11 @@ def main():
     mr.draft_model = None
     out.append(measure("no_draft_prefill", g["window"]))
     mr.draft_model = saved
-    if g["window"]:
+    # ★ 条件③「有 draft 但运行期把窗口压回 0」只在【draft 池 ≥ target 池】时才安全：
+    #   窗口压回 0 后 draft 会改用 target 的块号去索引它自己的 KV cache。
+    #   长上下文组按真实并发设 max_num_seqs（=4）⇒ draft 池 < target 池 ⇒ 这一条会越界，
+    #   所以它【只在老组里跑】。长上下文的"全上下文 draft prefill"由 lc_w0 组的条件①给。
+    if g["window"] and mr.config.num_draft_blocks >= mr.config.num_kvcache_blocks:
         out.append(measure("with_draft_prefill_window0", 0))
 
     print("@@PREFILL@@" + json.dumps(dict(

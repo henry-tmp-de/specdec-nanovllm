@@ -98,6 +98,17 @@ WIN_MAX_SEQS = 12     # ★ 滑窗组专用。draft 池 = M*max_num_seqs = 18*12
 WINDOW = 4608         # M = 18 块 = 4608 token ≥ 4096+256 → 不截断上下文（见文档的扰动说明）
 SEED = 20261011
 
+# ---- ★ 长上下文组（补测：8K/16K 下 draft 滑窗 vs 普通投机的【容量】）----
+# 目的：回答「长上下文下滑窗到底省多少显存」。判据（见 docs/优化笔记 §2.7）：
+#     滑窗省显存  ⟺  M × max_num_seqs  <  普通投机的 pool 块数（本机 173）
+# ★★ 纪律：max_num_seqs 一律按【真实负载并发】设（B≤4 ⇒ 4），
+#   绝不为了让某个"运行期关窗口"的对照不出界而把池子撑大
+#   —— 那是 §7.4 / WIN_MAX_SEQS=12 的覆辙（draft 池 216 块白占 4 GB，把滑窗判成负的）。
+#   本组每个进程只有一个变体，不做进程内关窗口对照；window=0 的基线是【单独一个进程】。
+MAXLEN_LC = 16640     # ≥ ctx 16384 + out 256；块表宽度 = ceil(16640/256) = 65 列
+LC_MAX_SEQS = 4       # = 真实并发（B≤4）
+LC_WINDOW_MIN = 8448  # = ceil((8192+256)/256)=33 块 —— ctx=8192 下【不截断】的最小窗口
+
 # 每一组 = 一个进程（init 期的开关只能在这里定）；组内变体靠运行期翻转 → 真配对
 # ★ 滑窗组里额外放一个 `S2` 作为【组内对照】：S2 的定义就是"不含滑窗"，
 #   所以它把 spec_draft_window 在运行期压回 0（draft 退回共用的全上下文路径），
@@ -112,6 +123,22 @@ GROUPS = {
                             max_seqs=WIN_MAX_SEQS),
 }
 
+# ★ 长上下文组（每进程单变体；window=0 的基线是【另一个进程】，不在同进程里关窗口）。
+#   `maxlen` / `maxntok` 是【新增的可选键】，老组不带它们 → 逐字沿用 MAXLEN / 16384。
+LC_GROUPS = {
+    "lc_w0":    dict(window=0,             draft="bf16", direct=False, variants=["L"],
+                     max_seqs=LC_MAX_SEQS, maxlen=MAXLEN_LC, maxntok=MAXLEN_LC),
+    "lc_w8448": dict(window=LC_WINDOW_MIN, draft="bf16", direct=False, variants=["L"],
+                     max_seqs=LC_MAX_SEQS, maxlen=MAXLEN_LC, maxntok=MAXLEN_LC),
+    "lc_w4608": dict(window=4608,          draft="bf16", direct=False, variants=["L"],
+                     max_seqs=LC_MAX_SEQS, maxlen=MAXLEN_LC, maxntok=MAXLEN_LC),
+    "lc_w1280": dict(window=1280,          draft="bf16", direct=False, variants=["L"],
+                     max_seqs=LC_MAX_SEQS, maxlen=MAXLEN_LC, maxntok=MAXLEN_LC),
+}
+GROUPS.update(LC_GROUPS)
+# ★ `--all` 仍然只跑【原来那四个组】—— 加长上下文组【不改变】老组的复算行为。
+ALL_GROUPS = ["core", "win", "win_int8", "win_int8_direct"]
+
 # 每一档 = 一组运行期开关（U/G/C/S1/S2 全部能在同一个进程里来回翻）
 #   window:  "keep" = 保持本组 init 的取值；0 = 运行期压回全上下文（S2 的定义）
 VARIANT_SPEC = {
@@ -123,8 +150,10 @@ VARIANT_SPEC = {
     "S4": dict(spec=True,  eager=False, batch_draft=True,  batch_vg=True,  window="keep"),
     "S5": dict(spec=True,  eager=False, batch_draft=True,  batch_vg=True,  window="keep"),
     "S6": dict(spec=True,  eager=False, batch_draft=True,  batch_vg=True,  window="keep"),
+    # ★ 长上下文组的唯一变体：投机全开、窗口保持本组 init 值（L 组不翻窗口）
+    "L":  dict(spec=True,  eager=False, batch_draft=True,  batch_vg=True,  window="keep"),
 }
-LADDER = ["U", "G", "C", "S1", "S2", "S4", "S5", "S6"]
+LADDER = ["U", "G", "C", "S1", "S2", "S4", "S5", "S6", "L"]
 
 
 # ----------------------------------------------------------------------
@@ -163,7 +192,8 @@ def run_group(gname, args):
 
     g = GROUPS[gname]
     draft_dir = DRAFT_QALL if g["draft"] == "qall" else DRAFT_BF16
-    kw = dict(enforce_eager=False, max_model_len=MAXLEN, max_num_batched_tokens=16384,
+    kw = dict(enforce_eager=False, max_model_len=g.get("maxlen", MAXLEN),
+              max_num_batched_tokens=g.get("maxntok", 16384),
               max_num_seqs=g.get("max_seqs", MAX_SEQS), spec_k=K, spec_method="draft",
               draft_model=draft_dir, spec_batch_threshold=0)
     if g["window"]:
@@ -217,11 +247,20 @@ def run_group(gname, args):
         def dr_guard(seq):
             r = orig_dr(seq)
             n = mr.draft_kv_cache.shape[2]
-            ids = list(r["block_table"]) + list(r["draft_ring"])
+            # ★ 只检查【真正用来索引 draft KV cache】的那一份块号：
+            #   · 滑窗开且这条序列拿到了环（draft_ring 非空）→ draft 只用 draft_ring
+            #     （`DraftWindow` 的 slot/block_table 全部由 ring 生成，
+            #      请求里的 `block_table` 是 target 的块号、窗口路径根本不读它）。
+            #   · 否则退到全上下文路径，此时 draft 与 target 共用块号 → 检查 block_table。
+            #   原版把两者【相加】再查，会在滑窗正常工作时误报
+            #   （target 池 > draft 池时必然触发）——这正是 WIN_MAX_SEQS=12 的由来。
+            w = mr._window_tokens()
+            ids = list(r["draft_ring"]) if (w > 0 and r["draft_ring"]) else list(r["block_table"])
             if ids and max(ids) >= n:
                 raise RuntimeError(
                     f"draft 块号越界：max(block_id)={max(ids)} >= draft 池 {n} 块 "
-                    f"(window={mr.config.spec_draft_window})。不允许用这种方式关滑窗。")
+                    f"(window={mr.config.spec_draft_window}, ring={len(r['draft_ring'])})。"
+                    f"这不是关滑窗，是 draft 真的会读到池子外面。")
             return r
         mr._draft_request = dr_guard
 
@@ -388,7 +427,8 @@ def run_group(gname, args):
 
     out = dict(group=gname, window=g["window"], draft=g["draft"], direct=g["direct"],
                draft_model=draft_dir, variants=variants, k=K, outlen=OUTLEN,
-               max_seqs=g.get("max_seqs", MAX_SEQS), max_model_len=MAXLEN, seed=SEED,
+               max_seqs=g.get("max_seqs", MAX_SEQS), max_model_len=g.get("maxlen", MAXLEN),
+               max_num_batched_tokens=g.get("maxntok", 16384), seed=SEED,
                blocks=dict(num_kvcache_blocks=cfg.num_kvcache_blocks,
                            num_draft_blocks=cfg.num_draft_blocks,
                            draft_window_blocks=cfg.draft_window_blocks),
@@ -458,7 +498,7 @@ def render(merged, key="ms_per_round"):
 def cmd_all(args):
     os.makedirs(args.outdir, exist_ok=True)
     gpus = [int(x) for x in args.gpus.split(",")]
-    groups = list(GROUPS.keys())
+    groups = list(ALL_GROUPS)      # ★ 保持 --all 的原有语义（只跑原四组）
     pending = list(groups)
     running = []
     gpu_free = list(gpus)
