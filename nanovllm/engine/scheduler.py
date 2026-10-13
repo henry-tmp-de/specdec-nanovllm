@@ -3,6 +3,7 @@ from collections import deque
 from nanovllm.config import Config
 from nanovllm.engine.sequence import Sequence, SequenceStatus
 from nanovllm.engine.block_manager import BlockManager
+from nanovllm.engine.prefill_rotation import PrefillRotation
 
 
 class Scheduler:
@@ -36,6 +37,13 @@ class Scheduler:
         self.prefill_chunk_tokens = int(getattr(config, "spec_prefill_chunk_tokens", 0) or 0)
         # 上一轮是否留下了"还没拼完的 prefill 块"。默认路径只写不读，行为逐字节不变。
         self._prefill_chunk_pending = False
+        # ---------- P14：多序列轮转准入 ----------
+        #   False（默认）⇒ 老行为：prefill 循环只看队首，分块拼不完就 break。
+        #   True ⇒ 本轮让每条待拼序列各拿一块、没拼完的移到队尾（环状轮转 + 公平准入）。
+        #   ★ 只在 prefill_chunk_tokens > 0 时生效（没有"每条每块"的上限就无所谓轮转）。
+        #   机制与依据见 nanovllm/engine/prefill_rotation.py 与 config.spec_prefill_rotate。
+        self.prefill_rotate = bool(getattr(config, "spec_prefill_rotate", False))
+        self._rotation = None     # 惰性建；每轮 reset，见 schedule()
         # n-gram 提议器。由 ModelRunner 注入（引擎建好后才有），
         # 这样 token_ids 更新后能立刻把新 token 加进索引。
         self.spec_proposer = None
@@ -103,20 +111,41 @@ class Scheduler:
                 self.config._sched_running_decode_b = len(self.running)
             except AttributeError:
                 pass
+            # ---------- P14：多序列轮转准入（默认关，rot=None ⇒ 老路径一行未改）----------
+            #   rot 非 None 时，循环取的不再是"队首"，而是"本轮还没服务过的环头"，
+            #   并且没拼完的序列会让位（移到队尾）而不是 break 收工。
+            #   ★ 只在 chunk > 0 时建：没有"每条每轮一块"的上限就没有轮转可言。
+            rot = None
+            if chunk and getattr(self, "prefill_rotate", False):
+                rot = getattr(self, "_rotation", None)
+                if rot is None:
+                    rot = PrefillRotation()
+                    self._rotation = rot
+                rot.reset()      # ★ 每轮一份新的"本轮已服务"（见 reset 的 docstring）
             # prefill
             while self.waiting and len(scheduled_seqs) < self.max_num_seqs:
-                seq = self.waiting[0]
+                seq = rot.next(self.waiting) if rot is not None else self.waiting[0]
+                if seq is None:      # ★ 轮转：整环绕过一圈了，本轮到此为止
+                    break
                 remaining = self.max_num_batched_tokens - num_batched_tokens
                 if remaining == 0:
                     break
                 if not seq.block_table:
                     num_cached_blocks = self.block_manager.can_allocate(seq)
                     if num_cached_blocks == -1:
+                        if rot is not None:
+                            # ★ 公平准入：一条分配不到块（可能只是它特别长）不该挡住
+                            #   整条队列的其他人。本轮跳过它、让位给后面；它没被移出
+                            #   waiting，下一轮仍会被取到（只是排到本轮其他人的后面）。
+                            rot.skip(self.waiting, seq)
+                            continue
                         break
                     num_tokens = seq.num_tokens - num_cached_blocks * self.block_size
                 else:
                     num_tokens = seq.num_tokens - seq.num_cached_tokens
-                if remaining < num_tokens and scheduled_seqs:  # only allow chunked prefill for the first seq
+                # ★ 轮转时这条守卫必须放行：chunk>0 本来就允许把一条序列切开，
+                #   剩下的预算哪怕不够一整块也该给出去（给的是 min(剩余, chunk)）。
+                if remaining < num_tokens and scheduled_seqs and rot is None:
                     break
                 # ★ 本轮的 prefill 预算上限：0 = 不分块（= remaining，老行为）
                 budget = min(remaining, chunk) if chunk else remaining
@@ -152,6 +181,19 @@ class Scheduler:
                     self.waiting.popleft()
                     self.running.append(seq)
                     scheduled_seqs.append(seq)
+                    if rot is not None:
+                        rot.mark(seq)    # ★ 拼完的也要记：同一轮里不许再碰它
+                elif rot is not None:
+                    # ★★ P14 轮转：这条拼不完 ≠ 本轮到此为止。
+                    #   记下"本轮已服务"并把队首移到【环尾】—— 后面的序列顶上继续拼。
+                    #   没有 mark 这一下，转完一圈后 while 会再取到【同一条】，
+                    #   把 num_scheduled_tokens 又覆盖一遍、再 append 一份
+                    #   （P13 "同一个 chunk 被拼 7 遍" 的复现条件，见
+                    #     tests/test_prefill_multiseq.py §1 与本模块 docstring）。
+                    self._prefill_chunk_pending = True
+                    scheduled_seqs.append(seq)
+                    rot.yield_turn(self.waiting, seq)
+                    continue
                 else:
                     # ★★ 分块：这条本步拼不完 ⇒ 【本轮到此为止】，必须立刻 break。
                     #   它没被 popleft，还留在 self.waiting[0]；不 break 的话这个 while
