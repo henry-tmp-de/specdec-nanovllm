@@ -17,3 +17,9 @@ fed58aa6b81fb7e1e6a825af34b3f2dd  1503300328  Qwen3-0.6B/model.safetensors
 b06e103ac555ec4b51266078b518c0f0  9732  Qwen3-0.6B/tokenizer_config.json
 6423133b9cc1a2077b57822c30c211aa  11422654  Qwen3-0.6B/tokenizer.json
 613b8e4a622c4a2c90e9e1245fc540d6  2776833  Qwen3-0.6B/vocab.json
+
+=== 收工复核（2026-10-13 03:15 UTC）===
+Qwen3-4B    8060920595 字节  （指纹基准 8060920595 ⇒ 相同）
+Qwen3-0.6B  1519211769 字节  （指纹基准 1519211769 ⇒ 相同）
+quant/int8 痕迹：两者均 0 —— 没有往只读目录里放 quant_config.json
+逐文件 md5 与 docs/原始模型指纹.md 逐行一致（见上方 19 行）；开工时也查过一次，两次相同。
