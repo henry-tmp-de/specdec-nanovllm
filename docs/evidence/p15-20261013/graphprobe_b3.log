@@ -1,0 +1,14 @@
+[spec] draft model: /home/ziru/nano-vllm/models/Qwen3-0.6B (28 层, vocab 151936)
+[spec] draft KV cache: 28 层 x 173 blocks, 每block 28672 KB
+[spec] blocks=173, target 每block 36864 KB, 合计 10.81 GB
+[spec] draft CUDA graph 就绪 (bs=[1, 2, 3, 4], 1 token/行)
+[spec] verify CUDA graph 就绪 (shapes=[(1, 6), (2, 6), (3, 6), (4, 6)], 7 query/请求, 共享图池)
+[transformers] Token indices sequence length is longer than the specified maximum sequence length for this model (298938 > 131072). Running this sequence through the model will result in indexing errors
+@@GRAPHHEAD@@{"n_dec": 3, "chunk": 1024, "ctx": 16384, "spec_graph_bs": [1, 2, 3, 4], "captured_verify_shapes": [[1, 6], [2, 6], [3, 6], [4, 6]], "dev": "NVIDIA GeForce RTX 3090"}
+[rank0]:W1013 03:09:11.271000 3326063 torch/_dynamo/convert_frame.py:1676] [0/8] torch._dynamo hit config.recompile_limit (8)
+[rank0]:W1013 03:09:11.271000 3326063 torch/_dynamo/convert_frame.py:1676] [0/8]    function: 'rms_forward' (/home/ziru/nano-vllm/p15-work/nanovllm/layers/layernorm.py:16)
+[rank0]:W1013 03:09:11.271000 3326063 torch/_dynamo/convert_frame.py:1676] [0/8]    last reason: 0/7: tensor 'x' rank mismatch. expected 2, actual 3
+[rank0]:W1013 03:09:11.271000 3326063 torch/_dynamo/convert_frame.py:1676] [0/8] To log all recompilation reasons, use TORCH_LOGS="recompiles".
+[rank0]:W1013 03:09:11.271000 3326063 torch/_dynamo/convert_frame.py:1676] [0/8] To diagnose recompilation issues, see https://pytorch.org/docs/main/compile/programming_model.recompilation.html
+@@GRAPH@@{"mixed_steps": 15, "pure_steps": 7, "verify_graph_hits": 24, "verify_graph_fallbacks": {}, "draft_graphs_bs": [1, 2, 3, 4]}
+DONE_B3

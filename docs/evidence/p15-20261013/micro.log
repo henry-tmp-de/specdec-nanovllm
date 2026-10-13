@@ -1,0 +1,15 @@
+[spec] draft model: /home/ziru/nano-vllm/models/Qwen3-0.6B (28 层, vocab 151936)
+[spec] draft KV cache: 28 层 x 173 blocks, 每block 28672 KB
+[spec] blocks=173, target 每block 36864 KB, 合计 10.81 GB
+[spec] draft CUDA graph 就绪 (bs=[1, 2, 4], 1 token/行)
+[spec] verify CUDA graph 就绪 (shapes=[(1, 6), (2, 6), (4, 6)], 7 query/请求, 共享图池)
+[transformers] Token indices sequence length is longer than the specified maximum sequence length for this model (298938 > 131072). Running this sequence through the model will result in indexing errors
+@@MICROHEAD@@{"ctx": 16384, "chunk": 1024, "reps": 15, "warm": 3, "n_dec": 3, "spec_k": 6, "dev": "NVIDIA GeForce RTX 3090", "gpu": "4", "port": "2421"}
+[rank0]:W1013 02:40:55.439000 3304915 torch/_dynamo/convert_frame.py:1676] [0/8] torch._dynamo hit config.recompile_limit (8)
+[rank0]:W1013 02:40:55.439000 3304915 torch/_dynamo/convert_frame.py:1676] [0/8]    function: 'rms_forward' (/home/ziru/nano-vllm/p15-work/nanovllm/layers/layernorm.py:16)
+[rank0]:W1013 02:40:55.439000 3304915 torch/_dynamo/convert_frame.py:1676] [0/8]    last reason: 0/7: tensor 'x' rank mismatch. expected 2, actual 3
+[rank0]:W1013 02:40:55.439000 3304915 torch/_dynamo/convert_frame.py:1676] [0/8] To log all recompilation reasons, use TORCH_LOGS="recompiles".
+[rank0]:W1013 02:40:55.439000 3304915 torch/_dynamo/convert_frame.py:1676] [0/8] To diagnose recompilation issues, see https://pytorch.org/docs/main/compile/programming_model.recompilation.html
+@@MICROPLAN@@{"n_decode": 3, "n_prefill": 1, "prefill_tokens": 1024, "decode_need": [7, 7, 7]}
+@@MICRO@@{"decode_only": {"med": 220.507, "lo": 219.617, "hi": 223.1, "n": 15}, "prefill_only": {"med": 171.172, "lo": 170.659, "hi": 171.677, "n": 15}, "serial": {"med": 392.084, "lo": 391.277, "hi": 395.324, "n": 15}, "concurrent": {"med": 298.343, "lo": 297.715, "hi": 301.527, "n": 15}, "decode_only_nospec": {"med": 12.041, "lo": 12.024, "hi": 135.935, "n": 15}}
+@@MICROVERDICT@@{"t_decode_ms": 220.507, "t_prefill_ms": 171.172, "t_decode_nospec_ms": 12.041, "t_serial_ms": 392.084, "t_concurrent_ms": 298.343, "serial_minus_sum_ms": 0.405, "overlap_gain_ms": 93.741, "overlap_upper_ms": 171.172, "overlap_ratio": 0.548, "decode_inconcurrent_minus_alone_ms": 77.836}

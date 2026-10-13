@@ -1,0 +1,19 @@
+[spec] draft model: /home/ziru/nano-vllm/models/Qwen3-0.6B (28 层, vocab 151936)
+[spec] draft KV cache: 28 层 x 189 blocks, 每block 28672 KB
+[spec] blocks=189, target 每block 36864 KB, 合计 11.81 GB
+[spec] draft CUDA graph 就绪 (bs=[1, 2, 4], 1 token/行)
+[spec] verify CUDA graph 就绪 (shapes=[(1, 6), (2, 6), (4, 6)], 7 query/请求, 共享图池)
+[transformers] Token indices sequence length is longer than the specified maximum sequence length for this model (298938 > 131072). Running this sequence through the model will result in indexing errors
+@@SMOKEHEAD@@{"ctx": 4096, "chunk": 1024, "out": 32, "seed": 20261013, "target_blocks": 189, "block_size": 256, "dev": "NVIDIA GeForce RTX 3090", "gpu": "4", "port": "2434"}
+[rank0]:W1013 03:13:24.237000 3329776 torch/_dynamo/convert_frame.py:1676] [0/8] torch._dynamo hit config.recompile_limit (8)
+[rank0]:W1013 03:13:24.237000 3329776 torch/_dynamo/convert_frame.py:1676] [0/8]    function: 'rms_forward' (/home/ziru/nano-vllm/p15-work/nanovllm/layers/layernorm.py:16)
+[rank0]:W1013 03:13:24.237000 3329776 torch/_dynamo/convert_frame.py:1676] [0/8]    last reason: 0/7: tensor 'x' rank mismatch. expected 2, actual 3
+[rank0]:W1013 03:13:24.237000 3329776 torch/_dynamo/convert_frame.py:1676] [0/8] To log all recompilation reasons, use TORCH_LOGS="recompiles".
+[rank0]:W1013 03:13:24.237000 3329776 torch/_dynamo/convert_frame.py:1676] [0/8] To diagnose recompilation issues, see https://pytorch.org/docs/main/compile/programming_model.recompilation.html
+@@SMOKE@@ {"tag": "smoke-yield", "mode": "yield", "wall_s": 2.44, "n_prefill_steps": 4, "n_decode_steps": 17, "itl_med_ms": 228.85, "itl_max_ms": 549.55, "delivered": {"1": 32, "2": 32, "3": 32}, "mixed_delta": null, "verify_graph_hits_delta": 11}
+@@SMOKE@@ {"tag": "smoke-serial", "mode": "serial", "wall_s": 2.4, "n_prefill_steps": 4, "n_decode_steps": 14, "itl_med_ms": 224.89, "itl_max_ms": 557.77, "delivered": {"5": 32, "6": 32, "7": 32}, "mixed_delta": null, "verify_graph_hits_delta": 11}
+@@SMOKE@@ {"tag": "smoke-concurrent", "mode": "concurrent", "wall_s": 2.07, "n_prefill_steps": 4, "n_decode_steps": 14, "itl_med_ms": 224.78, "itl_max_ms": 462.15, "delivered": {"9": 32, "10": 32, "11": 32}, "mixed_delta": {"serial_steps": 0, "concurrent_steps": 3, "prefill_tokens": 3072}, "verify_graph_hits_delta": 11}
+  [PASS] 串行 vs 并发：交付 token 序列逐 token 相同（3 条请求，各 [32, 32, 32] 个 token）
+  (参考) 让路式的交付 token 数 [32, 32, 32]，与并发相同: True
+@@SMOKESUMM@@ {"lossless_serial_vs_concurrent": true, "results": [{"tag": "smoke-yield", "mode": "yield", "wall_s": 2.44, "n_prefill_steps": 4, "n_decode_steps": 17, "itl_med_ms": 228.85, "itl_max_ms": 549.55, "delivered": {"1": 32, "2": 32, "3": 32}, "mixed_delta": null, "verify_graph_hits_delta": 11}, {"tag": "smoke-serial", "mode": "serial", "wall_s": 2.4, "n_prefill_steps": 4, "n_decode_steps": 14, "itl_med_ms": 224.89, "itl_max_ms": 557.77, "delivered": {"5": 32, "6": 32, "7": 32}, "mixed_delta": null, "verify_graph_hits_delta": 11}, {"tag": "smoke-concurrent", "mode": "concurrent", "wall_s": 2.07, "n_prefill_steps": 4, "n_decode_steps": 14, "itl_med_ms": 224.78, "itl_max_ms": 462.15, "delivered": {"9": 32, "10": 32, "11": 32}, "mixed_delta": {"serial_steps": 0, "concurrent_steps": 3, "prefill_tokens": 3072}, "verify_graph_hits_delta": 11}]}
+DONE_SMOKE

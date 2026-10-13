@@ -10,6 +10,7 @@ from nanovllm.sampling_params import SamplingParams
 from nanovllm.engine.sequence import Sequence
 from nanovllm.engine.scheduler import Scheduler
 from nanovllm.engine.model_runner import ModelRunner
+from nanovllm.engine.mixed_batch import MixedBatchPlan
 
 
 class LLMEngine:
@@ -60,7 +61,10 @@ class LLMEngine:
         self.scheduler.add(seq)
 
     def step(self):
-        seqs, is_prefill = self.scheduler.schedule()
+        plan = self.scheduler.schedule()
+        if isinstance(plan, MixedBatchPlan):
+            return self._step_mixed(plan)
+        seqs, is_prefill = plan
         # prefill 的吞吐口径 = 本步写进 KV 的 prompt token 数（分块 prefill 的中间
         # chunk 也照样算，它们不产出 token 但确实占了算力）。必须在 postprocess
         # 把 num_scheduled_tokens 清零之前取出来。
@@ -75,6 +79,28 @@ class LLMEngine:
         # 符号仍然表示方向（正 = prefill，负 = decode），generate() 的 tqdm 语义不变
         num_tokens = num_prompt_tokens if is_prefill else -num_delivered
         return outputs, num_tokens
+
+    def _step_mixed(self, plan: MixedBatchPlan):
+        """P15：一个 step 里既跑 decode 子批（吃 CUDA Graph）、又推进一块 prefill。
+
+        ★★ 记账必须是【两条路径各自独立】的（invariant I3）：prefill 端推进
+           `num_scheduled_tokens` 个位置、decode 端推进 1（投机时 len(toks)），
+           `postprocess` 已经按 is_prefill 分支处理 —— 这里只要【分别调用】它，
+           绝不能让两边共用一次调用（共用就得让一个布尔去承担两种语义，
+           那正是本模块要避免的隐式约定）。
+        ★ 口径：本步有 prefill 推进 ⇒ 沿用老 step() 的"正号"语义，报 prefill
+          token 数（generate() 的 tqdm 只用它做显示，decode 那一侧的口径不受影响）。
+        """
+        plan_seq_ids = [seq.seq_id for seq in plan.decode_seqs + plan.prefill_seqs]
+        assert len(plan_seq_ids) == len(set(plan_seq_ids)), (
+            f"一轮内同一条序列被调度了两次（invariant I1 被破坏）: {plan_seq_ids}")
+        num_prompt_tokens = sum(seq.num_scheduled_tokens for seq in plan.prefill_seqs)
+        dec_token_ids, prefill_token_ids = self.model_runner.call(
+            "run_mixed", plan.decode_seqs, plan.prefill_seqs, plan.mode)
+        num_delivered = self.scheduler.postprocess(plan.prefill_seqs, prefill_token_ids, True)
+        num_delivered += self.scheduler.postprocess(plan.decode_seqs, dec_token_ids, False)
+        outputs = [(seq.seq_id, seq.completion_token_ids) for seq in plan.seqs if seq.is_finished]
+        return outputs, num_prompt_tokens
 
     def is_finished(self):
         return self.scheduler.is_finished()

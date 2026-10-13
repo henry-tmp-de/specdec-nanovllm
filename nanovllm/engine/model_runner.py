@@ -139,6 +139,8 @@ class ModelRunner:
         # P6 消融开关（默认走批量；设 False 退回逐请求/仅 B=1 图）
         self.batch_draft = config.spec_batch_draft
         self.batch_verify_graph = config.spec_batch_verify_graph
+        # P15：混合批的并发编排器（惰性建，只在真的用到时才 import torch.cuda.Stream）
+        self._mixed = None
         # 图命中 / 退回统计（结构验收：B>1 的已覆盖形状必须【真的 replay 了图】）
         self.verify_graph_hits = 0
         self.verify_graph_fallbacks = {}
@@ -876,6 +878,65 @@ class ModelRunner:
             graph.replay()
             return self.model.compute_logits(graph_vars["outputs"][:bs])
 
+    def _prefill_forward(self, seqs: list[Sequence]):
+        """prefill 的【发射半段】：把前向与 lm_head 排进【当前 stream】，不回落到 CPU。
+
+        ★ 为什么要拆（P15，见 engine/mixed_batch.py）：要让 prefill 与 decode 真重叠，
+          必须在【任何一个 .tolist() 之前】把两条路径的 kernel 都发射出去 ——
+          .tolist() 会同步当前 stream，把它放在发射阶段就等于自己取消重叠。
+          所以 prefill 拆成"发射"（本函数）与"采样"（调用方）：
+            · 老路径 `run()` 紧跟着调用采样 ⇒ 与拆分前逐字节一致；
+            · 重叠路径把本函数放进 aux stream，跑完 decode 再来采样。
+        返回 (logits, temperatures)；rank != 0 时 temperatures 为 None（与老路径一致）。
+        ★ 本函数【故意不带】@torch.inference_mode()：原来的 prefill 分支没有它
+          （只有 run_model / 两张图的 capture 有），加了会让 prepare_prefill
+          造出来的 input_ids / temperatures 变成 inference tensor，被
+          `self.sampler(...)`（在 inference_mode 之外）原地算子碰到会直接报错。
+          不改它 = "老路径逐字节不变"这句话不用打折扣。
+        """
+        # ★★ P12 修：`prepare_prefill` 里的 `advance_draft_watermark` 会把
+        #   draft KV 的"有效水位"推到本 chunk 的末尾 —— 它是个**盖章**，
+        #   前提是"这趟 draft 前向跑了"。P13 的跳过开关让 draft 前向不跑，
+        #   但这个章还是照盖：水位被推到 end，而 draft 的 KV 一个字没写。
+        #   后果（实测）：运行期把 spec_k 从 0 翻回正数后，proposer 相信
+        #   水位、不做补齐，拿【未初始化】的 draft KV 提候选 ⇒ 接受率崩
+        #   （每轮交付 2.77 → 1.21 个 token），而 verify 前向照付 ⇒ 比不投机还慢。
+        #   ⇒ 跳过 draft prefill 的那一轮，**不盖这个章**（水位不动），
+        #     之后真正需要时由 proposer 的正常 catchup 路径补齐。
+        #   ★ 默认路径（开关关）`_draft_prefill_needed()` 恒 True ⇒ 与老行为逐字节一致。
+        draft_needed = self._draft_prefill_needed()
+        input_ids, positions = self.prepare_prefill(seqs, advance_draft=draft_needed)
+        if self.draft_model is not None:
+            # ★ draft 模型也要跑一遍 prefill，把它的 KV cache 建起来
+            #   （关闭滑窗时 draft 与 target 共用 block_table，但各自写进自己的 cache；
+            #    打开滑窗时 draft 用自己的环形块表，见 _run_draft_prefill_window）
+            #   ★ P13：`_draft_prefill_needed()` 默认恒 True（老路径一行不变）；
+            #     打开开关且本引擎确定不投机（spec_k<=0）时整趟跳过。
+            if draft_needed and \
+                    self._run_draft_prefill(seqs, input_ids, positions):
+                # 滑窗路径 set 过自己的 context 又 reset 了 → 重建 target 的
+                input_ids, positions = self.prepare_prefill(seqs)
+        elif self.spec_proposer is not None:
+            # n-gram 路线：把 prompt 的 n-gram 建进索引
+            for seq in seqs:
+                self.spec_proposer.reset_watermark(seq.token_ids)
+        temperatures = self.prepare_sample(seqs) if self.rank == 0 else None
+        logits = self.run_model(input_ids, positions, True)
+        return logits, temperatures
+
+    def run_mixed(self, decode_seqs: list[Sequence], prefill_seqs: list[Sequence],
+                  mode: str):
+        """P15：一个 step 内跑两条执行路径。返回 (decode_token_ids, prefill_token_ids)。
+
+        ★ 为什么单独一个入口而不是给 `run()` 加参数：`run()` 是纯 decode / 纯 prefill
+          的既有热路径（纯 decode step 必须逐字节不变、图照常命中，见 I5）。
+          把混合逻辑挡在它外面，`run()` 就一行都不用改。
+        """
+        if self._mixed is None:
+            from nanovllm.engine.mixed_batch import MixedForward
+            self._mixed = MixedForward(self)
+        return self._mixed.run(decode_seqs, prefill_seqs, mode)
+
     def run(self, seqs: list[Sequence], is_prefill: bool) -> list:
         """返回值的形态随路径不同：
            prefill        -> list[int]              每序列 1 个
@@ -883,32 +944,14 @@ class ModelRunner:
            投机验证       -> list[list[int]]        每序列若干个
         """
         if is_prefill:
-            # ★★ P12 修：`prepare_prefill` 里的 `advance_draft_watermark` 会把
-            #   draft KV 的"有效水位"推到本 chunk 的末尾 —— 它是个**盖章**，
-            #   前提是"这趟 draft 前向跑了"。P13 的跳过开关让 draft 前向不跑，
-            #   但这个章还是照盖：水位被推到 end，而 draft 的 KV 一个字没写。
-            #   后果（实测）：运行期把 spec_k 从 0 翻回正数后，proposer 相信
-            #   水位、不做补齐，拿【未初始化】的 draft KV 提候选 ⇒ 接受率崩
-            #   （每轮交付 2.77 → 1.21 个 token），而 verify 前向照付 ⇒ 比不投机还慢。
-            #   ⇒ 跳过 draft prefill 的那一轮，**不盖这个章**（水位不动），
-            #     之后真正需要时由 proposer 的正常 catchup 路径补齐。
-            #   ★ 默认路径（开关关）`_draft_prefill_needed()` 恒 True ⇒ 与老行为逐字节一致。
-            draft_needed = self._draft_prefill_needed()
-            input_ids, positions = self.prepare_prefill(seqs, advance_draft=draft_needed)
-            if self.draft_model is not None:
-                # ★ draft 模型也要跑一遍 prefill，把它的 KV cache 建起来
-                #   （关闭滑窗时 draft 与 target 共用 block_table，但各自写进自己的 cache；
-                #    打开滑窗时 draft 用自己的环形块表，见 _run_draft_prefill_window）
-                #   ★ P13：`_draft_prefill_needed()` 默认恒 True（老路径一行不变）；
-                #     打开开关且本引擎确定不投机（spec_k<=0）时整趟跳过。
-                if draft_needed and \
-                        self._run_draft_prefill(seqs, input_ids, positions):
-                    # 滑窗路径 set 过自己的 context 又 reset 了 → 重建 target 的
-                    input_ids, positions = self.prepare_prefill(seqs)
-            elif self.spec_proposer is not None:
-                # n-gram 路线：把 prompt 的 n-gram 建进索引
-                for seq in seqs:
-                    self.spec_proposer.reset_watermark(seq.token_ids)
+            # ★★ P15：prefill 拆成"发射"与"采样"两半。老路径连着调用两半，
+            #   与拆分前逐字节一致；重叠路径把"发射"放进 aux stream、把"采样"
+            #   推迟到 join 之后（任何在发射阶段的 .tolist() 都会同步当前流，
+            #   自己把重叠取消掉）。理由与不变量见 engine/mixed_batch.py。
+            logits, temperatures = self._prefill_forward(seqs)
+            token_ids = self.sampler(logits, temperatures).tolist() if self.rank == 0 else None
+            reset_context()
+            return token_ids
         elif self.spec_proposer is not None and any(s.num_scheduled_tokens > 1 for s in seqs):
             # 先提议，再决定走验证还是退回普通 decode。
             k = self.config.spec_k

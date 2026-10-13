@@ -136,6 +136,28 @@ class Config:
     #     15.9× → 312.0×（带 draft），且那一轮解码请求拿到的 token 数 = 0。
     #     停止条件（方案 §6.3）是"只有 2–3 倍就收手" ⇒ 远未触及，值得做。
 
+    # ---------- P15：重叠执行的混合批（**新增选项**，默认关 = 老行为）----------
+    spec_overlap_mixed: bool = False
+    #   True  = 同一个 step 里既跑 decode 子批（照常吃 CUDA Graph）、又推进一块
+    #           prefill（走原有 eager 分片路径）。前提：spec_prefill_chunk_tokens > 0
+    #           （否则根本没有"待推进的 prefill 块"这个概念）。
+    #   False = 默认，老行为：一轮内只有一种执行路径（prefill 排他，块之间让一轮给 decode）。
+    #   ★ 收益账（docs/优化报告.md §d.5 方向 2，实测数字）：
+    #       [解码 12.1][块 284] 让路式                  ⇒ decode 每 296 ms 拿一个字
+    #       [解码 12.1 + 块 284] 同 step、两个前向串着跑 ⇒ 296 ms  ← ★ 收益 0
+    #       [解码 12.1 ∥ 块 284] 同 step、两条 stream    ⇒ 284 ms  ← 省 12.1 ms
+    #     ⇒ 收益 100% 来自【重叠】，不来自"混在同一个 step"。所以本开关必须配
+    #       spec_overlap_mode 一起用：只打开"混批"而走串行，收益就是 0。
+    #   ★ 为什么不复用 spec_prefill_chunk_tokens：分块（让路）与重叠是两件事 ——
+    #     分块单独就有效（P13 实测 ITL 尖刺 249× → 分块后大幅下降）；重叠是在
+    #     分块之上再加 12.1 ms/轮。分开两个开关，消融才干净。
+    spec_overlap_mode: str = "concurrent"
+    #   "serial"     = 同一个 step、两个前向【串着跑】。这不是"实现的一半"，
+    #                  而是本轮的对照组之一：它必须测出【收益 ≈ 0】。
+    #   "concurrent" = 两条 CUDA stream 并发（prefill 走 aux stream、decode 走当前流）。
+    #   ★ 两种模式共用同一套调度与记账（Scheduler 的混合调度 + postprocess），
+    #     只有"发射到哪条 stream"这一个差异 —— 这样两者之差就【只能】归因于重叠。
+
     spec_graph_bs: tuple = (1, 2, 4)
     #   捕获 CUDA 图的精确 batch 桶（draft 单步 decode 图 / 验证图共用）。
     #   按 12.2「新增图先只覆盖精确 B=2/4，保留 B=1 原路径」——

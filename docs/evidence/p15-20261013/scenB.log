@@ -1,0 +1,32 @@
+[spec] draft model: /home/ziru/nano-vllm/models/Qwen3-0.6B (28 层, vocab 151936)
+[spec] draft KV cache: 28 层 x 173 blocks, 每block 28672 KB
+[spec] blocks=173, target 每block 36864 KB, 合计 10.81 GB
+[spec] draft CUDA graph 就绪 (bs=[1, 2, 4], 1 token/行)
+[spec] verify CUDA graph 就绪 (shapes=[(1, 6), (2, 6), (4, 6)], 7 query/请求, 共享图池)
+[transformers] Token indices sequence length is longer than the specified maximum sequence length for this model (298938 > 131072). Running this sequence through the model will result in indexing errors
+@@SHEAD@@{"scen": "B", "ctx": 16384, "chunk": 1024, "out": 256, "k": 6, "runs": 3, "max_seqs": 4, "target_blocks": 173, "block_size": 256, "dev": "NVIDIA GeForce RTX 3090", "gpu": "4", "port": "2423"}
+[rank0]:W1013 02:47:31.641000 3311389 torch/_dynamo/convert_frame.py:1676] [0/8] torch._dynamo hit config.recompile_limit (8)
+[rank0]:W1013 02:47:31.641000 3311389 torch/_dynamo/convert_frame.py:1676] [0/8]    function: 'rms_forward' (/home/ziru/nano-vllm/p15-work/nanovllm/layers/layernorm.py:16)
+[rank0]:W1013 02:47:31.641000 3311389 torch/_dynamo/convert_frame.py:1676] [0/8]    last reason: 0/7: tensor 'x' rank mismatch. expected 2, actual 3
+[rank0]:W1013 02:47:31.641000 3311389 torch/_dynamo/convert_frame.py:1676] [0/8] To log all recompilation reasons, use TORCH_LOGS="recompiles".
+[rank0]:W1013 02:47:31.641000 3311389 torch/_dynamo/convert_frame.py:1676] [0/8] To diagnose recompilation issues, see https://pytorch.org/docs/main/compile/programming_model.recompilation.html
+@@SWARM@@{"modes": ["yield", "serial", "concurrent"]}
+@@SROW@@ {"mode": "yield", "wall_s": 15.586, "ttft_ms": [4797.0, 9684.6, 14599.1], "ttft_p50_ms": 9684.6, "ttft_p99_ms": 14500.8, "e2e_ms": [5272.8, 10163.4, 14668.5], "dec_itl_p50_ms": 232.88, "dec_distinct_tokens": 96, "run": 0}
+@@SROW@@ {"mode": "serial", "wall_s": 16.191, "ttft_ms": [4805.1, 9688.1, 14549.6], "ttft_p50_ms": 9688.1, "ttft_p99_ms": 14452.4, "e2e_ms": [5469.7, 10095.2, 14618.8], "dec_itl_p50_ms": 32.27, "dec_distinct_tokens": 109, "run": 0}
+@@SROW@@ {"mode": "concurrent", "wall_s": 14.95, "ttft_ms": [4535.6, 9158.3, 13743.8], "ttft_p50_ms": 9158.3, "ttft_p99_ms": 13652.1, "e2e_ms": [5181.7, 9558.9, 13881.7], "dec_itl_p50_ms": 216.39, "dec_distinct_tokens": 106, "run": 0}
+@@SROW@@ {"mode": "yield", "wall_s": 15.412, "ttft_ms": [4809.3, 9711.0, 14590.9], "ttft_p50_ms": 9711.0, "ttft_p99_ms": 14493.3, "e2e_ms": [5286.6, 9944.5, 14660.3], "dec_itl_p50_ms": 243.96, "dec_distinct_tokens": 60, "run": 1}
+@@SROW@@ {"mode": "serial", "wall_s": 16.164, "ttft_ms": [4816.8, 9758.6, 14665.5], "ttft_p50_ms": 9758.6, "ttft_p99_ms": 14567.3, "e2e_ms": [5758.9, 10425.4, 14735.0], "dec_itl_p50_ms": 32.32, "dec_distinct_tokens": 118, "run": 1}
+@@SROW@@ {"mode": "concurrent", "wall_s": 15.302, "ttft_ms": [4537.6, 9206.2, 13794.9], "ttft_p50_ms": 9206.2, "ttft_p99_ms": 13703.1, "e2e_ms": [5446.7, 9605.3, 13935.9], "dec_itl_p50_ms": 33.44, "dec_distinct_tokens": 111, "run": 1}
+@@SROW@@ {"mode": "yield", "wall_s": 16.445, "ttft_ms": [4812.0, 9713.0, 14582.0], "ttft_p50_ms": 9713.0, "ttft_p99_ms": 14484.6, "e2e_ms": [5289.1, 9947.1, 14720.5], "dec_itl_p50_ms": 30.59, "dec_distinct_tokens": 128, "run": 2}
+@@SROW@@ {"mode": "serial", "wall_s": 16.195, "ttft_ms": [4813.8, 9757.9, 14665.7], "ttft_p50_ms": 9757.9, "ttft_p99_ms": 14567.5, "e2e_ms": [5753.0, 10423.9, 14735.3], "dec_itl_p50_ms": 33.37, "dec_distinct_tokens": 121, "run": 2}
+@@SROW@@ {"mode": "concurrent", "wall_s": 15.079, "ttft_ms": [4539.4, 9123.6, 13751.1], "ttft_p50_ms": 9123.6, "ttft_p99_ms": 13658.6, "e2e_ms": [4938.7, 9771.2, 13889.2], "dec_itl_p50_ms": 203.14, "dec_distinct_tokens": 107, "run": 2}
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "/home/ziru/nano-vllm/p15-work/scripts/p15_scenarios.py", line 279, in <module>
+[rank0]:     main()
+[rank0]:   File "/home/ziru/nano-vllm/p15-work/scripts/p15_scenarios.py", line 263, in main
+[rank0]:     summ["_graph_hits_per_run"] = {
+[rank0]:   File "/home/ziru/nano-vllm/p15-work/scripts/p15_scenarios.py", line 264, in <dictcomp>
+[rank0]:     m: [{"run": x["run"], "delta": x["verify_graph_hits"] - (rows[m][x["run"] - 1]["verify_graph_hits"]
+[rank0]:   File "/home/ziru/nano-vllm/p15-work/scripts/p15_scenarios.py", line 264, in <listcomp>
+[rank0]:     m: [{"run": x["run"], "delta": x["verify_graph_hits"] - (rows[m][x["run"] - 1]["verify_graph_hits"]
+[rank0]: KeyError: 'verify_graph_hits'

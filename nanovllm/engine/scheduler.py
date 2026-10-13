@@ -3,6 +3,7 @@ from collections import deque
 from nanovllm.config import Config
 from nanovllm.engine.sequence import Sequence, SequenceStatus
 from nanovllm.engine.block_manager import BlockManager
+from nanovllm.engine.mixed_batch import MixedBatchPlan
 
 
 class Scheduler:
@@ -36,6 +37,16 @@ class Scheduler:
         self.prefill_chunk_tokens = int(getattr(config, "spec_prefill_chunk_tokens", 0) or 0)
         # 上一轮是否留下了"还没拼完的 prefill 块"。默认路径只写不读，行为逐字节不变。
         self._prefill_chunk_pending = False
+        # ---------- P15：重叠执行的混合批 ----------
+        #   spec_overlap_mixed=False（默认）⇒ 老行为：一轮内只有一种执行路径。
+        #   True ⇒ 有"待推进的 prefill 块"且还有请求在解码时，【同一个 step 里】
+        #          既排 decode 子批、又排一块 prefill，返回 MixedBatchPlan。
+        #   ★ 注意：混合调度本身【不含】重叠 —— 重叠在 ModelRunner/MixedForward 里。
+        #     开关只决定"要不要把两件事排进同一步"，spec_overlap_mode 决定
+        #     "两个前向是串着跑还是并发跑"。两者正交，消融才干净。
+        self.overlap_mixed = bool(getattr(config, "spec_overlap_mixed", False))
+        self.overlap_mode = str(getattr(config, "spec_overlap_mode", "concurrent")
+                                or "concurrent")
         # n-gram 提议器。由 ModelRunner 注入（引擎建好后才有），
         # 这样 token_ids 更新后能立刻把新 token 加进索引。
         self.spec_proposer = None
@@ -65,7 +76,15 @@ class Scheduler:
     def add(self, seq: Sequence):
         self.waiting.append(seq)
 
-    def schedule(self) -> tuple[list[Sequence], bool]:
+    def schedule(self) -> tuple[list[Sequence], bool] | MixedBatchPlan:
+        """排一个 step。
+
+        返回形状有两种，调用方按类型分派：
+          · `(seqs, is_prefill)`  —— 老形状，一轮内【只有一条】执行路径。
+          · `MixedBatchPlan`      —— 仅当 `spec_overlap_mixed=True` 时出现，
+                                     一轮内有 decode 子批 + prefill 块两条路径。
+        ★ 默认路径（开关关）永远只返回第一种形状，老代码一行不用改。
+        """
         scheduled_seqs = []
         num_batched_tokens = 0
 
@@ -93,7 +112,23 @@ class Scheduler:
         yield_to_decode = (chunk > 0
                            and getattr(self, "_prefill_chunk_pending", False)
                            and bool(self.running))
-        if self.waiting and not yield_to_decode:
+        # ---------- P15：同 step 双路径（默认关 —— 下面这几行一个字节都不生效）----------
+        #   让路式每两轮才推进一块 prefill（[解码][块] 交替）⇒ decode 的 ITL 里
+        #   含着【整块 prefill 的墙钟】。P15 让同一轮里既解码、又推进一块 prefill。
+        #   ★ 前提（缺一不可）：overlap 开关开（前提是 chunk>0）、上一轮留了 pending
+        #     块、此刻确有解码请求 —— 三条与 yield_to_decode 同源，只是换个动作。
+        #   ★★ 这个项目被"一轮内混两条执行路径"坑过 3 次（最典型：spec_enabled 门控
+        #     快照 bug，复现见 tests/test_spec_gate.py）⇒ 这里【不靠"小心一点"】：
+        #     两条路径各有独立的列表，并用 `_round_seqs` 把 I1（一轮内同一条序列
+        #     只能被调度一次）钉成代码里的守卫。
+        mixed = (getattr(self, "overlap_mixed", False) and yield_to_decode
+                 and bool(self.waiting))
+        # ★ I1 的载体：本步【已经】被调度走的序列。prefill 段可能把一条序列推成
+        #   RUNNING 并 append 进 self.running，decode 段若再 pop 到它，就是
+        #   "一轮内同一条序列被调度两次"—— P13「同一个 chunk 被拼 7 遍」的镜像。
+        _round_seqs: set = set()
+        prefill_seqs: list = []
+        if self.waiting and (mixed or not yield_to_decode):
             self._prefill_chunk_pending = False
             # ★ P12：把「此刻已经在解码的批大小」记到 config 上，供 ModelRunner 的
             #   `_draft_prefill_needed()` 判"这趟 draft prefill 会不会白跑"
@@ -166,10 +201,24 @@ class Scheduler:
                     scheduled_seqs.append(seq)
                     break
 
-            if scheduled_seqs:
+            if mixed and scheduled_seqs:
+                # ★ 不在 prefill 段 return：本步的 prefill 块先记到 prefill_seqs，
+                #   下面接着排 decode 子批，最后一起作为 MixedBatchPlan 交出去。
+                #   ★ scheduled_seqs 清空是为了让下面的 decode 循环从零计数
+                #     （它的循环条件是 `len(scheduled_seqs) < max_num_seqs`）。
+                prefill_seqs, scheduled_seqs = scheduled_seqs, []
+                _round_seqs = set(prefill_seqs)
+            elif scheduled_seqs:
                 return scheduled_seqs, True
-        # 走到这里：要么 waiting 空，要么这一轮让给了 decode → 清掉分块标记
-        self._prefill_chunk_pending = False
+            else:
+                # 连一块 prefill 都排不出来（block_manager 拒绝分配 / 预算为 0）
+                # ⇒ 混合名不副实，退回"这一轮只跑 decode"的老形状。
+                mixed = False
+        # 走到这里：要么 waiting 空、要么这一轮让给了 decode ⇒ 清掉分块标记。
+        # ★ mixed 时【不能清】：那是"下一轮继续混"的依据（本轮的 prefill 段
+        #   已经把它设成正确的值 —— 块拼完了就是 False）。
+        if not mixed:
+            self._prefill_chunk_pending = False
 
         # decode
         # ★★ 门控在【本轮开始时】取一次快照，全轮复用同一个决定。
@@ -181,6 +230,13 @@ class Scheduler:
         spec_on = self.spec_enabled(len(self.running))
         while self.running and len(scheduled_seqs) < self.max_num_seqs:
             seq = self.running.popleft()
+            # ★★ I1（P15）：本步 prefill 段刚推成 RUNNING 的序列，绝不能在【同一轮】
+            #   再被 decode 段取走 —— 一轮内一条序列只能走一条执行路径。
+            #   放回队尾并收工（不 continue：continue 会把它从 running 里弄丢）。
+            #   ★ 默认路径（overlap 关）_round_seqs 恒为空集 ⇒ 一行不生效。
+            if _round_seqs and seq in _round_seqs:
+                self.running.append(seq)
+                break
             # ---------- 投机解码：这一步要给 k+1 个 token 分配槽位 ----------
             # 之所以是 k+1：1 个是本该decode 的 token，k 个是待验证的候选。
             # 但只有「本该 decode 的那个」的 KV 是最终有效的，
@@ -197,8 +253,18 @@ class Scheduler:
                 seq.is_prefill = False
                 self.block_manager.may_append(seq, need)
                 scheduled_seqs.append(seq)
+        if mixed and not scheduled_seqs:
+            # ★ 极端兜底：decode 端一条都没排上（KV 预算把整批都抢占了）。
+            #   这时"混合"名不副实，退回老形状：本轮只有 prefill 块。
+            return prefill_seqs, True
         assert scheduled_seqs
         self.running.extendleft(reversed(scheduled_seqs))
+        if mixed:
+            # ★★ 唯一的出口形状：显式契约（两条路径各自的容器 + 发射方式），
+            #    而不是把一个布尔塞回调用方让它猜。见 mixed_batch.MixedBatchPlan。
+            return MixedBatchPlan(prefill_seqs=prefill_seqs,
+                                  decode_seqs=scheduled_seqs,
+                                  mode=getattr(self, "overlap_mode", "concurrent"))
         return scheduled_seqs, False
 
     def spec_enabled(self, active_b: int | None = None) -> bool:
