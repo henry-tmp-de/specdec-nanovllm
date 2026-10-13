@@ -135,6 +135,24 @@ class Config:
     #     解码请求那一轮的 ITL 尖刺 = 10.8×（1K）→ 249.4×（16K）【无 draft】，
     #     15.9× → 312.0×（带 draft），且那一轮解码请求拿到的 token 数 = 0。
     #     停止条件（方案 §6.3）是"只有 2–3 倍就收手" ⇒ 远未触及，值得做。
+    spec_prefill_rotate: bool = False
+    #   True  = 多序列轮转 + 公平准入：本轮在预算内让【每一条】待拼序列各拿一块
+    #           （每块 ≤ spec_prefill_chunk_tokens），一条只服务一次；没拼完的序列
+    #           移到 waiting 队尾 ⇒ 环头永远是"最久没被服务"的那条。
+    #   False = 默认，老行为：prefill 循环只看队首，分块拼不完就收工，
+    #           后面的请求整轮没机会（`schedule()` 原逻辑，一行未改）。
+    #   ★ 必须与 spec_prefill_chunk_tokens > 0 一起用：没有"每条每轮一块"的上限，
+    #     就无所谓轮转（chunk=0 时本开关不生效，仍走老路径）。
+    #   ★ 依据（实测，docs/优化报告.md §d.5 方向 1）：3 条各 16K、chunk=1024，
+    #     老逻辑下第 1/2/3 条分别在第 16/32/48 轮完成 —— 最后一条等 3 倍时间；
+    #     而总工作量完全一样（48×1024 个 token 一分不多）⇒ 纯调度损失。
+    #   ★ 外部依据：SGLang #32549（decode 被持续分块 prefill 饿到每 24s 一个 batch）、
+    #     SGLang #35537（单槽卡住，KV 只用 ≤4% 也让请求等 4.5 分钟）、vLLM #57413
+    #     （TTFT p95 = 76 s 而 KV < 40%、抢占 0 次）；LMDeploy 的
+    #     `_should_try_short_prefill_first()` 已是默认行为（两个长 chunk 间至少隔 3 轮）。
+    #   ★ 代价：多条 partial 序列【同时占 KV】（块在首次调度时按整条序列分配），
+    #     实测池子峰值 / 是否触发抢占 / 推荐 N 见
+    #     docs/P14多序列分块prefill-开发记录.md §4。
 
     # ---------- P15：重叠执行的混合批（**新增选项**，默认关 = 老行为）----------
     spec_overlap_mixed: bool = False
