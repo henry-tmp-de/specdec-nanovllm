@@ -181,6 +181,17 @@ class Config:
     #   按 12.2「新增图先只覆盖精确 B=2/4，保留 B=1 原路径」——
     #   不捕获默认 512 的全范围，未覆盖的 B 走 eager 并记录原因。
 
+    spec_graph_pad: bool = False
+    #   ★ P16：未精确捕获的 batch size **向上取整到最近的桶**，多出来的行用
+    #     「空行」补齐（原版 decode 的 run_model 早就这么干，这里搬到投机路径）。
+    #     动机：B=3 的混合 step 拿不到 B=3 的验证图（spec_graph_bs=(1,2,4)），
+    #     整个退回 eager —— 实测 22 次，单次验证前向 eager 40.9 ms vs 补进图 15.6 ms。
+    #   ★ 默认 **False**：关着的时候所有路径与改动前逐字节相同（老行为）。
+    #     空行的安全构造见 nanovllm/spec_decode/graph_pad.py（不写 KV / 读块 0 /
+    #     可见长度 0 / token 0），四条不变量都有单测（tests/test_graph_pad.py）。
+    #   ★ 已知**不适用**的形状：ragged_draft_len（每条请求的候选数不齐）——
+    #     那是「每条请求要算几个」真的变了，不是 batch 维度的问题，继续退回 eager。
+
     def __post_init__(self):
         assert os.path.isdir(self.model)
         assert self.kvcache_block_size % 256 == 0

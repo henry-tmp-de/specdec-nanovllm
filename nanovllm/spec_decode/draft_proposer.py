@@ -51,6 +51,8 @@ from typing import Dict, List, Optional, Tuple
 import torch
 from torch import nn
 
+from nanovllm.spec_decode.graph_pad import PAD_ROW_BLOCK, draft_pad_rows, pick_bucket
+
 # 用 -1 填充块表里没用到的那几列（与引擎其它路径一致）
 _PAD_BLOCK = -1
 
@@ -316,10 +318,13 @@ class DraftModelProposer:
         self.n_layers_bound = 0
         # 由 ModelRunner 注入的静态形状 CUDA graph：{batch -> (graph, graph_vars)}
         self._graphs: Dict[int, tuple] = {}
+        # P16：未精确捕获的 B 是否向上取整到最近的桶（空行补齐）。默认 False = 老行为。
+        self.graph_pad = False
 
         # ---------- 统计（结构验收用：必须能看出「每轮是 k 次批量前向」）----------
         self.n_graphed = 0            # 走图的前向次数
         self.n_eager = 0              # 退回 eager 的前向次数
+        self.n_padded = 0             # P16：靠「向上取整 + 空行」进图的次数
         self.n_rounds = 0             # propose_batch 被调用的轮数
         self.n_batch_forwards = 0     # 提议阶段的前向次数（理想 = 轮数 × k）
         self.n_catchup_forwards = 0   # 补齐阶段的前向次数
@@ -362,7 +367,8 @@ class DraftModelProposer:
         pass
 
     # ------------------------------------------------------------------
-    def bind_cudagraph(self, graphs: Dict[int, tuple]) -> None:
+    def bind_cudagraph(self, graphs: Dict[int, tuple],
+                       graph_pad: bool = False) -> None:
         """接入 ModelRunner 拍好的 draft decode 图集合：{batch -> (graph, vars)}。
 
         ★ 为什么必须有这一步（实测，不是理论）：
@@ -374,8 +380,13 @@ class DraftModelProposer:
 
             拍成图之后，这 k 次前向各塌缩成一次 graph.replay()。
             批量版更进一步：一次 replay 就把 B 条请求一个候选位置算完。
+
+        graph_pad（P16，默认 False）：
+            True 时，B 不在图集合里就**向上取整到最近的桶**、多出来的行用空行补齐
+            （原版 decode 的 run_model 早就这么干）。默认 False ⇒ 老路径逐字节不变。
         """
         self._graphs = dict(graphs or {})
+        self.graph_pad = bool(graph_pad)
 
     # ==================================================================
     #  对外入口
@@ -549,9 +560,19 @@ class DraftModelProposer:
         """一次批量 decode 前向，返回 (B, vocab) logits。B = len(positions)。
 
         ★ 走图时返回的是【静态缓冲区】，调用方必须立刻 copy 走。
+        ★ P16：`self.graph_pad` 打开时，B 没被精确捕获就向上取整到最近的桶，
+          多出来的行用空行补齐（构造见 nanovllm/spec_decode/graph_pad.py）。
+          关着的时候 `entry` 只可能来自精确匹配 —— 与改动前逐字节相同。
         """
         B = len(positions)
         entry = self._graphs.get(B)
+        pad = 0
+        if entry is None and self.graph_pad:
+            # ★ 向上取整到最近的桶；没有更大的桶就返回 None ⇒ 继续退回 eager
+            bucket = pick_bucket(B, self._graphs.keys())
+            if bucket is not None:
+                entry = self._graphs[bucket]
+                pad = bucket - B
         if entry is not None:
             graph, gv = entry
             width = gv["block_tables"].size(1)
@@ -560,18 +581,28 @@ class DraftModelProposer:
                 dev = gv["input_ids"].device
                 if not isinstance(tokens, torch.Tensor):
                     tokens = torch.tensor(tokens, dtype=torch.int64, device=dev)
-                gv["input_ids"].copy_(tokens)
-                gv["positions"].copy_(torch.tensor(positions, dtype=torch.int64, device=dev))
-                gv["slot_mapping"].copy_(torch.tensor(slot_mapping, dtype=torch.int32, device=dev))
-                gv["context_lens"].copy_(torch.tensor(context_lens, dtype=torch.int32, device=dev))
+                # ★ 只写前 B 行；pad == 0 时 `[:B]` 就是整块，等价于原来的 copy_
+                gv["input_ids"][:B].copy_(tokens)
+                gv["positions"][:B].copy_(torch.tensor(positions, dtype=torch.int64, device=dev))
+                gv["slot_mapping"][:B].copy_(torch.tensor(slot_mapping, dtype=torch.int32, device=dev))
+                gv["context_lens"][:B].copy_(torch.tensor(context_lens, dtype=torch.int32, device=dev))
                 gv["block_tables"].fill_(_PAD_BLOCK)
                 for i, bt in enumerate(block_tables):
                     if bt:
                         gv["block_tables"][i, :len(bt)] = torch.tensor(
                             bt, dtype=torch.int32, device=dev)
+                if pad:
+                    # ★ 空行：不写 KV（slot=-1）、读块 0、可见长度 0、token/位置 0。
+                    #   见 graph_pad.py 的常量注释 —— 每一行都会被真的算一遍，
+                    #   元数据不安全就是「静默写坏别人的 KV」或「非法访存」。
+                    for key, val in draft_pad_rows(pad, dev).items():
+                        gv[key][B:] = val
+                    gv["block_tables"][B:].fill_(PAD_ROW_BLOCK)
+                    self.n_padded += 1
                 graph.replay()
                 self.n_graphed += 1
-                return gv["logits"]
+                # 只交真实行；pad == 0 时 [:B] 即整块
+                return gv["logits"][:B]
 
         # ---------- eager ----------
         from nanovllm.utils.context import set_context, reset_context
