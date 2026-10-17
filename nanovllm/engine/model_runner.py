@@ -10,6 +10,7 @@ from nanovllm.engine.sequence import Sequence
 from nanovllm.models.qwen3 import Qwen3ForCausalLM
 from nanovllm.layers.sampler import Sampler
 from nanovllm.layers.quant import apply_int8_quant
+from nanovllm.spec_decode.graph_pad import fill_verify_static, pick_bucket
 
 
 def _log_quant(which, path, stats):
@@ -139,11 +140,15 @@ class ModelRunner:
         # P6 消融开关（默认走批量；设 False 退回逐请求/仅 B=1 图）
         self.batch_draft = config.spec_batch_draft
         self.batch_verify_graph = config.spec_batch_verify_graph
+        # P16：未精确捕获的 batch size 向上取整到最近的桶（空行补齐）。默认 False。
+        self.graph_pad = config.spec_graph_pad
         # P15：混合批的并发编排器（惰性建，只在真的用到时才 import torch.cuda.Stream）
         self._mixed = None
         # 图命中 / 退回统计（结构验收：B>1 的已覆盖形状必须【真的 replay 了图】）
         self.verify_graph_hits = 0
         self.verify_graph_fallbacks = {}
+        # P16：靠「向上取整 + 空行」进图的次数（pad > 0 才算，精确命中不算）
+        self.verify_graph_padded = 0
         # 图/缓冲区显存（capture 后量一次，供报告单列）
         self.graph_mem = {}
 
@@ -1139,6 +1144,7 @@ class ModelRunner:
             B, k = ex["n"], ex["k"]
             entry = None
             reason = None
+            pad = 0
             # ★ S2 消融开关：batch_verify_graph=False 时只有 B=1 走图（= C 组行为）
             if B > 1 and not self.batch_verify_graph:
                 reason = "batch_verify_graph_off"
@@ -1147,12 +1153,22 @@ class ModelRunner:
                 reason = "ragged_draft_len"
             else:
                 entry = self.verify_graphs.get((B, k))
+                if entry is None and self.graph_pad:
+                    # ★ P16：没精确捕获 B 时向上取整到最近的桶，多出来的行用空行补齐。
+                    #   空行的安全构造见 nanovllm/spec_decode/graph_pad.py。
+                    #   只在 (·, k) 同一 k 的桶里挑 —— k 变了 query 数就变了，
+                    #   形状对不上（那是 ragged_draft_len 的另一面）。
+                    bucket = pick_bucket(B, [b for (b, kk) in self.verify_graphs
+                                             if kk == k])
+                    if bucket is not None:
+                        entry = self.verify_graphs[(bucket, k)]
+                        pad = bucket - B
                 if entry is None:
                     reason = f"shape_not_captured(B={B},k={k})"
             if entry is not None:
                 graph, gv = entry
                 bt = ex["block_tables"]
-                if input_ids.numel() == gv["input_ids"].numel() and \
+                if pad == 0 and input_ids.numel() == gv["input_ids"].numel() and \
                         (bt is None or bt.size(1) <= gv["block_tables"].size(1)):
                     gv["input_ids"].copy_(input_ids)
                     gv["positions"].copy_(positions)
@@ -1166,6 +1182,21 @@ class ModelRunner:
                     self.verify_graph_hits += 1
                     # 静态缓冲区，replay 完就是这一步的结果
                     return gv["logits"]
+                if pad > 0 and \
+                        input_ids.numel() + pad * (k + 1) == gv["input_ids"].numel() and \
+                        (bt is None or bt.size(1) <= gv["block_tables"].size(1)):
+                    # ★ P16：B 条真实请求写前 B 行，后面 pad 行是空行。
+                    #   真实行的写法和上面【逐字一致】；空行的构造全在 graph_pad.py
+                    #   （不写 KV / 读块 0 / 可见长度 0 / token 0，每条都有单测）。
+                    Q = fill_verify_static(
+                        gv, B, k + 1, pad, input_ids, positions,
+                        ex["slot_mapping"], ex["cu_seqlens_q"], ex["cu_seqlens_k"], bt)
+                    graph.replay()
+                    self.verify_graph_hits += 1
+                    self.verify_graph_padded += 1
+                    # ★ 只把真实行交出去：run_verify 用【真实】的 cu_seqlens_q 切分
+                    #   logits，且断言 cu[-1] == logits.shape[0] —— 整块返回会断言失败。
+                    return gv["logits"][:Q]
                 reason = "static_shape_mismatch"
             if reason is not None:
                 self.verify_graph_fallbacks[reason] = \
@@ -1217,7 +1248,7 @@ class ModelRunner:
                 input_ids=input_ids, positions=positions, slot_mapping=slot_mapping,
                 context_lens=context_lens, block_tables=block_tables, logits=logits))
         self.draft_graphs = graphs
-        self.spec_proposer.bind_cudagraph(graphs)
+        self.spec_proposer.bind_cudagraph(graphs, graph_pad=self.graph_pad)
         self.graph_mem["draft_graphs_gb"] = round(
             (torch.cuda.memory_allocated() - before) / 2**30, 4)
         print(f"[spec] draft CUDA graph 就绪 (bs={sorted(graphs)}, 1 token/行)")
