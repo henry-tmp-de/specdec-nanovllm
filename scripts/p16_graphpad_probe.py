@@ -330,11 +330,25 @@ def main():
 
         timings = {}
         for B in sorted(CAP):
+            ck = CAP[B]["ctx"]["cu_seqlens_k"]
+            ks = [int(ck[i + 1] - ck[i]) for i in range(B)]
             timings[str(B)] = dict(
                 bucket=pick_bucket(B, buckets),
                 exact_hit=B in buckets,
+                ctx_lens=ks, max_ctx=max(ks) if ks else 0,
                 eager=timed(B, False),
                 pad_graph=timed(B, True))
+        # ★ 诊断：B=3 那种「补进去的图反而没快多少」的档，换几种空行形状再量一遍
+        #   （k=0 vs k=1 vs q=0），定位是不是空行长度导致的。
+        if 3 in CAP and 3 not in buckets:
+            from nanovllm.spec_decode import graph_pad as gp
+            variants = {}
+            for name, q_len, k_len in [("q=nq,k=0", None, 0), ("q=nq,k=1", None, 1),
+                                       ("q=0,k=0", 0, 0)]:
+                gp.PAD_Q_LEN, gp.PAD_CTX_LEN = q_len, k_len
+                variants[name] = timed(3, True)
+            gp.PAD_Q_LEN, gp.PAD_CTX_LEN = None, 0
+            timings["3"]["pad_variants"] = variants
         emit("TIMING", dict(buckets=buckets, n=20, ctx_len=CTX, timings=timings))
 
     try:
