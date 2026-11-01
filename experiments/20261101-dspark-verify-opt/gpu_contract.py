@@ -5,6 +5,7 @@ import argparse
 import json
 from pathlib import Path
 import sys
+import traceback
 
 import torch
 
@@ -27,6 +28,21 @@ def relative_rms(expected, actual):
     return float(d.square().mean().sqrt() / expected.float().square().mean().sqrt().clamp_min(1e-12))
 
 
+def graph_memory(mr, proposer, standard_verify):
+    """Report allocator segments by graph pool; do not sum as kernel cost."""
+    ids = {"target_decode": mr.graph_pool,
+           "target_verify": next(iter(standard_verify.values()))[0].pool(),
+           "draft_backbone": proposer.backbone_pool,
+           "draft_head": proposer.head_pool}
+    by_pool = {}
+    for seg in torch.cuda.memory_snapshot():
+        ident = tuple(seg.get("segment_pool_id", (0, 0)))
+        by_pool[ident] = by_pool.get(ident, 0) + int(seg["total_size"])
+    return {name: {"pool_id": list(ident) if ident is not None else None,
+                   "reserved_bytes": by_pool.get(tuple(ident), 0) if ident is not None else 0}
+            for name, ident in ids.items()}
+
+
 @torch.inference_mode()
 def main():
     ap = argparse.ArgumentParser()
@@ -46,6 +62,9 @@ def main():
     mr, prop = llm.model_runner, llm.model_runner.spec_proposer
     standard_verify = {key: value for key, value in mr.verify_graphs.items() if key[0] in production}
     exact_verify = {key: value for key, value in mr.verify_graphs.items() if key[0] in (3, 11, 15)}
+    memory_after_init = {"allocated_bytes": torch.cuda.memory_allocated(),
+                         "reserved_bytes": torch.cuda.memory_reserved(),
+                         "initial_graph_mem_gb": mr.graph_mem}
     manifest = json.loads(Path(args.manifest).read_text())
     prompts = [row["token_ids"][:32] for row in manifest["panels"]["code"][:15]]
     if mr.config.num_kvcache_blocks <= 16:
@@ -59,6 +78,9 @@ def main():
     records = []
     first_q = first_p = None
     for batch in (3, 11, 15):
+        counts_before = {"target_hits": mr.verify_graph_hits, "target_padded": mr.verify_graph_padded,
+                         "draft_hits": prop.graph_hits, "draft_padded": prop.graph_padded_hits,
+                         "head_hits": prop.head_graph_hits}
         seqs = []
         for i in range(batch):
             seq = Sequence(prompts[i], SamplingParams(max_tokens=32, temperature=1.0))
@@ -147,8 +169,14 @@ def main():
                "eager_exact_tokens_equal": x_e == x_x,
                "target_guard_unchanged": torch.equal(mr.kv_cache[:, :, guard_block], target_guard),
                "draft_guard_unchanged": torch.equal(mr.dspark_model.cache[:, :, guard_slots], draft_guard),
-               "sentinel_zero": bool(torch.count_nonzero(mr.dspark_model.cache[:, :, mr.dspark_model.sentinel]) == 0)}
+               "sentinel_zero": bool(torch.count_nonzero(mr.dspark_model.cache[:, :, mr.dspark_model.sentinel]) == 0),
+               "target_graph_hits": mr.verify_graph_hits - counts_before["target_hits"],
+               "target_padded_hits": mr.verify_graph_padded - counts_before["target_padded"],
+               "draft_graph_hits": prop.graph_hits - counts_before["draft_hits"],
+               "draft_padded_hits": prop.graph_padded_hits - counts_before["draft_padded"],
+               "real_batch_head_replays": prop.head_graph_hits - counts_before["head_hits"]}
         records.append(row)
+        print(json.dumps({"progress": "batch_complete", **row}), flush=True)
         if batch == 3:
             first_p, first_q = p_p[0].clone(), q_p[0, 0].clone()
 
@@ -192,6 +220,14 @@ def main():
     report = {"pass": bool(checks and ragged_ok and tv < 0.06), "records": records,
               "ragged_fallback_ok": ragged_ok, "ragged_true_output_rows": ragged_rows,
               "actual_target_proposal_samples": 8192, "target_top16_other_tv": tv,
+              "target_verify_fallbacks": mr.verify_graph_fallbacks,
+              "draft_fallbacks": prop.graph_fallbacks,
+              "draft_backbone_graph_captures": prop.graph_captures,
+              "draft_head_graph_captures": prop.head_graph_captures,
+              "draft_backbone_runtime_captures": prop.graph_runtime_captures,
+              "draft_head_runtime_captures": prop.head_runtime_captures,
+              "memory_after_init": memory_after_init,
+              "graph_pool_memory": graph_memory(mr, prop, standard_verify),
               "peak_allocated_bytes": torch.cuda.max_memory_allocated(),
               "peak_reserved_bytes": torch.cuda.max_memory_reserved()}
     Path(args.out).write_text(json.dumps(report, indent=2) + "\n")
@@ -204,4 +240,16 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as exc:
+        # Preserve a machine-readable failure alongside the controller log.
+        if "--out" in sys.argv and sys.argv.index("--out") + 1 < len(sys.argv):
+            path = Path(sys.argv[sys.argv.index("--out") + 1])
+            record = {"pass": False, "error": type(exc).__name__, "message": str(exc),
+                      "traceback": traceback.format_exc()}
+            if torch.cuda.is_initialized():
+                record["peak_allocated_bytes"] = torch.cuda.max_memory_allocated()
+                record["peak_reserved_bytes"] = torch.cuda.max_memory_reserved()
+            path.write_text(json.dumps(record, indent=2) + "\n")
+        raise
