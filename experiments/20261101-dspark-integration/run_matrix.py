@@ -23,14 +23,17 @@ def main():
     ap.add_argument("--wiki", required=True)
     ap.add_argument("--manifest", required=True)
     ap.add_argument("--python", default=sys.executable)
+    ap.add_argument("--batches", type=int, nargs="+", default=[8, 16, 1, 2, 4])
+    ap.add_argument("--tag", default="formal")
+    ap.add_argument("--gpu-memory-utilization", type=float, default=0.85)
     a = ap.parse_args()
     resultdir = Path(a.results)
     resultdir.mkdir(parents=True, exist_ok=True)
     ledger = resultdir / "gpu_budget.jsonl"
     # Prioritize the user's B8/B16 decision, then complete the full curve.
-    for b in (8, 16, 1, 2, 4):
+    for b in a.batches:
         for arm in ("nospec", "ar", "dspark"):
-            stem = f"formal-{arm}-b{b}"
+            stem = f"{a.tag}-{arm}-b{b}"
             out = resultdir / f"{stem}.jsonl"
             if out.exists():
                 records = [json.loads(x) for x in out.read_text().splitlines()]
@@ -54,7 +57,8 @@ def main():
                        a.python, "-u", str(HERE / "bench.py"), "--arm", arm, "--batch", str(b),
                        "--target", a.target, "--ar-model", a.ar_model, "--dspark-model", a.dspark_model,
                        "--datasets", a.datasets, "--wiki", a.wiki, "--manifest", a.manifest,
-                       "--out", str(out), "--ctx", "1024", "--output-tokens", "256", "--repeats", "3"]
+                       "--out", str(out), "--ctx", "1024", "--output-tokens", "256", "--repeats", "3",
+                       "--gpu-memory-utilization", str(a.gpu_memory_utilization)]
             print(json.dumps({"stage": stem, "status": "starting", "gpu_before": state}), flush=True)
             ret = subprocess.run(command, check=False)
             if ret.returncode:

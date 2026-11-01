@@ -248,6 +248,7 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--ctx", type=int, default=1024)
     ap.add_argument("--output-tokens", type=int, default=256)
+    ap.add_argument("--gpu-memory-utilization", type=float, default=0.85)
     ap.add_argument("--repeats", type=int, default=3)
     ap.add_argument("--seed", type=int, default=20261101)
     ap.add_argument("--deadline-unix", type=float, default=float(os.environ.get("DS_RUN_DEADLINE_UNIX", "0")))
@@ -257,7 +258,7 @@ def main():
     graph_bs = (1, 2, 4, 8, 16)
     kwargs = dict(max_num_seqs=args.batch, max_model_len=1536,
                   max_num_batched_tokens=max(args.batch * args.ctx, 1536),
-                  gpu_memory_utilization=0.85, enforce_eager=False,
+                  gpu_memory_utilization=args.gpu_memory_utilization, enforce_eager=False,
                   spec_graph_bs=graph_bs, spec_graph_pad=False)
     if args.arm == "ar":
         kwargs.update(spec_k=6, spec_method="draft", draft_model=args.ar_model)
@@ -266,6 +267,7 @@ def main():
     llm = None
     identity = {"arm": args.arm, "requested_batch": args.batch, "ctx": args.ctx,
                 "output_tokens": args.output_tokens, "seed": args.seed,
+                "gpu_memory_utilization": args.gpu_memory_utilization,
                 "k": {"nospec": 0, "ar": 6, "dspark": 7}[args.arm],
                 "graph_buckets": graph_bs, "gpu": torch.cuda.get_device_name(),
                 "device_visible": os.environ.get("CUDA_VISIBLE_DEVICES")}

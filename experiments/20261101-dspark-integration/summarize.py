@@ -10,13 +10,15 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--results", required=True)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--tag", default="formal")
+    ap.add_argument("--batches", type=int, nargs="+", default=[1, 2, 4, 8, 16])
     a = ap.parse_args()
     root = Path(a.results)
     report = {"cells": {}, "comparisons": {}, "invalid": [], "failures": []}
     by = {}
-    for B in (1, 2, 4, 8, 16):
+    for B in a.batches:
         for arm in ("nospec", "ar", "dspark"):
-            path = root / f"formal-{arm}-b{B}.jsonl"
+            path = root / f"{a.tag}-{arm}-b{B}.jsonl"
             if not path.exists():
                 report["failures"].append({"batch": B, "arm": arm, "error": "missing"})
                 continue
@@ -76,9 +78,12 @@ def main():
     if not report["failures"] and not report["invalid"]:
         keys = [f"B{b}/{panel}/dspark_vs_{arm}" for b in (8, 16)
                 for panel in ("code", "math", "general") for arm in ("nospec", "ar")]
-        report["decision"] = ("speed_gate_passed_review_still_required"
-                              if all(report["comparisons"][k]["dspark_min_exceeds_control_max"] for k in keys)
-                              else "speed_gate_not_met_keep_branch")
+        if all(k in report["comparisons"] for k in keys):
+            report["decision"] = ("speed_gate_passed_review_still_required"
+                                  if all(report["comparisons"][k]["dspark_min_exceeds_control_max"] for k in keys)
+                                  else "speed_gate_not_met_keep_branch")
+        else:
+            report["decision"] = "partial_batches_only"
     Path(a.out).write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps({"decision": report["decision"], "cells": len(report["cells"]),
                       "invalid": report["invalid"], "failures": report["failures"]}, indent=2))
