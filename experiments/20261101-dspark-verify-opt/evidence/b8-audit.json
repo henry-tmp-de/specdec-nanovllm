@@ -1,0 +1,3375 @@
+{
+  "pass": true,
+  "errors": [],
+  "warnings": [],
+  "cells": {
+    "B8/code/nospec-pad": {
+      "full_request_tps": [
+        447.7897932812275,
+        447.1459911125959,
+        446.53082657696393
+      ],
+      "median": 447.1459911125959,
+      "min": 446.53082657696393,
+      "max": 447.7897932812275,
+      "decode_tps": [
+        557.377046037375,
+        556.5036634340051,
+        556.028832265907
+      ],
+      "full_batch_decode_tps": [
+        557.377046037375,
+        556.5036634340051,
+        556.028832265907
+      ],
+      "ttft_median_s": [
+        0.9119692156091332,
+        0.9128973456099629,
+        0.9159939764067531
+      ],
+      "tpot_median_s": [
+        0.014358117741843065,
+        0.014380620452849303,
+        0.014392946025027949
+      ],
+      "acceptance_prefix_fraction": [
+        null,
+        null,
+        null
+      ],
+      "output_hashes_stable_within_group": true,
+      "graph_deltas": [
+        {
+          "verify_hits": 0,
+          "verify_padded_hits": 0,
+          "verify_exact_hits": 0,
+          "verify_fallbacks": {}
+        },
+        {
+          "verify_hits": 0,
+          "verify_padded_hits": 0,
+          "verify_exact_hits": 0,
+          "verify_fallbacks": {}
+        },
+        {
+          "verify_hits": 0,
+          "verify_padded_hits": 0,
+          "verify_exact_hits": 0,
+          "verify_fallbacks": {}
+        }
+      ],
+      "active_b_rounds": [
+        {
+          "8": 255
+        },
+        {
+          "8": 255
+        },
+        {
+          "8": 255
+        }
+      ],
+      "peak_reserved_bytes": [
+        17771266048,
+        17771266048,
+        17771266048
+      ]
+    },
+    "B8/math/nospec-pad": {
+      "full_request_tps": [
+        446.30677309213706,
+        446.01357595069186,
+        445.8744840331268
+      ],
+      "median": 446.01357595069186,
+      "min": 445.8744840331268,
+      "max": 446.30677309213706,
+      "decode_tps": [
+        555.9287044627144,
+        555.5231437304453,
+        555.5481989891881
+      ],
+      "full_batch_decode_tps": [
+        555.9287044627144,
+        555.5231437304453,
+        555.5481989891881
+      ],
+      "ttft_median_s": [
+        0.917676511220634,
+        0.9180320678278804,
+        0.919725589454174
+      ],
+      "tpot_median_s": [
+        0.014395532559822587,
+        0.014405845708268531,
+        0.014405229523339693
+      ],
+      "acceptance_prefix_fraction": [
+        null,
+        null,
+        null
+      ],
+      "output_hashes_stable_within_group": true,
+      "graph_deltas": [
+        {
+          "verify_hits": 0,
+          "verify_padded_hits": 0,
+          "verify_exact_hits": 0,
+          "verify_fallbacks": {}
+        },
+        {
+          "verify_hits": 0,
+          "verify_padded_hits": 0,
+          "verify_exact_hits": 0,
+          "verify_fallbacks": {}
+        },
+        {
+          "verify_hits": 0,
+          "verify_padded_hits": 0,
+          "verify_exact_hits": 0,
+          "verify_fallbacks": {}
+        }
+      ],
+      "active_b_rounds": [
+        {
+          "8": 255
+        },
+        {
+          "8": 255
+        },
+        {
+          "8": 255
+        }
+      ],
+      "peak_reserved_bytes": [
+        17771266048,
+        17771266048,
+        17771266048
+      ]
+    },
+    "B8/general/nospec-pad": {
+      "full_request_tps": [
+        445.9010391909666,
+        445.44478531857,
+        445.32613225817016
+      ],
+      "median": 445.44478531857,
+      "min": 445.32613225817016,
+      "max": 445.9010391909666,
+      "decode_tps": [
+        555.5805178760959,
+        555.0193346902411,
+        554.9061861610778
+      ],
+      "full_batch_decode_tps": [
+        555.5805178760959,
+        555.0193346902411,
+        554.9061861610778
+      ],
+      "ttft_median_s": [
+        0.9196253446862102,
+        0.9205881804227829,
+        0.9210670460015535
+      ],
+      "tpot_median_s": [
+        0.014404327805866212,
+        0.0144189222551444,
+        0.014422090800807755
+      ],
+      "acceptance_prefix_fraction": [
+        null,
+        null,
+        null
+      ],
+      "output_hashes_stable_within_group": true,
+      "graph_deltas": [
+        {
+          "verify_hits": 0,
+          "verify_padded_hits": 0,
+          "verify_exact_hits": 0,
+          "verify_fallbacks": {}
+        },
+        {
+          "verify_hits": 0,
+          "verify_padded_hits": 0,
+          "verify_exact_hits": 0,
+          "verify_fallbacks": {}
+        },
+        {
+          "verify_hits": 0,
+          "verify_padded_hits": 0,
+          "verify_exact_hits": 0,
+          "verify_fallbacks": {}
+        }
+      ],
+      "active_b_rounds": [
+        {
+          "8": 255
+        },
+        {
+          "8": 255
+        },
+        {
+          "8": 255
+        }
+      ],
+      "peak_reserved_bytes": [
+        17771266048,
+        17771266048,
+        17771266048
+      ]
+    },
+    "B8/code/ar-pad": {
+      "full_request_tps": [
+        406.9189978140883,
+        406.9162744375129,
+        406.51047505781736
+      ],
+      "median": 406.9162744375129,
+      "min": 406.51047505781736,
+      "max": 406.9189978140883,
+      "decode_tps": [
+        525.1137955898922,
+        525.6125059741801,
+        525.0694653674595
+      ],
+      "full_batch_decode_tps": [
+        573.3062012234031,
+        573.9068953833855,
+        573.4773502002108
+      ],
+      "ttft_median_s": [
+        1.1473770374432206,
+        1.151141562499106,
+        1.1520806234329939
+      ],
+      "tpot_median_s": [
+        0.014170486848874418,
+        0.014156092586470586,
+        0.014169711999449075
+      ],
+      "acceptance_prefix_fraction": [
+        0.5427881297446515,
+        0.5427881297446515,
+        0.5427881297446515
+      ],
+      "output_hashes_stable_within_group": true,
+      "graph_deltas": [
+        {
+          "verify_hits": 69,
+          "verify_padded_hits": 8,
+          "verify_exact_hits": 61,
+          "verify_fallbacks": {},
+          "n_graphed": 474,
+          "n_eager": 0,
+          "n_padded": 67,
+          "n_rounds": 69,
+          "n_batch_forwards": 414,
+          "n_catchup_forwards": 60,
+          "n_catchup_tokens": 183
+        },
+        {
+          "verify_hits": 69,
+          "verify_padded_hits": 8,
+          "verify_exact_hits": 61,
+          "verify_fallbacks": {},
+          "n_graphed": 474,
+          "n_eager": 0,
+          "n_padded": 67,
+          "n_rounds": 69,
+          "n_batch_forwards": 414,
+          "n_catchup_forwards": 60,
+          "n_catchup_tokens": 183
+        },
+        {
+          "verify_hits": 69,
+          "verify_padded_hits": 8,
+          "verify_exact_hits": 61,
+          "verify_fallbacks": {},
+          "n_graphed": 474,
+          "n_eager": 0,
+          "n_padded": 67,
+          "n_rounds": 69,
+          "n_batch_forwards": 414,
+          "n_catchup_forwards": 60,
+          "n_catchup_tokens": 183
+        }
+      ],
+      "active_b_rounds": [
+        {
+          "8": 54,
+          "7": 1,
+          "6": 2,
+          "5": 4,
+          "3": 1,
+          "2": 2,
+          "1": 5
+        },
+        {
+          "8": 54,
+          "7": 1,
+          "6": 2,
+          "5": 4,
+          "3": 1,
+          "2": 2,
+          "1": 5
+        },
+        {
+          "8": 54,
+          "7": 1,
+          "6": 2,
+          "5": 4,
+          "3": 1,
+          "2": 2,
+          "1": 5
+        }
+      ],
+      "peak_reserved_bytes": [
+        18062770176,
+        18062770176,
+        18062770176
+      ]
+    },
+    "B8/math/ar-pad": {
+      "full_request_tps": [
+        398.4038117644505,
+        398.6154452925836,
+        398.1622625563817
+      ],
+      "median": 398.4038117644505,
+      "min": 398.1622625563817,
+      "max": 398.6154452925836,
+      "decode_tps": [
+        511.6897140442547,
+        511.9200549939609,
+        511.41593778458633
+      ],
+      "full_batch_decode_tps": [
+        598.9256463384728,
+        599.4240039915176,
+        599.0155755637994
+      ],
+      "ttft_median_s": [
+        1.1530248410999775,
+        1.1521875662729144,
+        1.1539636123925447
+      ],
+      "tpot_median_s": [
+        0.014042984226755068,
+        0.014032422528401308,
+        0.01404519284545791
+      ],
+      "acceptance_prefix_fraction": [
+        0.5588442565186751,
+        0.5588442565186751,
+        0.5588442565186751
+      ],
+      "output_hashes_stable_within_group": true,
+      "graph_deltas": [
+        {
+          "verify_hits": 74,
+          "verify_padded_hits": 17,
+          "verify_exact_hits": 57,
+          "verify_fallbacks": {},
+          "n_graphed": 502,
+          "n_eager": 0,
+          "n_padded": 133,
+          "n_rounds": 74,
+          "n_batch_forwards": 444,
+          "n_catchup_forwards": 58,
+          "n_catchup_tokens": 178
+        },
+        {
+          "verify_hits": 74,
+          "verify_padded_hits": 17,
+          "verify_exact_hits": 57,
+          "verify_fallbacks": {},
+          "n_graphed": 502,
+          "n_eager": 0,
+          "n_padded": 133,
+          "n_rounds": 74,
+          "n_batch_forwards": 444,
+          "n_catchup_forwards": 58,
+          "n_catchup_tokens": 178
+        },
+        {
+          "verify_hits": 74,
+          "verify_padded_hits": 17,
+          "verify_exact_hits": 57,
+          "verify_fallbacks": {},
+          "n_graphed": 502,
+          "n_eager": 0,
+          "n_padded": 133,
+          "n_rounds": 74,
+          "n_batch_forwards": 444,
+          "n_catchup_forwards": 58,
+          "n_catchup_tokens": 178
+        }
+      ],
+      "active_b_rounds": [
+        {
+          "8": 45,
+          "7": 6,
+          "6": 2,
+          "5": 8,
+          "4": 1,
+          "3": 1,
+          "2": 1,
+          "1": 10
+        },
+        {
+          "8": 45,
+          "7": 6,
+          "6": 2,
+          "5": 8,
+          "4": 1,
+          "3": 1,
+          "2": 1,
+          "1": 10
+        },
+        {
+          "8": 45,
+          "7": 6,
+          "6": 2,
+          "5": 8,
+          "4": 1,
+          "3": 1,
+          "2": 1,
+          "1": 10
+        }
+      ],
+      "peak_reserved_bytes": [
+        18062770176,
+        18062770176,
+        18062770176
+      ]
+    },
+    "B8/general/ar-pad": {
+      "full_request_tps": [
+        280.9831693068517,
+        279.81035099717445,
+        279.86396559393324
+      ],
+      "median": 279.86396559393324,
+      "min": 279.81035099717445,
+      "max": 280.9831693068517,
+      "decode_tps": [
+        332.66567544414215,
+        331.11574831111466,
+        331.4574269752183
+      ],
+      "full_batch_decode_tps": [
+        390.9250250519446,
+        388.7203833897717,
+        389.52241487535053
+      ],
+      "ttft_median_s": [
+        1.1554675614461303,
+        1.1572060026228428,
+        1.1621291656047106
+      ],
+      "tpot_median_s": [
+        0.019716209202420478,
+        0.019812779877261787,
+        0.01978400471967225
+      ],
+      "acceptance_prefix_fraction": [
+        0.30655586334256696,
+        0.30655586334256696,
+        0.30655586334256696
+      ],
+      "output_hashes_stable_within_group": true,
+      "graph_deltas": [
+        {
+          "verify_hits": 119,
+          "verify_padded_hits": 35,
+          "verify_exact_hits": 84,
+          "verify_fallbacks": {},
+          "n_graphed": 775,
+          "n_eager": 0,
+          "n_padded": 214,
+          "n_rounds": 119,
+          "n_batch_forwards": 714,
+          "n_catchup_forwards": 61,
+          "n_catchup_tokens": 90
+        },
+        {
+          "verify_hits": 119,
+          "verify_padded_hits": 35,
+          "verify_exact_hits": 84,
+          "verify_fallbacks": {},
+          "n_graphed": 775,
+          "n_eager": 0,
+          "n_padded": 214,
+          "n_rounds": 119,
+          "n_batch_forwards": 714,
+          "n_catchup_forwards": 61,
+          "n_catchup_tokens": 90
+        },
+        {
+          "verify_hits": 119,
+          "verify_padded_hits": 35,
+          "verify_exact_hits": 84,
+          "verify_fallbacks": {},
+          "n_graphed": 775,
+          "n_eager": 0,
+          "n_padded": 214,
+          "n_rounds": 119,
+          "n_batch_forwards": 714,
+          "n_catchup_forwards": 61,
+          "n_catchup_tokens": 90
+        }
+      ],
+      "active_b_rounds": [
+        {
+          "8": 61,
+          "7": 11,
+          "6": 12,
+          "5": 1,
+          "4": 7,
+          "3": 11,
+          "2": 3,
+          "1": 13
+        },
+        {
+          "8": 61,
+          "7": 11,
+          "6": 12,
+          "5": 1,
+          "4": 7,
+          "3": 11,
+          "2": 3,
+          "1": 13
+        },
+        {
+          "8": 61,
+          "7": 11,
+          "6": 12,
+          "5": 1,
+          "4": 7,
+          "3": 11,
+          "2": 3,
+          "1": 13
+        }
+      ],
+      "peak_reserved_bytes": [
+        18062770176,
+        18062770176,
+        18062770176
+      ]
+    },
+    "B8/code/dspark-original": {
+      "full_request_tps": [
+        574.214537525606,
+        619.5951783938845,
+        619.6567863456704
+      ],
+      "median": 619.5951783938845,
+      "min": 574.214537525606,
+      "max": 619.6567863456704,
+      "decode_tps": [
+        769.9330469953803,
+        854.1515660583547,
+        855.2801247000069
+      ],
+      "full_batch_decode_tps": [
+        1019.2515196186699,
+        1028.5497444004066,
+        1030.1285983032055
+      ],
+      "ttft_median_s": [
+        0.9162821043282747,
+        0.9162821657955647,
+        0.9192604254931211
+      ],
+      "tpot_median_s": [
+        0.008623058893078683,
+        0.00796077016229723,
+        0.007945559871401272
+      ],
+      "acceptance_prefix_fraction": [
+        0.672006407689227,
+        0.672006407689227,
+        0.672006407689227
+      ],
+      "output_hashes_stable_within_group": true,
+      "graph_deltas": [
+        {
+          "verify_hits": 40,
+          "verify_padded_hits": 0,
+          "verify_exact_hits": 40,
+          "verify_fallbacks": {
+            "ragged_draft_len": 9,
+            "shape_not_captured(B=5,k=7)": 1,
+            "shape_not_captured(B=3,k=7)": 2
+          },
+          "graph_hits": 45,
+          "graph_exact_hits": 45,
+          "graph_padded_hits": 0,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {
+            "batch_shape_not_captured": 7
+          },
+          "active_batch_histogram": {
+            "8": 40,
+            "7": 1,
+            "5": 2,
+            "2": 2,
+            "1": 2,
+            "6": 1,
+            "4": 1,
+            "3": 3
+          },
+          "head_graph_hits": 0,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        },
+        {
+          "verify_hits": 40,
+          "verify_padded_hits": 0,
+          "verify_exact_hits": 40,
+          "verify_fallbacks": {
+            "ragged_draft_len": 9,
+            "shape_not_captured(B=5,k=7)": 1,
+            "shape_not_captured(B=3,k=7)": 2
+          },
+          "graph_hits": 45,
+          "graph_exact_hits": 45,
+          "graph_padded_hits": 0,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {
+            "batch_shape_not_captured": 7
+          },
+          "active_batch_histogram": {
+            "8": 40,
+            "7": 1,
+            "5": 2,
+            "2": 2,
+            "1": 2,
+            "6": 1,
+            "4": 1,
+            "3": 3
+          },
+          "head_graph_hits": 0,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        },
+        {
+          "verify_hits": 40,
+          "verify_padded_hits": 0,
+          "verify_exact_hits": 40,
+          "verify_fallbacks": {
+            "ragged_draft_len": 9,
+            "shape_not_captured(B=5,k=7)": 1,
+            "shape_not_captured(B=3,k=7)": 2
+          },
+          "graph_hits": 45,
+          "graph_exact_hits": 45,
+          "graph_padded_hits": 0,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {
+            "batch_shape_not_captured": 7
+          },
+          "active_batch_histogram": {
+            "8": 40,
+            "7": 1,
+            "5": 2,
+            "2": 2,
+            "1": 2,
+            "6": 1,
+            "4": 1,
+            "3": 3
+          },
+          "head_graph_hits": 0,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        }
+      ],
+      "active_b_rounds": [
+        {
+          "8": 40,
+          "7": 1,
+          "6": 1,
+          "5": 2,
+          "4": 1,
+          "3": 3,
+          "2": 2,
+          "1": 2
+        },
+        {
+          "8": 40,
+          "7": 1,
+          "6": 1,
+          "5": 2,
+          "4": 1,
+          "3": 3,
+          "2": 2,
+          "1": 2
+        },
+        {
+          "8": 40,
+          "7": 1,
+          "6": 1,
+          "5": 2,
+          "4": 1,
+          "3": 3,
+          "2": 2,
+          "1": 2
+        }
+      ],
+      "peak_reserved_bytes": [
+        20224933888,
+        20224933888,
+        20224933888
+      ]
+    },
+    "B8/math/dspark-original": {
+      "full_request_tps": [
+        575.6001962162887,
+        574.4327614580346,
+        574.6654552230248
+      ],
+      "median": 574.6654552230248,
+      "min": 574.4327614580346,
+      "max": 575.6001962162887,
+      "decode_tps": [
+        773.9268664185853,
+        772.1893771420425,
+        772.7056207114207
+      ],
+      "full_batch_decode_tps": [
+        1031.6664625154497,
+        1027.6007079311312,
+        1029.8320947815778
+      ],
+      "ttft_median_s": [
+        0.9212945997714996,
+        0.9226045534014702,
+        0.9230173379182816
+      ],
+      "tpot_median_s": [
+        0.009108921958535326,
+        0.009143775555433012,
+        0.009128251711965775
+      ],
+      "acceptance_prefix_fraction": [
+        0.6382160707420222,
+        0.6382160707420222,
+        0.6382160707420222
+      ],
+      "output_hashes_stable_within_group": true,
+      "graph_deltas": [
+        {
+          "verify_hits": 35,
+          "verify_padded_hits": 0,
+          "verify_exact_hits": 35,
+          "verify_fallbacks": {
+            "ragged_draft_len": 11,
+            "shape_not_captured(B=5,k=7)": 2,
+            "shape_not_captured(B=3,k=7)": 2,
+            "shape_not_captured(B=7,k=7)": 4
+          },
+          "graph_hits": 38,
+          "graph_exact_hits": 38,
+          "graph_padded_hits": 0,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {
+            "batch_shape_not_captured": 16
+          },
+          "active_batch_histogram": {
+            "8": 36,
+            "7": 9,
+            "5": 3,
+            "1": 2,
+            "3": 4
+          },
+          "head_graph_hits": 0,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        },
+        {
+          "verify_hits": 35,
+          "verify_padded_hits": 0,
+          "verify_exact_hits": 35,
+          "verify_fallbacks": {
+            "ragged_draft_len": 11,
+            "shape_not_captured(B=5,k=7)": 2,
+            "shape_not_captured(B=3,k=7)": 2,
+            "shape_not_captured(B=7,k=7)": 4
+          },
+          "graph_hits": 38,
+          "graph_exact_hits": 38,
+          "graph_padded_hits": 0,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {
+            "batch_shape_not_captured": 16
+          },
+          "active_batch_histogram": {
+            "8": 36,
+            "7": 9,
+            "5": 3,
+            "1": 2,
+            "3": 4
+          },
+          "head_graph_hits": 0,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        },
+        {
+          "verify_hits": 35,
+          "verify_padded_hits": 0,
+          "verify_exact_hits": 35,
+          "verify_fallbacks": {
+            "ragged_draft_len": 11,
+            "shape_not_captured(B=5,k=7)": 2,
+            "shape_not_captured(B=3,k=7)": 2,
+            "shape_not_captured(B=7,k=7)": 4
+          },
+          "graph_hits": 38,
+          "graph_exact_hits": 38,
+          "graph_padded_hits": 0,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {
+            "batch_shape_not_captured": 16
+          },
+          "active_batch_histogram": {
+            "8": 36,
+            "7": 9,
+            "5": 3,
+            "1": 2,
+            "3": 4
+          },
+          "head_graph_hits": 0,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        }
+      ],
+      "active_b_rounds": [
+        {
+          "8": 36,
+          "7": 9,
+          "5": 3,
+          "3": 4,
+          "1": 2
+        },
+        {
+          "8": 36,
+          "7": 9,
+          "5": 3,
+          "3": 4,
+          "1": 2
+        },
+        {
+          "8": 36,
+          "7": 9,
+          "5": 3,
+          "3": 4,
+          "1": 2
+        }
+      ],
+      "peak_reserved_bytes": [
+        20224933888,
+        20224933888,
+        20224933888
+      ]
+    },
+    "B8/general/dspark-original": {
+      "full_request_tps": [
+        358.86120829381827,
+        358.7944105533504,
+        358.2562537843858
+      ],
+      "median": 358.7944105533504,
+      "min": 358.2562537843858,
+      "max": 358.86120829381827,
+      "decode_tps": [
+        426.1834817754347,
+        425.87297197224495,
+        425.3997028927357
+      ],
+      "full_batch_decode_tps": [
+        589.7742513792442,
+        590.1809036509046,
+        588.6864366562158
+      ],
+      "ttft_median_s": [
+        0.919330507516861,
+        0.9167597722262144,
+        0.9200889188796282
+      ],
+      "tpot_median_s": [
+        0.013691223065788839,
+        0.0136873182091935,
+        0.013703837680319946
+      ],
+      "acceptance_prefix_fraction": [
+        0.31056039294485377,
+        0.31056039294485377,
+        0.31056039294485377
+      ],
+      "output_hashes_stable_within_group": true,
+      "graph_deltas": [
+        {
+          "verify_hits": 74,
+          "verify_padded_hits": 0,
+          "verify_exact_hits": 74,
+          "verify_fallbacks": {
+            "ragged_draft_len": 15,
+            "shape_not_captured(B=3,k=7)": 12,
+            "shape_not_captured(B=7,k=7)": 2,
+            "shape_not_captured(B=6,k=7)": 4
+          },
+          "graph_hits": 82,
+          "graph_exact_hits": 82,
+          "graph_padded_hits": 0,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {
+            "batch_shape_not_captured": 25
+          },
+          "active_batch_histogram": {
+            "8": 61,
+            "7": 6,
+            "5": 1,
+            "2": 12,
+            "1": 5,
+            "6": 5,
+            "4": 4,
+            "3": 13
+          },
+          "head_graph_hits": 0,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        },
+        {
+          "verify_hits": 74,
+          "verify_padded_hits": 0,
+          "verify_exact_hits": 74,
+          "verify_fallbacks": {
+            "ragged_draft_len": 15,
+            "shape_not_captured(B=3,k=7)": 12,
+            "shape_not_captured(B=7,k=7)": 2,
+            "shape_not_captured(B=6,k=7)": 4
+          },
+          "graph_hits": 82,
+          "graph_exact_hits": 82,
+          "graph_padded_hits": 0,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {
+            "batch_shape_not_captured": 25
+          },
+          "active_batch_histogram": {
+            "8": 61,
+            "7": 6,
+            "5": 1,
+            "2": 12,
+            "1": 5,
+            "6": 5,
+            "4": 4,
+            "3": 13
+          },
+          "head_graph_hits": 0,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        },
+        {
+          "verify_hits": 74,
+          "verify_padded_hits": 0,
+          "verify_exact_hits": 74,
+          "verify_fallbacks": {
+            "ragged_draft_len": 15,
+            "shape_not_captured(B=3,k=7)": 12,
+            "shape_not_captured(B=7,k=7)": 2,
+            "shape_not_captured(B=6,k=7)": 4
+          },
+          "graph_hits": 82,
+          "graph_exact_hits": 82,
+          "graph_padded_hits": 0,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {
+            "batch_shape_not_captured": 25
+          },
+          "active_batch_histogram": {
+            "8": 61,
+            "7": 6,
+            "5": 1,
+            "2": 12,
+            "1": 5,
+            "6": 5,
+            "4": 4,
+            "3": 13
+          },
+          "head_graph_hits": 0,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        }
+      ],
+      "active_b_rounds": [
+        {
+          "8": 61,
+          "7": 6,
+          "6": 5,
+          "5": 1,
+          "4": 4,
+          "3": 13,
+          "2": 12,
+          "1": 5
+        },
+        {
+          "8": 61,
+          "7": 6,
+          "6": 5,
+          "5": 1,
+          "4": 4,
+          "3": 13,
+          "2": 12,
+          "1": 5
+        },
+        {
+          "8": 61,
+          "7": 6,
+          "6": 5,
+          "5": 1,
+          "4": 4,
+          "3": 13,
+          "2": 12,
+          "1": 5
+        }
+      ],
+      "peak_reserved_bytes": [
+        20224933888,
+        20224933888,
+        20224933888
+      ]
+    },
+    "B8/code/split-none": {
+      "full_request_tps": [
+        584.322223904123,
+        620.7016983477762,
+        620.1112406980442
+      ],
+      "median": 620.1112406980442,
+      "min": 584.322223904123,
+      "max": 620.7016983477762,
+      "decode_tps": [
+        789.8482900916555,
+        859.3721835102468,
+        858.9163635408685
+      ],
+      "full_batch_decode_tps": [
+        1034.4980580468673,
+        1034.1344253419134,
+        1033.2041481024778
+      ],
+      "ttft_median_s": [
+        0.921570154838264,
+        0.9250627122819424,
+        0.9269383223727345
+      ],
+      "tpot_median_s": [
+        0.008347161841012684,
+        0.007914196674291994,
+        0.00791678986712998
+      ],
+      "acceptance_prefix_fraction": [
+        0.672006407689227,
+        0.672006407689227,
+        0.672006407689227
+      ],
+      "output_hashes_stable_within_group": true,
+      "graph_deltas": [
+        {
+          "verify_hits": 40,
+          "verify_padded_hits": 0,
+          "verify_exact_hits": 40,
+          "verify_fallbacks": {
+            "ragged_draft_len": 9,
+            "shape_not_captured(B=5,k=7)": 1,
+            "shape_not_captured(B=3,k=7)": 2
+          },
+          "graph_hits": 45,
+          "graph_exact_hits": 45,
+          "graph_padded_hits": 0,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {
+            "batch_shape_not_captured": 7
+          },
+          "active_batch_histogram": {
+            "8": 40,
+            "7": 1,
+            "5": 2,
+            "2": 2,
+            "1": 2,
+            "6": 1,
+            "4": 1,
+            "3": 3
+          },
+          "head_graph_hits": 364,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        },
+        {
+          "verify_hits": 40,
+          "verify_padded_hits": 0,
+          "verify_exact_hits": 40,
+          "verify_fallbacks": {
+            "ragged_draft_len": 9,
+            "shape_not_captured(B=5,k=7)": 1,
+            "shape_not_captured(B=3,k=7)": 2
+          },
+          "graph_hits": 45,
+          "graph_exact_hits": 45,
+          "graph_padded_hits": 0,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {
+            "batch_shape_not_captured": 7
+          },
+          "active_batch_histogram": {
+            "8": 40,
+            "7": 1,
+            "5": 2,
+            "2": 2,
+            "1": 2,
+            "6": 1,
+            "4": 1,
+            "3": 3
+          },
+          "head_graph_hits": 364,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        },
+        {
+          "verify_hits": 40,
+          "verify_padded_hits": 0,
+          "verify_exact_hits": 40,
+          "verify_fallbacks": {
+            "ragged_draft_len": 9,
+            "shape_not_captured(B=5,k=7)": 1,
+            "shape_not_captured(B=3,k=7)": 2
+          },
+          "graph_hits": 45,
+          "graph_exact_hits": 45,
+          "graph_padded_hits": 0,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {
+            "batch_shape_not_captured": 7
+          },
+          "active_batch_histogram": {
+            "8": 40,
+            "7": 1,
+            "5": 2,
+            "2": 2,
+            "1": 2,
+            "6": 1,
+            "4": 1,
+            "3": 3
+          },
+          "head_graph_hits": 364,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        }
+      ],
+      "active_b_rounds": [
+        {
+          "8": 40,
+          "7": 1,
+          "6": 1,
+          "5": 2,
+          "4": 1,
+          "3": 3,
+          "2": 2,
+          "1": 2
+        },
+        {
+          "8": 40,
+          "7": 1,
+          "6": 1,
+          "5": 2,
+          "4": 1,
+          "3": 3,
+          "2": 2,
+          "1": 2
+        },
+        {
+          "8": 40,
+          "7": 1,
+          "6": 1,
+          "5": 2,
+          "4": 1,
+          "3": 3,
+          "2": 2,
+          "1": 2
+        }
+      ],
+      "peak_reserved_bytes": [
+        18782093312,
+        18782093312,
+        18782093312
+      ]
+    },
+    "B8/math/split-none": {
+      "full_request_tps": [
+        575.2811221309141,
+        573.9986614158663,
+        572.4013194536028
+      ],
+      "median": 573.9986614158663,
+      "min": 572.4013194536028,
+      "max": 575.2811221309141,
+      "decode_tps": [
+        776.0484050249861,
+        775.518764668837,
+        772.9040436273476
+      ],
+      "full_batch_decode_tps": [
+        1032.2133850560601,
+        1028.9579653932915,
+        1027.4992065188185
+      ],
+      "ttft_median_s": [
+        0.9306082837283611,
+        0.9368202378973365,
+        0.9378673192113638
+      ],
+      "tpot_median_s": [
+        0.009088469333216255,
+        0.009101124473062217,
+        0.009125683394571146
+      ],
+      "acceptance_prefix_fraction": [
+        0.6382160707420222,
+        0.6382160707420222,
+        0.6382160707420222
+      ],
+      "output_hashes_stable_within_group": true,
+      "graph_deltas": [
+        {
+          "verify_hits": 35,
+          "verify_padded_hits": 0,
+          "verify_exact_hits": 35,
+          "verify_fallbacks": {
+            "ragged_draft_len": 11,
+            "shape_not_captured(B=5,k=7)": 2,
+            "shape_not_captured(B=3,k=7)": 2,
+            "shape_not_captured(B=7,k=7)": 4
+          },
+          "graph_hits": 38,
+          "graph_exact_hits": 38,
+          "graph_padded_hits": 0,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {
+            "batch_shape_not_captured": 16
+          },
+          "active_batch_histogram": {
+            "8": 36,
+            "7": 9,
+            "5": 3,
+            "1": 2,
+            "3": 4
+          },
+          "head_graph_hits": 378,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        },
+        {
+          "verify_hits": 35,
+          "verify_padded_hits": 0,
+          "verify_exact_hits": 35,
+          "verify_fallbacks": {
+            "ragged_draft_len": 11,
+            "shape_not_captured(B=5,k=7)": 2,
+            "shape_not_captured(B=3,k=7)": 2,
+            "shape_not_captured(B=7,k=7)": 4
+          },
+          "graph_hits": 38,
+          "graph_exact_hits": 38,
+          "graph_padded_hits": 0,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {
+            "batch_shape_not_captured": 16
+          },
+          "active_batch_histogram": {
+            "8": 36,
+            "7": 9,
+            "5": 3,
+            "1": 2,
+            "3": 4
+          },
+          "head_graph_hits": 378,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        },
+        {
+          "verify_hits": 35,
+          "verify_padded_hits": 0,
+          "verify_exact_hits": 35,
+          "verify_fallbacks": {
+            "ragged_draft_len": 11,
+            "shape_not_captured(B=5,k=7)": 2,
+            "shape_not_captured(B=3,k=7)": 2,
+            "shape_not_captured(B=7,k=7)": 4
+          },
+          "graph_hits": 38,
+          "graph_exact_hits": 38,
+          "graph_padded_hits": 0,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {
+            "batch_shape_not_captured": 16
+          },
+          "active_batch_histogram": {
+            "8": 36,
+            "7": 9,
+            "5": 3,
+            "1": 2,
+            "3": 4
+          },
+          "head_graph_hits": 378,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        }
+      ],
+      "active_b_rounds": [
+        {
+          "8": 36,
+          "7": 9,
+          "5": 3,
+          "3": 4,
+          "1": 2
+        },
+        {
+          "8": 36,
+          "7": 9,
+          "5": 3,
+          "3": 4,
+          "1": 2
+        },
+        {
+          "8": 36,
+          "7": 9,
+          "5": 3,
+          "3": 4,
+          "1": 2
+        }
+      ],
+      "peak_reserved_bytes": [
+        18782093312,
+        18782093312,
+        18782093312
+      ]
+    },
+    "B8/general/split-none": {
+      "full_request_tps": [
+        356.2872984506579,
+        356.0980898338075,
+        356.198820013291
+      ],
+      "median": 356.198820013291,
+      "min": 356.0980898338075,
+      "max": 356.2872984506579,
+      "decode_tps": [
+        424.3425123488883,
+        424.44131939937705,
+        424.7014755376827
+      ],
+      "full_batch_decode_tps": [
+        585.6276000045833,
+        585.6058811954451,
+        585.7193197649098
+      ],
+      "ttft_median_s": [
+        0.9396681664511561,
+        0.9438702184706926,
+        0.9453157410025597
+      ],
+      "tpot_median_s": [
+        0.013763405616376914,
+        0.013763655247349366,
+        0.01375434145185293
+      ],
+      "acceptance_prefix_fraction": [
+        0.31056039294485377,
+        0.31056039294485377,
+        0.31056039294485377
+      ],
+      "output_hashes_stable_within_group": true,
+      "graph_deltas": [
+        {
+          "verify_hits": 74,
+          "verify_padded_hits": 0,
+          "verify_exact_hits": 74,
+          "verify_fallbacks": {
+            "ragged_draft_len": 15,
+            "shape_not_captured(B=3,k=7)": 12,
+            "shape_not_captured(B=7,k=7)": 2,
+            "shape_not_captured(B=6,k=7)": 4
+          },
+          "graph_hits": 82,
+          "graph_exact_hits": 82,
+          "graph_padded_hits": 0,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {
+            "batch_shape_not_captured": 25
+          },
+          "active_batch_histogram": {
+            "8": 61,
+            "7": 6,
+            "5": 1,
+            "2": 12,
+            "1": 5,
+            "6": 5,
+            "4": 4,
+            "3": 13
+          },
+          "head_graph_hits": 749,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        },
+        {
+          "verify_hits": 74,
+          "verify_padded_hits": 0,
+          "verify_exact_hits": 74,
+          "verify_fallbacks": {
+            "ragged_draft_len": 15,
+            "shape_not_captured(B=3,k=7)": 12,
+            "shape_not_captured(B=7,k=7)": 2,
+            "shape_not_captured(B=6,k=7)": 4
+          },
+          "graph_hits": 82,
+          "graph_exact_hits": 82,
+          "graph_padded_hits": 0,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {
+            "batch_shape_not_captured": 25
+          },
+          "active_batch_histogram": {
+            "8": 61,
+            "7": 6,
+            "5": 1,
+            "2": 12,
+            "1": 5,
+            "6": 5,
+            "4": 4,
+            "3": 13
+          },
+          "head_graph_hits": 749,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        },
+        {
+          "verify_hits": 74,
+          "verify_padded_hits": 0,
+          "verify_exact_hits": 74,
+          "verify_fallbacks": {
+            "ragged_draft_len": 15,
+            "shape_not_captured(B=3,k=7)": 12,
+            "shape_not_captured(B=7,k=7)": 2,
+            "shape_not_captured(B=6,k=7)": 4
+          },
+          "graph_hits": 82,
+          "graph_exact_hits": 82,
+          "graph_padded_hits": 0,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {
+            "batch_shape_not_captured": 25
+          },
+          "active_batch_histogram": {
+            "8": 61,
+            "7": 6,
+            "5": 1,
+            "2": 12,
+            "1": 5,
+            "6": 5,
+            "4": 4,
+            "3": 13
+          },
+          "head_graph_hits": 749,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        }
+      ],
+      "active_b_rounds": [
+        {
+          "8": 61,
+          "7": 6,
+          "6": 5,
+          "5": 1,
+          "4": 4,
+          "3": 13,
+          "2": 12,
+          "1": 5
+        },
+        {
+          "8": 61,
+          "7": 6,
+          "6": 5,
+          "5": 1,
+          "4": 4,
+          "3": 13,
+          "2": 12,
+          "1": 5
+        },
+        {
+          "8": 61,
+          "7": 6,
+          "6": 5,
+          "5": 1,
+          "4": 4,
+          "3": 13,
+          "2": 12,
+          "1": 5
+        }
+      ],
+      "peak_reserved_bytes": [
+        18782093312,
+        18782093312,
+        18782093312
+      ]
+    },
+    "B8/code/split-target": {
+      "full_request_tps": [
+        634.2543298585366,
+        634.14570293992,
+        632.3818663802314
+      ],
+      "median": 634.14570293992,
+      "min": 632.3818663802314,
+      "max": 634.2543298585366,
+      "decode_tps": [
+        884.6663732740151,
+        884.8466762021503,
+        883.195762737632
+      ],
+      "full_batch_decode_tps": [
+        1033.1657057905213,
+        1033.6554079742111,
+        1031.1418579694293
+      ],
+      "ttft_median_s": [
+        0.9224138129502535,
+        0.9234673660248518,
+        0.928148434497416
+      ],
+      "tpot_median_s": [
+        0.007831162718289039,
+        0.00782738019365306,
+        0.007845420572979777
+      ],
+      "acceptance_prefix_fraction": [
+        0.672006407689227,
+        0.672006407689227,
+        0.672006407689227
+      ],
+      "output_hashes_stable_within_group": true,
+      "graph_deltas": [
+        {
+          "verify_hits": 43,
+          "verify_padded_hits": 3,
+          "verify_exact_hits": 40,
+          "verify_fallbacks": {
+            "ragged_draft_len": 9
+          },
+          "graph_hits": 45,
+          "graph_exact_hits": 45,
+          "graph_padded_hits": 0,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {
+            "batch_shape_not_captured": 7
+          },
+          "active_batch_histogram": {
+            "8": 40,
+            "7": 1,
+            "5": 2,
+            "2": 2,
+            "1": 2,
+            "6": 1,
+            "4": 1,
+            "3": 3
+          },
+          "head_graph_hits": 364,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        },
+        {
+          "verify_hits": 43,
+          "verify_padded_hits": 3,
+          "verify_exact_hits": 40,
+          "verify_fallbacks": {
+            "ragged_draft_len": 9
+          },
+          "graph_hits": 45,
+          "graph_exact_hits": 45,
+          "graph_padded_hits": 0,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {
+            "batch_shape_not_captured": 7
+          },
+          "active_batch_histogram": {
+            "8": 40,
+            "7": 1,
+            "5": 2,
+            "2": 2,
+            "1": 2,
+            "6": 1,
+            "4": 1,
+            "3": 3
+          },
+          "head_graph_hits": 364,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        },
+        {
+          "verify_hits": 43,
+          "verify_padded_hits": 3,
+          "verify_exact_hits": 40,
+          "verify_fallbacks": {
+            "ragged_draft_len": 9
+          },
+          "graph_hits": 45,
+          "graph_exact_hits": 45,
+          "graph_padded_hits": 0,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {
+            "batch_shape_not_captured": 7
+          },
+          "active_batch_histogram": {
+            "8": 40,
+            "7": 1,
+            "5": 2,
+            "2": 2,
+            "1": 2,
+            "6": 1,
+            "4": 1,
+            "3": 3
+          },
+          "head_graph_hits": 364,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        }
+      ],
+      "active_b_rounds": [
+        {
+          "8": 40,
+          "7": 1,
+          "6": 1,
+          "5": 2,
+          "4": 1,
+          "3": 3,
+          "2": 2,
+          "1": 2
+        },
+        {
+          "8": 40,
+          "7": 1,
+          "6": 1,
+          "5": 2,
+          "4": 1,
+          "3": 3,
+          "2": 2,
+          "1": 2
+        },
+        {
+          "8": 40,
+          "7": 1,
+          "6": 1,
+          "5": 2,
+          "4": 1,
+          "3": 3,
+          "2": 2,
+          "1": 2
+        }
+      ],
+      "peak_reserved_bytes": [
+        18782093312,
+        18782093312,
+        18782093312
+      ]
+    },
+    "B8/math/split-target": {
+      "full_request_tps": [
+        611.6088920702326,
+        611.7733001267967,
+        610.5040417627567
+      ],
+      "median": 611.6088920702326,
+      "min": 610.5040417627567,
+      "max": 611.7733001267967,
+      "decode_tps": [
+        844.281772501082,
+        845.475770437629,
+        844.3749805923726
+      ],
+      "full_batch_decode_tps": [
+        1031.1354181245374,
+        1032.1132770173126,
+        1031.5739881872953
+      ],
+      "ttft_median_s": [
+        0.9316755421459675,
+        0.9341531451791525,
+        0.9380156472325325
+      ],
+      "tpot_median_s": [
+        0.0085966083823758,
+        0.008585529712339241,
+        0.008599076471200177
+      ],
+      "acceptance_prefix_fraction": [
+        0.635632183908046,
+        0.635632183908046,
+        0.635632183908046
+      ],
+      "output_hashes_stable_within_group": true,
+      "graph_deltas": [
+        {
+          "verify_hits": 43,
+          "verify_padded_hits": 8,
+          "verify_exact_hits": 35,
+          "verify_fallbacks": {
+            "ragged_draft_len": 10
+          },
+          "graph_hits": 36,
+          "graph_exact_hits": 36,
+          "graph_padded_hits": 0,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {
+            "batch_shape_not_captured": 17
+          },
+          "active_batch_histogram": {
+            "8": 36,
+            "7": 9,
+            "5": 3,
+            "3": 5
+          },
+          "head_graph_hits": 371,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        },
+        {
+          "verify_hits": 43,
+          "verify_padded_hits": 8,
+          "verify_exact_hits": 35,
+          "verify_fallbacks": {
+            "ragged_draft_len": 10
+          },
+          "graph_hits": 36,
+          "graph_exact_hits": 36,
+          "graph_padded_hits": 0,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {
+            "batch_shape_not_captured": 17
+          },
+          "active_batch_histogram": {
+            "8": 36,
+            "7": 9,
+            "5": 3,
+            "3": 5
+          },
+          "head_graph_hits": 371,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        },
+        {
+          "verify_hits": 43,
+          "verify_padded_hits": 8,
+          "verify_exact_hits": 35,
+          "verify_fallbacks": {
+            "ragged_draft_len": 10
+          },
+          "graph_hits": 36,
+          "graph_exact_hits": 36,
+          "graph_padded_hits": 0,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {
+            "batch_shape_not_captured": 17
+          },
+          "active_batch_histogram": {
+            "8": 36,
+            "7": 9,
+            "5": 3,
+            "3": 5
+          },
+          "head_graph_hits": 371,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        }
+      ],
+      "active_b_rounds": [
+        {
+          "8": 36,
+          "7": 9,
+          "5": 3,
+          "3": 5
+        },
+        {
+          "8": 36,
+          "7": 9,
+          "5": 3,
+          "3": 5
+        },
+        {
+          "8": 36,
+          "7": 9,
+          "5": 3,
+          "3": 5
+        }
+      ],
+      "peak_reserved_bytes": [
+        18782093312,
+        18782093312,
+        18782093312
+      ]
+    },
+    "B8/general/split-target": {
+      "full_request_tps": [
+        399.3791890970906,
+        399.1346907233154,
+        398.5166533306536
+      ],
+      "median": 399.1346907233154,
+      "min": 398.5166533306536,
+      "max": 399.3791890970906,
+      "decode_tps": [
+        487.2321181854102,
+        487.35036989557324,
+        486.5404868727081
+      ],
+      "full_batch_decode_tps": [
+        585.7244786461703,
+        585.67854749372,
+        584.9764295004112
+      ],
+      "ttft_median_s": [
+        0.9401484644040465,
+        0.9443232286721468,
+        0.9453108785673976
+      ],
+      "tpot_median_s": [
+        0.013276363916549027,
+        0.01327855973047953,
+        0.013291271388822912
+      ],
+      "acceptance_prefix_fraction": [
+        0.31784175923826796,
+        0.31784175923826796,
+        0.31784175923826796
+      ],
+      "output_hashes_stable_within_group": true,
+      "graph_deltas": [
+        {
+          "verify_hits": 87,
+          "verify_padded_hits": 18,
+          "verify_exact_hits": 69,
+          "verify_fallbacks": {
+            "ragged_draft_len": 13
+          },
+          "graph_hits": 75,
+          "graph_exact_hits": 75,
+          "graph_padded_hits": 0,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {
+            "batch_shape_not_captured": 25
+          },
+          "active_batch_histogram": {
+            "8": 61,
+            "7": 6,
+            "5": 1,
+            "2": 8,
+            "1": 2,
+            "6": 5,
+            "4": 4,
+            "3": 13
+          },
+          "head_graph_hits": 700,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        },
+        {
+          "verify_hits": 87,
+          "verify_padded_hits": 18,
+          "verify_exact_hits": 69,
+          "verify_fallbacks": {
+            "ragged_draft_len": 13
+          },
+          "graph_hits": 75,
+          "graph_exact_hits": 75,
+          "graph_padded_hits": 0,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {
+            "batch_shape_not_captured": 25
+          },
+          "active_batch_histogram": {
+            "8": 61,
+            "7": 6,
+            "5": 1,
+            "2": 8,
+            "1": 2,
+            "6": 5,
+            "4": 4,
+            "3": 13
+          },
+          "head_graph_hits": 700,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        },
+        {
+          "verify_hits": 87,
+          "verify_padded_hits": 18,
+          "verify_exact_hits": 69,
+          "verify_fallbacks": {
+            "ragged_draft_len": 13
+          },
+          "graph_hits": 75,
+          "graph_exact_hits": 75,
+          "graph_padded_hits": 0,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {
+            "batch_shape_not_captured": 25
+          },
+          "active_batch_histogram": {
+            "8": 61,
+            "7": 6,
+            "5": 1,
+            "2": 8,
+            "1": 2,
+            "6": 5,
+            "4": 4,
+            "3": 13
+          },
+          "head_graph_hits": 700,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        }
+      ],
+      "active_b_rounds": [
+        {
+          "8": 61,
+          "7": 6,
+          "6": 5,
+          "5": 1,
+          "4": 4,
+          "3": 13,
+          "2": 8,
+          "1": 2
+        },
+        {
+          "8": 61,
+          "7": 6,
+          "6": 5,
+          "5": 1,
+          "4": 4,
+          "3": 13,
+          "2": 8,
+          "1": 2
+        },
+        {
+          "8": 61,
+          "7": 6,
+          "6": 5,
+          "5": 1,
+          "4": 4,
+          "3": 13,
+          "2": 8,
+          "1": 2
+        }
+      ],
+      "peak_reserved_bytes": [
+        18782093312,
+        18782093312,
+        18782093312
+      ]
+    },
+    "B8/code/split-both": {
+      "full_request_tps": [
+        633.3021073535181,
+        632.5919870578629,
+        632.4884748493037
+      ],
+      "median": 632.5919870578629,
+      "min": 632.4884748493037,
+      "max": 633.3021073535181,
+      "decode_tps": [
+        882.8685414858074,
+        882.2444270640605,
+        882.6147745749162
+      ],
+      "full_batch_decode_tps": [
+        1033.0158352776245,
+        1033.0104278379324,
+        1032.1423846408118
+      ],
+      "ttft_median_s": [
+        0.9226227160543203,
+        0.9244682006537914,
+        0.9261074839159846
+      ],
+      "tpot_median_s": [
+        0.007857631859095658,
+        0.007855527592348116,
+        0.007861959926930128
+      ],
+      "acceptance_prefix_fraction": [
+        0.672006407689227,
+        0.672006407689227,
+        0.672006407689227
+      ],
+      "output_hashes_stable_within_group": true,
+      "graph_deltas": [
+        {
+          "verify_hits": 43,
+          "verify_padded_hits": 3,
+          "verify_exact_hits": 40,
+          "verify_fallbacks": {
+            "ragged_draft_len": 9
+          },
+          "graph_hits": 52,
+          "graph_exact_hits": 45,
+          "graph_padded_hits": 7,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {},
+          "active_batch_histogram": {
+            "8": 40,
+            "7": 1,
+            "5": 2,
+            "2": 2,
+            "1": 2,
+            "6": 1,
+            "4": 1,
+            "3": 3
+          },
+          "head_graph_hits": 364,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        },
+        {
+          "verify_hits": 43,
+          "verify_padded_hits": 3,
+          "verify_exact_hits": 40,
+          "verify_fallbacks": {
+            "ragged_draft_len": 9
+          },
+          "graph_hits": 52,
+          "graph_exact_hits": 45,
+          "graph_padded_hits": 7,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {},
+          "active_batch_histogram": {
+            "8": 40,
+            "7": 1,
+            "5": 2,
+            "2": 2,
+            "1": 2,
+            "6": 1,
+            "4": 1,
+            "3": 3
+          },
+          "head_graph_hits": 364,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        },
+        {
+          "verify_hits": 43,
+          "verify_padded_hits": 3,
+          "verify_exact_hits": 40,
+          "verify_fallbacks": {
+            "ragged_draft_len": 9
+          },
+          "graph_hits": 52,
+          "graph_exact_hits": 45,
+          "graph_padded_hits": 7,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {},
+          "active_batch_histogram": {
+            "8": 40,
+            "7": 1,
+            "5": 2,
+            "2": 2,
+            "1": 2,
+            "6": 1,
+            "4": 1,
+            "3": 3
+          },
+          "head_graph_hits": 364,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        }
+      ],
+      "active_b_rounds": [
+        {
+          "8": 40,
+          "7": 1,
+          "6": 1,
+          "5": 2,
+          "4": 1,
+          "3": 3,
+          "2": 2,
+          "1": 2
+        },
+        {
+          "8": 40,
+          "7": 1,
+          "6": 1,
+          "5": 2,
+          "4": 1,
+          "3": 3,
+          "2": 2,
+          "1": 2
+        },
+        {
+          "8": 40,
+          "7": 1,
+          "6": 1,
+          "5": 2,
+          "4": 1,
+          "3": 3,
+          "2": 2,
+          "1": 2
+        }
+      ],
+      "peak_reserved_bytes": [
+        18782093312,
+        18782093312,
+        18782093312
+      ]
+    },
+    "B8/math/split-both": {
+      "full_request_tps": [
+        611.6250892422214,
+        610.6912249262347,
+        610.2613803528743
+      ],
+      "median": 610.6912249262347,
+      "min": 610.2613803528743,
+      "max": 611.6250892422214,
+      "decode_tps": [
+        845.0520776716721,
+        843.5793971532421,
+        843.3526086473745
+      ],
+      "full_batch_decode_tps": [
+        1031.6173352050819,
+        1029.8269528812114,
+        1029.1364416299984
+      ],
+      "ttft_median_s": [
+        0.9337106691673398,
+        0.9347370117902756,
+        0.9364146525040269
+      ],
+      "tpot_median_s": [
+        0.00861005472274972,
+        0.008626094759971488,
+        0.00862774878521176
+      ],
+      "acceptance_prefix_fraction": [
+        0.635632183908046,
+        0.635632183908046,
+        0.635632183908046
+      ],
+      "output_hashes_stable_within_group": true,
+      "graph_deltas": [
+        {
+          "verify_hits": 43,
+          "verify_padded_hits": 8,
+          "verify_exact_hits": 35,
+          "verify_fallbacks": {
+            "ragged_draft_len": 10
+          },
+          "graph_hits": 53,
+          "graph_exact_hits": 36,
+          "graph_padded_hits": 17,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {},
+          "active_batch_histogram": {
+            "8": 36,
+            "7": 9,
+            "5": 3,
+            "3": 5
+          },
+          "head_graph_hits": 371,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        },
+        {
+          "verify_hits": 43,
+          "verify_padded_hits": 8,
+          "verify_exact_hits": 35,
+          "verify_fallbacks": {
+            "ragged_draft_len": 10
+          },
+          "graph_hits": 53,
+          "graph_exact_hits": 36,
+          "graph_padded_hits": 17,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {},
+          "active_batch_histogram": {
+            "8": 36,
+            "7": 9,
+            "5": 3,
+            "3": 5
+          },
+          "head_graph_hits": 371,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        },
+        {
+          "verify_hits": 43,
+          "verify_padded_hits": 8,
+          "verify_exact_hits": 35,
+          "verify_fallbacks": {
+            "ragged_draft_len": 10
+          },
+          "graph_hits": 53,
+          "graph_exact_hits": 36,
+          "graph_padded_hits": 17,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {},
+          "active_batch_histogram": {
+            "8": 36,
+            "7": 9,
+            "5": 3,
+            "3": 5
+          },
+          "head_graph_hits": 371,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        }
+      ],
+      "active_b_rounds": [
+        {
+          "8": 36,
+          "7": 9,
+          "5": 3,
+          "3": 5
+        },
+        {
+          "8": 36,
+          "7": 9,
+          "5": 3,
+          "3": 5
+        },
+        {
+          "8": 36,
+          "7": 9,
+          "5": 3,
+          "3": 5
+        }
+      ],
+      "peak_reserved_bytes": [
+        18782093312,
+        18782093312,
+        18782093312
+      ]
+    },
+    "B8/general/split-both": {
+      "full_request_tps": [
+        399.52342100964194,
+        399.0702509082062,
+        398.95325532575004
+      ],
+      "median": 399.0702509082062,
+      "min": 398.95325532575004,
+      "max": 399.52342100964194,
+      "decode_tps": [
+        487.7900600692296,
+        487.27431822716363,
+        487.08147469607314
+      ],
+      "full_batch_decode_tps": [
+        585.7913750500082,
+        585.5969176821457,
+        585.1920874534734
+      ],
+      "ttft_median_s": [
+        0.943147455342114,
+        0.9445055024698377,
+        0.9443469829857349
+      ],
+      "tpot_median_s": [
+        0.013299254883153765,
+        0.013310565923651058,
+        0.013319138985346344
+      ],
+      "acceptance_prefix_fraction": [
+        0.31784175923826796,
+        0.31784175923826796,
+        0.31784175923826796
+      ],
+      "output_hashes_stable_within_group": true,
+      "graph_deltas": [
+        {
+          "verify_hits": 87,
+          "verify_padded_hits": 18,
+          "verify_exact_hits": 69,
+          "verify_fallbacks": {
+            "ragged_draft_len": 13
+          },
+          "graph_hits": 100,
+          "graph_exact_hits": 75,
+          "graph_padded_hits": 25,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {},
+          "active_batch_histogram": {
+            "8": 61,
+            "7": 6,
+            "5": 1,
+            "2": 8,
+            "1": 2,
+            "6": 5,
+            "4": 4,
+            "3": 13
+          },
+          "head_graph_hits": 700,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        },
+        {
+          "verify_hits": 87,
+          "verify_padded_hits": 18,
+          "verify_exact_hits": 69,
+          "verify_fallbacks": {
+            "ragged_draft_len": 13
+          },
+          "graph_hits": 100,
+          "graph_exact_hits": 75,
+          "graph_padded_hits": 25,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {},
+          "active_batch_histogram": {
+            "8": 61,
+            "7": 6,
+            "5": 1,
+            "2": 8,
+            "1": 2,
+            "6": 5,
+            "4": 4,
+            "3": 13
+          },
+          "head_graph_hits": 700,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        },
+        {
+          "verify_hits": 87,
+          "verify_padded_hits": 18,
+          "verify_exact_hits": 69,
+          "verify_fallbacks": {
+            "ragged_draft_len": 13
+          },
+          "graph_hits": 100,
+          "graph_exact_hits": 75,
+          "graph_padded_hits": 25,
+          "graph_captures": 0,
+          "graph_runtime_captures": 0,
+          "graph_runtime_capture_s": 0.0,
+          "graph_runtime_shapes": [],
+          "graph_fallbacks": {},
+          "active_batch_histogram": {
+            "8": 61,
+            "7": 6,
+            "5": 1,
+            "2": 8,
+            "1": 2,
+            "6": 5,
+            "4": 4,
+            "3": 13
+          },
+          "head_graph_hits": 700,
+          "head_graph_captures": 0,
+          "head_runtime_captures": 0,
+          "head_runtime_capture_s": 0.0,
+          "head_runtime_batches": []
+        }
+      ],
+      "active_b_rounds": [
+        {
+          "8": 61,
+          "7": 6,
+          "6": 5,
+          "5": 1,
+          "4": 4,
+          "3": 13,
+          "2": 8,
+          "1": 2
+        },
+        {
+          "8": 61,
+          "7": 6,
+          "6": 5,
+          "5": 1,
+          "4": 4,
+          "3": 13,
+          "2": 8,
+          "1": 2
+        },
+        {
+          "8": 61,
+          "7": 6,
+          "6": 5,
+          "5": 1,
+          "4": 4,
+          "3": 13,
+          "2": 8,
+          "1": 2
+        }
+      ],
+      "peak_reserved_bytes": [
+        18782093312,
+        18782093312,
+        18782093312
+      ]
+    }
+  },
+  "comparisons": {
+    "B8/code/split-target_vs_split-none": {
+      "paired_ratios": [
+        1.0854530324395235,
+        1.021659364921878,
+        1.0197877814122098
+      ],
+      "median_ratio": 1.021659364921878,
+      "all_repeat_outputs_match": [
+        true,
+        true,
+        true
+      ],
+      "min_lhs_exceeds_max_rhs": true
+    },
+    "B8/code/split-both_vs_split-target": {
+      "paired_ratios": [
+        0.99849867401736,
+        0.9975499071035976,
+        1.0001685824258095
+      ],
+      "median_ratio": 0.99849867401736,
+      "all_repeat_outputs_match": [
+        true,
+        true,
+        true
+      ],
+      "min_lhs_exceeds_max_rhs": false
+    },
+    "B8/code/split-both_vs_dspark-original": {
+      "paired_ratios": [
+        1.102901556764012,
+        1.0209762908382676,
+        1.0207077349693952
+      ],
+      "median_ratio": 1.0209762908382676,
+      "all_repeat_outputs_match": [
+        true,
+        true,
+        true
+      ],
+      "min_lhs_exceeds_max_rhs": true
+    },
+    "B8/code/split-both_vs_ar-pad": {
+      "paired_ratios": [
+        1.5563345794999202,
+        1.5545998693031022,
+        1.5558971137443525
+      ],
+      "median_ratio": 1.5558971137443525,
+      "all_repeat_outputs_match": [
+        false,
+        false,
+        false
+      ],
+      "min_lhs_exceeds_max_rhs": true
+    },
+    "B8/code/split-both_vs_nospec-pad": {
+      "paired_ratios": [
+        1.4142843737302033,
+        1.4147325473808616,
+        1.4164497436780843
+      ],
+      "median_ratio": 1.4147325473808616,
+      "all_repeat_outputs_match": [
+        false,
+        false,
+        false
+      ],
+      "min_lhs_exceeds_max_rhs": true
+    },
+    "B8/math/split-target_vs_split-none": {
+      "paired_ratios": [
+        1.0631478568334658,
+        1.065809628576054,
+        1.0665664473756378
+      ],
+      "median_ratio": 1.065809628576054,
+      "all_repeat_outputs_match": [
+        false,
+        false,
+        false
+      ],
+      "min_lhs_exceeds_max_rhs": true
+    },
+    "B8/math/split-both_vs_split-target": {
+      "paired_ratios": [
+        1.0000264828915975,
+        0.9982312480777802,
+        0.9996025228445962
+      ],
+      "median_ratio": 0.9996025228445962,
+      "all_repeat_outputs_match": [
+        true,
+        true,
+        true
+      ],
+      "min_lhs_exceeds_max_rhs": false
+    },
+    "B8/math/split-both_vs_dspark-original": {
+      "paired_ratios": [
+        1.0625866586959882,
+        1.0631204657898832,
+        1.0619419956538625
+      ],
+      "median_ratio": 1.0625866586959882,
+      "all_repeat_outputs_match": [
+        false,
+        false,
+        false
+      ],
+      "min_lhs_exceeds_max_rhs": true
+    },
+    "B8/math/split-both_vs_ar-pad": {
+      "paired_ratios": [
+        1.5351888490560788,
+        1.532031014197123,
+        1.532695179183282
+      ],
+      "median_ratio": 1.532695179183282,
+      "all_repeat_outputs_match": [
+        false,
+        false,
+        false
+      ],
+      "min_lhs_exceeds_max_rhs": true
+    },
+    "B8/math/split-both_vs_nospec-pad": {
+      "paired_ratios": [
+        1.3704140876122342,
+        1.3692211579536055,
+        1.3686842423293597
+      ],
+      "median_ratio": 1.3692211579536055,
+      "all_repeat_outputs_match": [
+        false,
+        false,
+        false
+      ],
+      "min_lhs_exceeds_max_rhs": true
+    },
+    "B8/general/split-target_vs_split-none": {
+      "paired_ratios": [
+        1.1209470302023705,
+        1.1208560284880866,
+        1.1188039682887876
+      ],
+      "median_ratio": 1.1208560284880866,
+      "all_repeat_outputs_match": [
+        false,
+        false,
+        false
+      ],
+      "min_lhs_exceeds_max_rhs": true
+    },
+    "B8/general/split-both_vs_split-target": {
+      "paired_ratios": [
+        1.000361140280938,
+        0.9998385512043757,
+        1.001095567754691
+      ],
+      "median_ratio": 1.000361140280938,
+      "all_repeat_outputs_match": [
+        true,
+        true,
+        true
+      ],
+      "min_lhs_exceeds_max_rhs": false
+    },
+    "B8/general/split-both_vs_dspark-original": {
+      "paired_ratios": [
+        1.1133090224745925,
+        1.112253254705781,
+        1.113597463021141
+      ],
+      "median_ratio": 1.1133090224745925,
+      "all_repeat_outputs_match": [
+        false,
+        false,
+        false
+      ],
+      "min_lhs_exceeds_max_rhs": true
+    },
+    "B8/general/split-both_vs_ar-pad": {
+      "paired_ratios": [
+        1.4218766981496198,
+        1.4262168982884984,
+        1.4255256280639166
+      ],
+      "median_ratio": 1.4255256280639166,
+      "all_repeat_outputs_match": [
+        false,
+        false,
+        false
+      ],
+      "min_lhs_exceeds_max_rhs": true
+    },
+    "B8/general/split-both_vs_nospec-pad": {
+      "paired_ratios": [
+        0.8959912310016787,
+        0.8958916212764777,
+        0.8958676044963464
+      ],
+      "median_ratio": 0.8958916212764777,
+      "all_repeat_outputs_match": [
+        false,
+        false,
+        false
+      ],
+      "min_lhs_exceeds_max_rhs": false
+    }
+  },
+  "warmups": {
+    "nospec-pad/B8": {
+      "type": "warmup",
+      "arm": "nospec-pad",
+      "requested_batch": 8,
+      "ctx": 1024,
+      "output_tokens": 256,
+      "seed": 20261101,
+      "gpu_memory_utilization": 0.7,
+      "device_visible": "7",
+      "graph_buckets": [
+        1,
+        2,
+        4,
+        8,
+        16
+      ],
+      "gpu": "NVIDIA GeForce RTX 3090",
+      "k": 0,
+      "load_and_initial_graph_s": 6.77426665648818,
+      "kv_blocks": 227,
+      "kv_block_size": 256,
+      "initial_graph_mem": {},
+      "memory_after_init": {
+        "allocated_bytes": 16708727296,
+        "reserved_bytes": 16739467264,
+        "private_pool_stats": {},
+        "graph_pools": {
+          "target_decode": {
+            "pool_id": [
+              1,
+              0
+            ],
+            "reserved_bytes": 23068672
+          }
+        }
+      },
+      "prewarm_s": 0.0,
+      "prewarm_shapes": [],
+      "prewarm_head_batches": [],
+      "memory_before_prewarm": {
+        "allocated_bytes": 16708727296,
+        "reserved_bytes": 16739467264,
+        "private_pool_stats": {},
+        "graph_pools": {
+          "target_decode": {
+            "pool_id": [
+              1,
+              0
+            ],
+            "reserved_bytes": 23068672
+          }
+        }
+      },
+      "memory_after_prewarm": {
+        "allocated_bytes": 16708727296,
+        "reserved_bytes": 16739467264,
+        "private_pool_stats": {},
+        "graph_pools": {
+          "target_decode": {
+            "pool_id": [
+              1,
+              0
+            ],
+            "reserved_bytes": 23068672
+          }
+        }
+      },
+      "warmup_s": 1.879735728725791,
+      "graph_delta": {
+        "verify_hits": 0,
+        "verify_padded_hits": 0,
+        "verify_exact_hits": 0,
+        "verify_fallbacks": {}
+      }
+    },
+    "ar-pad/B8": {
+      "type": "warmup",
+      "arm": "ar-pad",
+      "requested_batch": 8,
+      "ctx": 1024,
+      "output_tokens": 256,
+      "seed": 20261101,
+      "gpu_memory_utilization": 0.7,
+      "device_visible": "7",
+      "graph_buckets": [
+        1,
+        2,
+        4,
+        8,
+        16
+      ],
+      "gpu": "NVIDIA GeForce RTX 3090",
+      "k": 6,
+      "load_and_initial_graph_s": 8.903754649683833,
+      "kv_blocks": 109,
+      "kv_block_size": 256,
+      "initial_graph_mem": {
+        "draft_graphs_gb": 0.006,
+        "verify_graphs_gb": 0.0297
+      },
+      "memory_after_init": {
+        "allocated_bytes": 16685090816,
+        "reserved_bytes": 16825450496,
+        "private_pool_stats": {},
+        "graph_pools": {
+          "target_decode": {
+            "pool_id": [
+              1,
+              0
+            ],
+            "reserved_bytes": 23068672
+          },
+          "target_verify": {
+            "pool_id": [
+              6,
+              0
+            ],
+            "reserved_bytes": 25165824
+          }
+        }
+      },
+      "prewarm_s": 0.0,
+      "prewarm_shapes": [],
+      "prewarm_head_batches": [],
+      "memory_before_prewarm": {
+        "allocated_bytes": 16685090816,
+        "reserved_bytes": 16825450496,
+        "private_pool_stats": {},
+        "graph_pools": {
+          "target_decode": {
+            "pool_id": [
+              1,
+              0
+            ],
+            "reserved_bytes": 23068672
+          },
+          "target_verify": {
+            "pool_id": [
+              6,
+              0
+            ],
+            "reserved_bytes": 25165824
+          }
+        }
+      },
+      "memory_after_prewarm": {
+        "allocated_bytes": 16685090816,
+        "reserved_bytes": 16825450496,
+        "private_pool_stats": {},
+        "graph_pools": {
+          "target_decode": {
+            "pool_id": [
+              1,
+              0
+            ],
+            "reserved_bytes": 23068672
+          },
+          "target_verify": {
+            "pool_id": [
+              6,
+              0
+            ],
+            "reserved_bytes": 25165824
+          }
+        }
+      },
+      "warmup_s": 2.3408480398356915,
+      "graph_delta": {
+        "verify_hits": 8,
+        "verify_padded_hits": 1,
+        "verify_exact_hits": 7,
+        "verify_fallbacks": {},
+        "n_graphed": 50,
+        "n_eager": 0,
+        "n_padded": 6,
+        "n_rounds": 8,
+        "n_batch_forwards": 48,
+        "n_catchup_forwards": 2,
+        "n_catchup_tokens": 2
+      }
+    },
+    "dspark-original/B8": {
+      "type": "warmup",
+      "arm": "dspark-original",
+      "requested_batch": 8,
+      "ctx": 1024,
+      "output_tokens": 256,
+      "seed": 20261101,
+      "gpu_memory_utilization": 0.7,
+      "device_visible": "7",
+      "graph_buckets": [
+        1,
+        2,
+        4,
+        8,
+        16
+      ],
+      "gpu": "NVIDIA GeForce RTX 3090",
+      "k": 7,
+      "load_and_initial_graph_s": 11.476614171639085,
+      "kv_blocks": 166,
+      "kv_block_size": 256,
+      "initial_graph_mem": {
+        "verify_graphs_gb": 0.034
+      },
+      "memory_after_init": {
+        "allocated_bytes": 16544888832,
+        "reserved_bytes": 16607346688,
+        "private_pool_stats": {},
+        "graph_pools": {
+          "target_decode": {
+            "pool_id": [
+              1,
+              0
+            ],
+            "reserved_bytes": 23068672
+          },
+          "target_verify": {
+            "pool_id": [
+              2,
+              0
+            ],
+            "reserved_bytes": 27262976
+          },
+          "draft_backbone": {
+            "pool_id": null,
+            "reserved_bytes": 0
+          },
+          "draft_head": {
+            "pool_id": null,
+            "reserved_bytes": 0
+          }
+        }
+      },
+      "prewarm_s": 0.2699306979775429,
+      "prewarm_shapes": [
+        [
+          8,
+          1280
+        ],
+        [
+          8,
+          1024
+        ],
+        [
+          4,
+          1280
+        ],
+        [
+          2,
+          1280
+        ],
+        [
+          1,
+          1280
+        ]
+      ],
+      "prewarm_head_batches": [],
+      "memory_before_prewarm": {
+        "allocated_bytes": 16544888832,
+        "reserved_bytes": 16607346688,
+        "private_pool_stats": {},
+        "graph_pools": {
+          "target_decode": {
+            "pool_id": [
+              1,
+              0
+            ],
+            "reserved_bytes": 23068672
+          },
+          "target_verify": {
+            "pool_id": [
+              2,
+              0
+            ],
+            "reserved_bytes": 27262976
+          },
+          "draft_backbone": {
+            "pool_id": null,
+            "reserved_bytes": 0
+          },
+          "draft_head": {
+            "pool_id": null,
+            "reserved_bytes": 0
+          }
+        }
+      },
+      "memory_after_prewarm": {
+        "allocated_bytes": 16594253312,
+        "reserved_bytes": 19025362944,
+        "private_pool_stats": {},
+        "graph_pools": {
+          "target_decode": {
+            "pool_id": [
+              1,
+              0
+            ],
+            "reserved_bytes": 23068672
+          },
+          "target_verify": {
+            "pool_id": [
+              2,
+              0
+            ],
+            "reserved_bytes": 27262976
+          },
+          "draft_backbone": {
+            "pool_id": null,
+            "reserved_bytes": 0
+          },
+          "draft_head": {
+            "pool_id": null,
+            "reserved_bytes": 0
+          },
+          "draft_original_8_1280": {
+            "pool_id": [
+              3,
+              0
+            ],
+            "reserved_bytes": 884998144
+          },
+          "draft_original_8_1024": {
+            "pool_id": [
+              4,
+              0
+            ],
+            "reserved_bytes": 717225984
+          },
+          "draft_original_4_1280": {
+            "pool_id": [
+              5,
+              0
+            ],
+            "reserved_bytes": 461373440
+          },
+          "draft_original_2_1280": {
+            "pool_id": [
+              6,
+              0
+            ],
+            "reserved_bytes": 236978176
+          },
+          "draft_original_1_1280": {
+            "pool_id": [
+              7,
+              0
+            ],
+            "reserved_bytes": 117440512
+          }
+        }
+      },
+      "warmup_s": 2.1473547257483006,
+      "graph_delta": {
+        "verify_hits": 1,
+        "verify_padded_hits": 0,
+        "verify_exact_hits": 1,
+        "verify_fallbacks": {
+          "ragged_draft_len": 6
+        },
+        "graph_hits": 5,
+        "graph_exact_hits": 5,
+        "graph_padded_hits": 0,
+        "graph_captures": 0,
+        "graph_runtime_captures": 0,
+        "graph_runtime_capture_s": 0.0,
+        "graph_runtime_shapes": [],
+        "graph_fallbacks": {
+          "batch_shape_not_captured": 2
+        },
+        "active_batch_histogram": {
+          "8": 3,
+          "7": 1,
+          "5": 1,
+          "2": 1,
+          "1": 1
+        },
+        "head_graph_hits": 0,
+        "head_graph_captures": 0,
+        "head_runtime_captures": 0,
+        "head_runtime_capture_s": 0.0,
+        "head_runtime_batches": []
+      }
+    },
+    "dspark-ablations/B8": {
+      "type": "warmup",
+      "arm": "dspark-ablations",
+      "requested_batch": 8,
+      "ctx": 1024,
+      "output_tokens": 256,
+      "seed": 20261101,
+      "gpu_memory_utilization": 0.7,
+      "device_visible": "7",
+      "graph_buckets": [
+        1,
+        2,
+        4,
+        8,
+        16
+      ],
+      "gpu": "NVIDIA GeForce RTX 3090",
+      "k": 7,
+      "load_and_initial_graph_s": 11.015873592346907,
+      "kv_blocks": 166,
+      "kv_block_size": 256,
+      "initial_graph_mem": {
+        "verify_graphs_gb": 0.034
+      },
+      "memory_after_init": {
+        "allocated_bytes": 16544888832,
+        "reserved_bytes": 16607346688,
+        "private_pool_stats": {},
+        "graph_pools": {
+          "target_decode": {
+            "pool_id": [
+              1,
+              0
+            ],
+            "reserved_bytes": 23068672
+          },
+          "target_verify": {
+            "pool_id": [
+              2,
+              0
+            ],
+            "reserved_bytes": 27262976
+          },
+          "draft_backbone": {
+            "pool_id": null,
+            "reserved_bytes": 0
+          },
+          "draft_head": {
+            "pool_id": null,
+            "reserved_bytes": 0
+          }
+        }
+      },
+      "prewarm_s": 0.24124285392463207,
+      "prewarm_shapes": [
+        [
+          8,
+          1280
+        ],
+        [
+          8,
+          1024
+        ],
+        [
+          4,
+          1280
+        ],
+        [
+          2,
+          1280
+        ],
+        [
+          1,
+          1280
+        ]
+      ],
+      "prewarm_head_batches": [
+        8,
+        7,
+        6,
+        5,
+        4,
+        3,
+        2,
+        1
+      ],
+      "memory_before_prewarm": {
+        "allocated_bytes": 16544888832,
+        "reserved_bytes": 16607346688,
+        "private_pool_stats": {},
+        "graph_pools": {
+          "target_decode": {
+            "pool_id": [
+              1,
+              0
+            ],
+            "reserved_bytes": 23068672
+          },
+          "target_verify": {
+            "pool_id": [
+              2,
+              0
+            ],
+            "reserved_bytes": 27262976
+          },
+          "draft_backbone": {
+            "pool_id": null,
+            "reserved_bytes": 0
+          },
+          "draft_head": {
+            "pool_id": null,
+            "reserved_bytes": 0
+          }
+        }
+      },
+      "memory_after_prewarm": {
+        "allocated_bytes": 16616455168,
+        "reserved_bytes": 17601396736,
+        "private_pool_stats": {},
+        "graph_pools": {
+          "target_decode": {
+            "pool_id": [
+              1,
+              0
+            ],
+            "reserved_bytes": 23068672
+          },
+          "target_verify": {
+            "pool_id": [
+              2,
+              0
+            ],
+            "reserved_bytes": 27262976
+          },
+          "draft_backbone": {
+            "pool_id": [
+              3,
+              0
+            ],
+            "reserved_bytes": 884998144
+          },
+          "draft_head": {
+            "pool_id": [
+              4,
+              0
+            ],
+            "reserved_bytes": 25165824
+          }
+        }
+      },
+      "warmup_s": 2.1107713989913464,
+      "graph_delta": {
+        "verify_hits": 1,
+        "verify_padded_hits": 0,
+        "verify_exact_hits": 1,
+        "verify_fallbacks": {
+          "ragged_draft_len": 6
+        },
+        "graph_hits": 5,
+        "graph_exact_hits": 5,
+        "graph_padded_hits": 0,
+        "graph_captures": 0,
+        "graph_runtime_captures": 0,
+        "graph_runtime_capture_s": 0.0,
+        "graph_runtime_shapes": [],
+        "graph_fallbacks": {
+          "batch_shape_not_captured": 2
+        },
+        "active_batch_histogram": {
+          "8": 3,
+          "7": 1,
+          "5": 1,
+          "2": 1,
+          "1": 1
+        },
+        "head_graph_hits": 49,
+        "head_graph_captures": 0,
+        "head_runtime_captures": 0,
+        "head_runtime_capture_s": 0.0,
+        "head_runtime_batches": []
+      }
+    }
+  }
+}

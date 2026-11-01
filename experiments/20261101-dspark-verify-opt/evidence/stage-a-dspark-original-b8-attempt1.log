@@ -1,0 +1,18 @@
+[spec] official DSpark: /home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b, block=7, target layers=(1, 9, 17, 25, 33); confidence scheduler disabled
+[spec] DSpark context KV: 5 层 x 166 blocks, 每block 5120 KB
+[spec] blocks=166, target 每block 36864 KB, 合计 6.65 GB
+[spec] verify CUDA graph 就绪 (shapes=[(1, 7), (2, 7), (4, 7), (8, 7)], 8 query/请求, 共享图池)
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "/home/ziru/nano-vllm/dspark-verify-opt-20261101/code/experiments/20261101-dspark-verify-opt/benchmark.py", line 262, in <module>
+[rank0]:     main()
+[rank0]:   File "/home/ziru/nano-vllm/dspark-verify-opt-20261101/code/experiments/20261101-dspark-verify-opt/benchmark.py", line 207, in main
+[rank0]:     prewarm_original(prop, prewarm_shapes)
+[rank0]:   File "/home/ziru/nano-vllm/dspark-verify-opt-20261101/code/experiments/20261101-dspark-verify-opt/benchmark.py", line 105, in prewarm_original
+[rank0]:     proposer.graphs[(batch, ctx)] = proposer._capture(anchors, lengths, tables, ctx, temperatures)
+[rank0]:   File "/home/ziru/nano-vllm/dspark-verify-opt-20261101/code/nanovllm/spec_decode/dspark_proposer.py", line 77, in _capture
+[rank0]:     with torch.cuda.graph(graph):
+[rank0]:   File "/home/ziru/nano-vllm/venv/lib/python3.10/site-packages/torch/cuda/graphs.py", line 260, in __enter__
+[rank0]:     self.cuda_graph.capture_begin(
+[rank0]:   File "/home/ziru/nano-vllm/venv/lib/python3.10/site-packages/torch/cuda/graphs.py", line 119, in capture_begin
+[rank0]:     super().capture_begin(pool=pool, capture_error_mode=capture_error_mode)
+[rank0]: RuntimeError: Inplace update to inference tensor outside InferenceMode is not allowed.You can make a clone to get a normal tensor before doing inplace update.See https://github.com/pytorch/rfcs/pull/17 for more details.

@@ -1,0 +1,10 @@
+[spec] blocks=209, target 每block 36864 KB, 合计 7.35 GB
+{"arm": "nospec-pad", "mode": "nospec-pad", "B": 16, "panel": "code", "repeat": 0, "full_request_tps": 670.8779262271744, "graph_delta": {"verify_hits": 0, "verify_padded_hits": 0, "verify_exact_hits": 0, "verify_fallbacks": {}}}
+{"arm": "nospec-pad", "mode": "nospec-pad", "B": 16, "panel": "code", "repeat": 1, "full_request_tps": 669.0777847884123, "graph_delta": {"verify_hits": 0, "verify_padded_hits": 0, "verify_exact_hits": 0, "verify_fallbacks": {}}}
+{"arm": "nospec-pad", "mode": "nospec-pad", "B": 16, "panel": "code", "repeat": 2, "full_request_tps": 668.2514210324827, "graph_delta": {"verify_hits": 0, "verify_padded_hits": 0, "verify_exact_hits": 0, "verify_fallbacks": {}}}
+{"arm": "nospec-pad", "mode": "nospec-pad", "B": 16, "panel": "math", "repeat": 0, "full_request_tps": 667.4412426689435, "graph_delta": {"verify_hits": 0, "verify_padded_hits": 0, "verify_exact_hits": 0, "verify_fallbacks": {}}}
+{"arm": "nospec-pad", "mode": "nospec-pad", "B": 16, "panel": "math", "repeat": 1, "full_request_tps": 667.2817475353069, "graph_delta": {"verify_hits": 0, "verify_padded_hits": 0, "verify_exact_hits": 0, "verify_fallbacks": {}}}
+{"arm": "nospec-pad", "mode": "nospec-pad", "B": 16, "panel": "math", "repeat": 2, "full_request_tps": 666.9399286537896, "graph_delta": {"verify_hits": 0, "verify_padded_hits": 0, "verify_exact_hits": 0, "verify_fallbacks": {}}}
+{"arm": "nospec-pad", "mode": "nospec-pad", "B": 16, "panel": "general", "repeat": 0, "full_request_tps": 666.6355036463865, "graph_delta": {"verify_hits": 0, "verify_padded_hits": 0, "verify_exact_hits": 0, "verify_fallbacks": {}}}
+{"arm": "nospec-pad", "mode": "nospec-pad", "B": 16, "panel": "general", "repeat": 1, "full_request_tps": 666.480418895686, "graph_delta": {"verify_hits": 0, "verify_padded_hits": 0, "verify_exact_hits": 0, "verify_fallbacks": {}}}
+{"arm": "nospec-pad", "mode": "nospec-pad", "B": 16, "panel": "general", "repeat": 2, "full_request_tps": 666.5117598033652, "graph_delta": {"verify_hits": 0, "verify_padded_hits": 0, "verify_exact_hits": 0, "verify_fallbacks": {}}}
