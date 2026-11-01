@@ -1,0 +1,140 @@
+[spec] official DSpark: /home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b, block=7, target layers=(1, 9, 17, 25, 33); confidence scheduler disabled
+[spec] DSpark context KV: 5 层 x 125 blocks, 每block 5120 KB
+[spec] blocks=125, target 每block 36864 KB, 合计 5.00 GB
+[spec] verify CUDA graph 就绪 (shapes=[(1, 7), (2, 7), (3, 7), (4, 7), (8, 7), (11, 7), (15, 7), (16, 7)], 8 query/请求, 共享图池)
+{"progress": "batch_complete", "batch": 3, "target_eager_exact_kl": 0.0, "target_eager_padded_kl": 0.0, "target_kv_eager_exact_rms": 0.0, "target_kv_eager_padded_rms": 0.0, "draft_context_kv_eager_exact_rms": 0.0, "draft_context_kv_eager_padded_rms": 0.0, "q_eager_exact_kl": 0.0, "q_eager_padded_kl": 0.0, "q_exact_padded_kl": 0.0, "actual_own_predecessor_q_max_abs": 0.0, "exact_padded_rng_equal": true, "eager_exact_rng_equal": true, "exact_padded_tokens_equal": true, "eager_exact_tokens_equal": true, "target_guard_unchanged": true, "draft_guard_unchanged": true, "sentinel_zero": true, "target_graph_hits": 2, "target_padded_hits": 1, "draft_graph_hits": 2, "draft_padded_hits": 1, "real_batch_head_replays": 14}
+{"progress": "batch_complete", "batch": 11, "target_eager_exact_kl": 0.0, "target_eager_padded_kl": 0.003681005910038948, "target_kv_eager_exact_rms": 0.0, "target_kv_eager_padded_rms": 0.004040954168885946, "draft_context_kv_eager_exact_rms": 0.0, "draft_context_kv_eager_padded_rms": 0.006170644424855709, "q_eager_exact_kl": 0.0, "q_eager_padded_kl": 0.002478713169693947, "q_exact_padded_kl": 0.002478713169693947, "actual_own_predecessor_q_max_abs": 0.0, "exact_padded_rng_equal": true, "eager_exact_rng_equal": true, "exact_padded_tokens_equal": false, "eager_exact_tokens_equal": true, "target_guard_unchanged": true, "draft_guard_unchanged": true, "sentinel_zero": true, "target_graph_hits": 2, "target_padded_hits": 1, "draft_graph_hits": 2, "draft_padded_hits": 1, "real_batch_head_replays": 14}
+{"progress": "batch_complete", "batch": 15, "target_eager_exact_kl": 0.0, "target_eager_padded_kl": 0.0037223452236503363, "target_kv_eager_exact_rms": 0.0, "target_kv_eager_padded_rms": 0.0037338112015277147, "draft_context_kv_eager_exact_rms": 0.0, "draft_context_kv_eager_padded_rms": 0.005999745335429907, "q_eager_exact_kl": 0.0, "q_eager_padded_kl": 0.0, "q_exact_padded_kl": 0.0, "actual_own_predecessor_q_max_abs": 0.0, "exact_padded_rng_equal": true, "eager_exact_rng_equal": true, "exact_padded_tokens_equal": true, "eager_exact_tokens_equal": true, "target_guard_unchanged": true, "draft_guard_unchanged": true, "sentinel_zero": true, "target_graph_hits": 2, "target_padded_hits": 1, "draft_graph_hits": 2, "draft_padded_hits": 1, "real_batch_head_replays": 14}
+{
+  "pass": true,
+  "records": [
+    {
+      "batch": 3,
+      "target_eager_exact_kl": 0.0,
+      "target_eager_padded_kl": 0.0,
+      "target_kv_eager_exact_rms": 0.0,
+      "target_kv_eager_padded_rms": 0.0,
+      "draft_context_kv_eager_exact_rms": 0.0,
+      "draft_context_kv_eager_padded_rms": 0.0,
+      "q_eager_exact_kl": 0.0,
+      "q_eager_padded_kl": 0.0,
+      "q_exact_padded_kl": 0.0,
+      "actual_own_predecessor_q_max_abs": 0.0,
+      "exact_padded_rng_equal": true,
+      "eager_exact_rng_equal": true,
+      "exact_padded_tokens_equal": true,
+      "eager_exact_tokens_equal": true,
+      "target_guard_unchanged": true,
+      "draft_guard_unchanged": true,
+      "sentinel_zero": true,
+      "target_graph_hits": 2,
+      "target_padded_hits": 1,
+      "draft_graph_hits": 2,
+      "draft_padded_hits": 1,
+      "real_batch_head_replays": 14
+    },
+    {
+      "batch": 11,
+      "target_eager_exact_kl": 0.0,
+      "target_eager_padded_kl": 0.003681005910038948,
+      "target_kv_eager_exact_rms": 0.0,
+      "target_kv_eager_padded_rms": 0.004040954168885946,
+      "draft_context_kv_eager_exact_rms": 0.0,
+      "draft_context_kv_eager_padded_rms": 0.006170644424855709,
+      "q_eager_exact_kl": 0.0,
+      "q_eager_padded_kl": 0.002478713169693947,
+      "q_exact_padded_kl": 0.002478713169693947,
+      "actual_own_predecessor_q_max_abs": 0.0,
+      "exact_padded_rng_equal": true,
+      "eager_exact_rng_equal": true,
+      "exact_padded_tokens_equal": false,
+      "eager_exact_tokens_equal": true,
+      "target_guard_unchanged": true,
+      "draft_guard_unchanged": true,
+      "sentinel_zero": true,
+      "target_graph_hits": 2,
+      "target_padded_hits": 1,
+      "draft_graph_hits": 2,
+      "draft_padded_hits": 1,
+      "real_batch_head_replays": 14
+    },
+    {
+      "batch": 15,
+      "target_eager_exact_kl": 0.0,
+      "target_eager_padded_kl": 0.0037223452236503363,
+      "target_kv_eager_exact_rms": 0.0,
+      "target_kv_eager_padded_rms": 0.0037338112015277147,
+      "draft_context_kv_eager_exact_rms": 0.0,
+      "draft_context_kv_eager_padded_rms": 0.005999745335429907,
+      "q_eager_exact_kl": 0.0,
+      "q_eager_padded_kl": 0.0,
+      "q_exact_padded_kl": 0.0,
+      "actual_own_predecessor_q_max_abs": 0.0,
+      "exact_padded_rng_equal": true,
+      "eager_exact_rng_equal": true,
+      "exact_padded_tokens_equal": true,
+      "eager_exact_tokens_equal": true,
+      "target_guard_unchanged": true,
+      "draft_guard_unchanged": true,
+      "sentinel_zero": true,
+      "target_graph_hits": 2,
+      "target_padded_hits": 1,
+      "draft_graph_hits": 2,
+      "draft_padded_hits": 1,
+      "real_batch_head_replays": 14
+    }
+  ],
+  "ragged_fallback_ok": true,
+  "ragged_true_output_rows": 116,
+  "actual_target_proposal_samples": 8192,
+  "target_top16_other_tv": 0.014647161588072777,
+  "target_verify_fallbacks": {
+    "ragged_draft_len": 1
+  },
+  "draft_fallbacks": {
+    "graph_disabled": 3
+  },
+  "draft_backbone_graph_captures": 5,
+  "draft_head_graph_captures": 3,
+  "draft_backbone_runtime_captures": 0,
+  "draft_head_runtime_captures": 0,
+  "memory_after_init": {
+    "allocated_bytes": 14894945280,
+    "reserved_bytes": 15013511168,
+    "initial_graph_mem_gb": {
+      "verify_graphs_gb": 0.1379
+    }
+  },
+  "graph_pool_memory": {
+    "target_decode": {
+      "pool_id": [
+        1,
+        0
+      ],
+      "reserved_bytes": 23068672
+    },
+    "target_verify": {
+      "pool_id": [
+        2,
+        0
+      ],
+      "reserved_bytes": 71303168
+    },
+    "draft_backbone": {
+      "pool_id": [
+        3,
+        0
+      ],
+      "reserved_bytes": 465567744
+    },
+    "draft_head": {
+      "pool_id": [
+        4,
+        0
+      ],
+      "reserved_bytes": 44040192
+    }
+  },
+  "peak_allocated_bytes": 16291680256,
+  "peak_reserved_bytes": 17706254336
+}

@@ -1,0 +1,15 @@
+{
+  "utc": "2026-11-01T13:24:15.011789+00:00",
+  "gpu": {
+    "index": 7,
+    "uuid": "GPU-e0671215-034e-dd14-093f-b3755e543b6f",
+    "name": "NVIDIA GeForce RTX 3090",
+    "used_mib": 15,
+    "total_mib": 24576,
+    "util_pct": 0,
+    "compute_processes": []
+  },
+  "owned_processes": [],
+  "port24719_listeners": "",
+  "idle_verified": true
+}
