@@ -102,7 +102,10 @@ def prewarm_original(proposer, shapes):
             tables = torch.full((batch, ctx // proposer.model.block_size), -1,
                                 dtype=torch.int32, device=device)
             temperatures = torch.ones(batch, dtype=torch.float32, device=device)
-            proposer.graphs[(batch, ctx)] = proposer._capture(anchors, lengths, tables, ctx, temperatures)
+            # Normal proposer._capture is invoked inside propose_batch's
+            # inference_mode; the experiment-only prewarm must match it.
+            with torch.inference_mode():
+                proposer.graphs[(batch, ctx)] = proposer._capture(anchors, lengths, tables, ctx, temperatures)
             proposer.prewarmed_shapes.append((batch, ctx))
     finally:
         proposer.prewarm_in_progress = False

@@ -179,13 +179,14 @@ def test_experiment_prewarms_original_same_finite_shapes_without_sampling_change
     calls = []
     def fake_capture(anchors, lengths, tables, bucket, temperatures):
         calls.append((anchors.shape[0], bucket, lengths.tolist(), tables.tolist(),
-                      temperatures.tolist(), proposer.prewarm_in_progress))
+                      temperatures.tolist(), proposer.prewarm_in_progress,
+                      torch.is_inference_mode_enabled()))
         return ("single-graph",)
     proposer._capture = fake_capture
     shapes = [(16, 8), (8, 8), (4, 8), (2, 8), (1, 8)]
     bench.prewarm_original(proposer, shapes)
     assert list(proposer.graphs) == shapes and proposer.prewarmed_shapes == shapes
-    assert all(item[-1] and all(x == 0 for x in item[2]) and
+    assert all(item[-1] and item[-2] and all(x == 0 for x in item[2]) and
                all(all(v == -1 for v in row) for row in item[3]) and
                all(t == 1.0 for t in item[4]) for item in calls)
     assert not proposer.prewarm_in_progress
