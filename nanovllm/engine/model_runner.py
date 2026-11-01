@@ -124,6 +124,8 @@ class ModelRunner:
         # ---------- 投机解码 ----------
         self.spec_proposer = None
         self.draft_model = None
+        self.dspark_model = None
+        self.dspark_target_layers = None
         self.draft_hf_config = None
         self._last_cu_seqlens_q = None
         # 投机路径的静态形状 CUDA graph（见 capture_*_cudagraph）
@@ -188,6 +190,29 @@ class ModelRunner:
             print(f"[spec] draft model: {config.draft_model} "
                   f"({self.draft_hf_config.num_hidden_layers} 层, "
                   f"vocab {self.draft_hf_config.vocab_size})")
+        elif config.spec_k > 0 and config.spec_method == "dspark":
+            from transformers import AutoConfig
+            from nanovllm.spec_decode.dspark_model import DSparkModel, load_official_weights, validate_config
+            from nanovllm.spec_decode.dspark_proposer import DSparkProposer
+            if self.world_size != 1:
+                raise ValueError("DSpark integration currently supports TP=1 only")
+            if (config.quant_weights or config.draft_quant_weights or config.spec_draft_window
+                    or config.spec_overlap_mixed):
+                raise ValueError("DSpark integration requires BF16, full context, and no mixed batching")
+            if not config.spec_batch_draft:
+                raise ValueError("DSpark integration requires true batched proposals")
+            self.draft_hf_config = AutoConfig.from_pretrained(config.draft_model, local_files_only=True)
+            validate_config(self.draft_hf_config, hf_config, config.spec_k)
+            self.dspark_target_layers = tuple(self.draft_hf_config.target_layer_ids)
+            self.dspark_model = DSparkModel(self.draft_hf_config,
+                                           self.model.model.embed_tokens.weight,
+                                           self.model.lm_head.weight)
+            load_official_weights(self.dspark_model, config.draft_model)
+            self.spec_proposer = DSparkProposer(self.dspark_model, config)
+            print(f"[spec] official DSpark: {config.draft_model}, block=7, "
+                  f"target layers={self.dspark_target_layers}; confidence scheduler disabled")
+        elif config.spec_k > 0:
+            raise ValueError(f"unknown speculative decoding method: {config.spec_method}")
 
         self.warmup_model()
         # ★ 只在开了量化时做：把 warmup 期间 caching allocator 攒下的
@@ -304,6 +329,11 @@ class ModelRunner:
             d_head_dim = getattr(d_hf, "head_dim", d_hf.hidden_size // d_hf.num_attention_heads)
             draft_block_bytes = (2 * d_hf.num_hidden_layers * self.block_size
                                  * d_kv_heads * d_head_dim * d_hf.dtype.itemsize)
+        elif self.dspark_model is not None:
+            d_hf = self.draft_hf_config
+            draft_block_bytes = (2 * d_hf.num_hidden_layers * self.block_size
+                                 * d_hf.num_key_value_heads * d_hf.head_dim
+                                 * self.dspark_model.fc.weight.element_size())
 
         # ---------- B 步：draft 滑窗（新增分支，默认关闭）----------
         # 默认（spec_draft_window == 0）走下面这条【原有的】分法：
@@ -387,6 +417,10 @@ class ModelRunner:
             assert dl == d_hf.num_hidden_layers, f"draft 层数不匹配: {dl} vs {d_hf.num_hidden_layers}"
             print(f"[spec] draft KV cache: {dl} 层 x {n_draft} blocks, "
                   f"每block {draft_block_bytes/1024:.0f} KB")
+        elif self.dspark_model is not None:
+            self.dspark_model.bind_cache(config.num_kvcache_blocks, self.block_size)
+            print(f"[spec] DSpark context KV: {d_hf.num_hidden_layers} 层 x "
+                  f"{config.num_kvcache_blocks} blocks, 每block {draft_block_bytes/1024:.0f} KB")
         n_draft_used = config.num_draft_blocks or config.num_kvcache_blocks
         kv_total_gb = (config.num_kvcache_blocks * tgt_block_bytes
                        + n_draft_used * draft_block_bytes) / 2**30
@@ -867,7 +901,7 @@ class ModelRunner:
     @torch.inference_mode()
     def run_model(self, input_ids: torch.Tensor, positions: torch.Tensor, is_prefill: bool):
         if is_prefill or self.enforce_eager or input_ids.size(0) > 512:
-            return self.model.compute_logits(self.model(input_ids, positions))
+            return self.model.compute_logits(self._target_forward_hidden(input_ids, positions))
         else:
             bs = input_ids.size(0)
             context = get_context()
@@ -882,6 +916,16 @@ class ModelRunner:
             graph_vars["block_tables"][:bs, :context.block_tables.size(1)] = context.block_tables
             graph.replay()
             return self.model.compute_logits(graph_vars["outputs"][:bs])
+
+    def _target_forward_hidden(self, input_ids, positions):
+        if self.dspark_model is None:
+            return self.model(input_ids, positions)
+        hidden, features = self.model(input_ids, positions, self.dspark_target_layers)
+        # During graph capture this projection and slot write are captured too.
+        # Replays therefore materialize features from *this* input, not stale
+        # graph output buffers. The draft cache has a separate sentinel slot.
+        self.dspark_model.write_context(features, positions, get_context().slot_mapping)
+        return hidden
 
     def _prefill_forward(self, seqs: list[Sequence]):
         """prefill 的【发射半段】：把前向与 lm_head 排进【当前 stream】，不回落到 CPU。
@@ -966,7 +1010,17 @@ class ModelRunner:
                     # 本轮不参与投机的请求：草稿与 logits 都要清干净，否则会串用上一轮
                     seq.draft_tokens = []
                     seq.draft_logits = None
-            if self.draft_model is not None and to_prop:
+            if self.dspark_model is not None and to_prop:
+                chains, logits = self.spec_proposer.propose_batch(to_prop)
+                for seq, ch, lg in zip(to_prop, chains, logits):
+                    # Reserve one final output for rejection/bonus.  Otherwise
+                    # postprocess would hash an overlong speculative suffix
+                    # before trimming it at max_tokens.
+                    remaining = max(0, seq.max_tokens - seq.num_completion_tokens)
+                    count = min(len(ch), max(0, remaining - 1))
+                    seq.draft_tokens = ch[:count]
+                    seq.draft_logits = lg[:count] if count else None
+            elif self.draft_model is not None and to_prop:
                 # ★ spec_draft_win_realign（默认关）：先把「第二次及以后的漂移」
                 #   修掉（检测 → 按新起点重算窗口 → 推进地板），再取请求元数据，
                 #   否则 valid_from 读到的是旧地板。默认关时该函数第一行就返回 0，
@@ -1292,9 +1346,9 @@ class ModelRunner:
             graph = torch.cuda.CUDAGraph()
             set_context(True, cu_seqlens_q, cu_seqlens_k, n, self.config.max_model_len,
                         slot_mapping, None, block_tables, is_spec_verify=True)
-            logits.copy_(self.model.compute_logits(self.model(input_ids, positions)))
+            logits.copy_(self.model.compute_logits(self._target_forward_hidden(input_ids, positions)))
             with torch.cuda.graph(graph, pool):
-                logits.copy_(self.model.compute_logits(self.model(input_ids, positions)))
+                logits.copy_(self.model.compute_logits(self._target_forward_hidden(input_ids, positions)))
             reset_context()
             torch.cuda.synchronize()
             if pool is None:
@@ -1328,9 +1382,9 @@ class ModelRunner:
         for bs in reversed(self.graph_bs):
             graph = torch.cuda.CUDAGraph()
             set_context(False, slot_mapping=slot_mapping[:bs], context_lens=context_lens[:bs], block_tables=block_tables[:bs])
-            outputs[:bs] = self.model(input_ids[:bs], positions[:bs])    # warmup
+            outputs[:bs] = self._target_forward_hidden(input_ids[:bs], positions[:bs])    # warmup
             with torch.cuda.graph(graph, self.graph_pool):
-                outputs[:bs] = self.model(input_ids[:bs], positions[:bs])    # capture
+                outputs[:bs] = self._target_forward_hidden(input_ids[:bs], positions[:bs])    # capture
             if self.graph_pool is None:
                 self.graph_pool = graph.pool()
             self.graphs[bs] = graph

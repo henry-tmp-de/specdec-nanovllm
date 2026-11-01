@@ -26,8 +26,8 @@ class Config:
     # ---------- 投机解码 ----------
     spec_k: int = 0              # 0 = 关闭（默认，保证与原版行为一致）
     spec_ngram: int = 3          # n-gram 提议器的 n
-    spec_method: str = "ngram"   # "ngram" | "draft"
-    draft_model: str = ""        # draft 路线的小模型路径（spec_method="draft" 时必填）
+    spec_method: str = "ngram"   # "ngram" | "draft" | "dspark"
+    draft_model: str = ""        # draft/dspark 的本地 checkpoint 目录
     spec_cuda_graph: bool = True   # 给 draft 前向 / 验证前向也拍 CUDA graph
     #   ★ 实测（RTX 3090, Qwen3-4B）：同样是「每步一次前向」，
     #     eager 33.2 ms/步，拍图后 12.8 ms/步 —— 差 2.6 倍，
