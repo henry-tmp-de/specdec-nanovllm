@@ -42,6 +42,9 @@ class Config:
 
     # ---------- P6：批量 draft 与批量验证图 ----------
     spec_batch_draft: bool = True
+    # DSpark-only experimental path: keep random sampling on the real batch.
+    dspark_split_graph: bool = False
+    dspark_graph_pad: bool = False
     #   True  = 同一候选位置把 B 条请求一起前向（k 次批量前向）
     #   False = 逐请求循环（B×k 次单序列前向）—— 消融 S1 的对照开关（= C 组行为）
     spec_batch_verify_graph: bool = True

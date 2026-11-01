@@ -196,6 +196,18 @@ class DSparkModel(nn.Module):
             corrected.append(logits)
         return torch.stack(tokens, dim=1), torch.stack(corrected, dim=1)
 
+    def base_logits(self, anchors, context_lens, block_tables, context_bucket):
+        """Deterministic block forward; sampling is intentionally separate."""
+        return F.linear(self.forward_hidden(anchors, context_lens, block_tables, context_bucket),
+                        self.lm_head_weight)
+
+    def sample_step(self, base_logits, previous, temperatures):
+        """Identical conditional q and exponential-race sampler to propose()."""
+        logits = base_logits + self.markov_head(previous)
+        probs = torch.softmax(logits.float() / temperatures[:, None], dim=-1)
+        token = (probs / torch.empty_like(probs).exponential_(1.0)).argmax(dim=-1)
+        return token, logits
+
     def confidence(self, hidden, previous):
         if self.confidence_head is None:
             return None
