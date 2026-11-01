@@ -165,3 +165,30 @@ def test_split_graph_dispatch_samples_only_real_rows(batch, cap, monkeypatch):
     torch.testing.assert_close(actual_q, expected_q, rtol=1e-5, atol=1e-5)
     assert p.graph_padded_hits == 1 and p.graph_exact_hits == 0 and p.head_graph_hits == 7
     assert p.graph_captures == 0 and p.head_graph_captures == 0
+
+
+def test_experiment_prewarms_original_same_finite_shapes_without_sampling_change():
+    path = Path(__file__).resolve().parents[1] / "experiments/20261101-dspark-verify-opt/benchmark.py"
+    spec = importlib.util.spec_from_file_location("pad_bench_cpu_test", path)
+    bench = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(bench)
+    model = make_model()
+    cfg = SimpleNamespace(spec_graph_bs=(1, 2, 4, 8, 16), max_num_seqs=16,
+                          dspark_split_graph=False, dspark_graph_pad=False)
+    proposer = P.DSparkProposer(model, cfg)
+    calls = []
+    def fake_capture(anchors, lengths, tables, bucket, temperatures):
+        calls.append((anchors.shape[0], bucket, lengths.tolist(), tables.tolist(),
+                      temperatures.tolist(), proposer.prewarm_in_progress))
+        return ("single-graph",)
+    proposer._capture = fake_capture
+    shapes = [(16, 8), (8, 8), (4, 8), (2, 8), (1, 8)]
+    bench.prewarm_original(proposer, shapes)
+    assert list(proposer.graphs) == shapes and proposer.prewarmed_shapes == shapes
+    assert all(item[-1] and all(x == 0 for x in item[2]) and
+               all(all(v == -1 for v in row) for row in item[3]) and
+               all(t == 1.0 for t in item[4]) for item in calls)
+    assert not proposer.prewarm_in_progress
+    with pytest.raises(ValueError, match="unsupported original prewarm shape"):
+        bench.prewarm_original(proposer, [(3, 8)])
+    assert not proposer.prewarm_in_progress
