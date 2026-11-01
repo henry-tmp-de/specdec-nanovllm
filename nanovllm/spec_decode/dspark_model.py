@@ -1,5 +1,9 @@
 """Qwen3 DSpark inference, matching DeepSpec's released block-7 model.
 
+Derived from DeepSpec's Qwen3 DSpark implementation:
+https://github.com/deepseek-ai/DeepSpec/tree/005e03b81cec38b7da6399833d609ee89a2587f2
+Copyright (c) 2026 The DeepSpec Authors, MIT; see THIRD_PARTY/DeepSpec-LICENSE.
+
 The target owns its weights and paged cache.  This module owns *different*
 context K/V values indexed by the same physical slots.  Speculative suffixes
 are never made visible merely because they were written: the caller supplies

@@ -1,0 +1,21 @@
+[spec] official DSpark: ../models/dspark-4b, block=7, target layers=(1, 9, 17, 25, 33); confidence scheduler disabled
+[spec] DSpark context KV: 5 层 x 269 blocks, 每block 5120 KB
+[spec] blocks=269, target 每block 36864 KB, 合计 10.77 GB
+[spec] verify CUDA graph 就绪 (shapes=[(1, 7)], 8 query/请求, 共享图池)
+[transformers] Token indices sequence length is longer than the specified maximum sequence length for this model (298938 > 131072). Running this sequence through the model will result in indexing errors
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "/home/ziru/nano-vllm/dspark-integration-20261101/code/experiments/20261101-dspark-integration/bench.py", line 290, in <module>
+[rank0]:     main()
+[rank0]:   File "/home/ziru/nano-vllm/dspark-integration-20261101/code/experiments/20261101-dspark-integration/bench.py", line 263, in main
+[rank0]:     warm = one_run(llm, warm_prompts, min(args.output_tokens, 16), args.seed,
+[rank0]:   File "/home/ziru/nano-vllm/dspark-integration-20261101/code/experiments/20261101-dspark-integration/bench.py", line 159, in one_run
+[rank0]:     output = runner.run(seqs, is_prefill)
+[rank0]:   File "/home/ziru/nano-vllm/dspark-integration-20261101/code/nanovllm/engine/model_runner.py", line 1000, in run
+[rank0]:     logits, temperatures = self._prefill_forward(seqs)
+[rank0]:   File "/home/ziru/nano-vllm/dspark-integration-20261101/code/nanovllm/engine/model_runner.py", line 957, in _prefill_forward
+[rank0]:     input_ids, positions = self.prepare_prefill(seqs, advance_draft=draft_needed)
+[rank0]:   File "/home/ziru/nano-vllm/dspark-integration-20261101/code/nanovllm/engine/model_runner.py", line 492, in prepare_prefill
+[rank0]:     input_ids = torch.tensor(input_ids, dtype=torch.int64, pin_memory=True).cuda(non_blocking=True)
+[rank0]:   File "/home/ziru/nano-vllm/venv/lib/python3.10/site-packages/torch/utils/_device.py", line 109, in __torch_function__
+[rank0]:     return func(*args, **kwargs)
+[rank0]: TypeError: 'str' object cannot be interpreted as an integer

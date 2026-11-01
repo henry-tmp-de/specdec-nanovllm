@@ -1,0 +1,16 @@
+[spec] official DSpark: ../models/dspark-4b, block=7, target layers=(1, 9, 17, 25, 33); confidence scheduler disabled
+[spec] DSpark context KV: 5 层 x 182 blocks, 每block 5120 KB
+[spec] blocks=182, target 每block 36864 KB, 合计 7.29 GB
+[spec] verify CUDA graph 就绪 (shapes=[(1, 7)], 8 query/请求, 共享图池)
+[transformers] Token indices sequence length is longer than the specified maximum sequence length for this model (298938 > 131072). Running this sequence through the model will result in indexing errors
+{
+  "fresh_cached_tokens": 0,
+  "reused_cached_tokens": 256,
+  "shared_prefix_kv_bit_equal": true,
+  "prefill_target_logit_kl": 0.0016378965228796005,
+  "same_first_anchor": true,
+  "draft_first_step_kl": 0.0020103021524846554,
+  "draft_graph_hits": 16,
+  "verify_graph_hits": 11,
+  "pass": true
+}

@@ -1,0 +1,132 @@
+{
+  "pass": true,
+  "errors": [],
+  "files": {
+    "formal/nospec/B1": {
+      "runs": 9,
+      "expected_failure": false
+    },
+    "formal/ar/B1": {
+      "runs": 9,
+      "expected_failure": false
+    },
+    "formal/dspark/B1": {
+      "runs": 9,
+      "expected_failure": false
+    },
+    "formal/nospec/B2": {
+      "runs": 9,
+      "expected_failure": false
+    },
+    "formal/ar/B2": {
+      "runs": 9,
+      "expected_failure": false
+    },
+    "formal/dspark/B2": {
+      "runs": 9,
+      "expected_failure": false
+    },
+    "formal/nospec/B4": {
+      "runs": 9,
+      "expected_failure": false
+    },
+    "formal/ar/B4": {
+      "runs": 9,
+      "expected_failure": false
+    },
+    "formal/dspark/B4": {
+      "runs": 9,
+      "expected_failure": false
+    },
+    "formal/nospec/B8": {
+      "runs": 9,
+      "expected_failure": false
+    },
+    "formal/ar/B8": {
+      "runs": 9,
+      "expected_failure": false
+    },
+    "formal/dspark/B8": {
+      "runs": 9,
+      "expected_failure": false
+    },
+    "formal/nospec/B16": {
+      "runs": 9,
+      "expected_failure": false
+    },
+    "formal/ar/B16": {
+      "runs": 9,
+      "expected_failure": false
+    },
+    "formal/dspark/B16": {
+      "runs": 0,
+      "expected_failure": true
+    },
+    "memory70/nospec/B16": {
+      "runs": 9,
+      "expected_failure": false
+    },
+    "memory70/ar/B16": {
+      "runs": 9,
+      "expected_failure": false
+    },
+    "memory70/dspark/B16": {
+      "runs": 9,
+      "expected_failure": false
+    }
+  },
+  "outputs_identical_across_repeats": {
+    "formal/nospec/B1/code": true,
+    "formal/nospec/B1/math": true,
+    "formal/nospec/B1/general": true,
+    "formal/ar/B1/code": true,
+    "formal/ar/B1/math": true,
+    "formal/ar/B1/general": true,
+    "formal/dspark/B1/code": true,
+    "formal/dspark/B1/math": true,
+    "formal/dspark/B1/general": true,
+    "formal/nospec/B2/code": true,
+    "formal/nospec/B2/math": true,
+    "formal/nospec/B2/general": true,
+    "formal/ar/B2/code": true,
+    "formal/ar/B2/math": true,
+    "formal/ar/B2/general": true,
+    "formal/dspark/B2/code": true,
+    "formal/dspark/B2/math": true,
+    "formal/dspark/B2/general": true,
+    "formal/nospec/B4/code": true,
+    "formal/nospec/B4/math": true,
+    "formal/nospec/B4/general": true,
+    "formal/ar/B4/code": true,
+    "formal/ar/B4/math": true,
+    "formal/ar/B4/general": true,
+    "formal/dspark/B4/code": true,
+    "formal/dspark/B4/math": true,
+    "formal/dspark/B4/general": true,
+    "formal/nospec/B8/code": true,
+    "formal/nospec/B8/math": true,
+    "formal/nospec/B8/general": true,
+    "formal/ar/B8/code": true,
+    "formal/ar/B8/math": true,
+    "formal/ar/B8/general": true,
+    "formal/dspark/B8/code": true,
+    "formal/dspark/B8/math": true,
+    "formal/dspark/B8/general": true,
+    "formal/nospec/B16/code": true,
+    "formal/nospec/B16/math": true,
+    "formal/nospec/B16/general": true,
+    "formal/ar/B16/code": true,
+    "formal/ar/B16/math": true,
+    "formal/ar/B16/general": true,
+    "memory70/nospec/B16/code": true,
+    "memory70/nospec/B16/math": true,
+    "memory70/nospec/B16/general": true,
+    "memory70/ar/B16/code": true,
+    "memory70/ar/B16/math": true,
+    "memory70/ar/B16/general": true,
+    "memory70/dspark/B16/code": false,
+    "memory70/dspark/B16/math": true,
+    "memory70/dspark/B16/general": true
+  },
+  "note": "output identity across methods is not a correctness requirement"
+}

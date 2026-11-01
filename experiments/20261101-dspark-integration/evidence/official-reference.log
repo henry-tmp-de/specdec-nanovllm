@@ -1,0 +1,21 @@
+Loading weights:   0%|          | 0/64 [00:00<?, ?it/s]Loading weights:   3%|▎         | 2/64 [00:00<00:04, 15.40it/s]Loading weights:  48%|████▊     | 31/64 [00:00<00:00, 154.52it/s]Loading weights:  95%|█████████▌| 61/64 [00:00<00:00, 153.00it/s]Loading weights: 100%|██████████| 64/64 [00:00<00:00, 138.34it/s]
+{
+  "checkpoint": "../models/dspark-4b",
+  "dtype": "bfloat16",
+  "batch": 2,
+  "contexts": [
+    31,
+    47
+  ],
+  "block": 7,
+  "candidate_count": 7,
+  "hidden_max_abs": 0.3125,
+  "hidden_relative_rms": 0.02135172113776207,
+  "conditional_logits_max_abs": 0.375,
+  "max_kl_p_to_q": 0.0034694457426667213,
+  "top1_matching_rows": 14,
+  "top1_total_rows": 14,
+  "fresh_feature_graph_max_abs": 0.0,
+  "peak_allocated_bytes": 4075563520,
+  "pass": true
+}

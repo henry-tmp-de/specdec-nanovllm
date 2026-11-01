@@ -1,0 +1,4 @@
+[spec] blocks=341, target 每block 36864 KB, 合计 11.99 GB
+{"arm": "nospec", "B": 1, "panel": "code", "repeat": 0, "full_request_tps": 64.58161463137618, "decode_tps": 83.12861324925883}
+{"arm": "nospec", "B": 1, "panel": "math", "repeat": 0, "full_request_tps": 64.43000870231776, "decode_tps": 82.95825960441961}
+{"arm": "nospec", "B": 1, "panel": "general", "repeat": 0, "full_request_tps": 64.42955129399957, "decode_tps": 83.04786915003723}

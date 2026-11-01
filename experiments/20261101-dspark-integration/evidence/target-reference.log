@@ -1,0 +1,30 @@
+[spec] blocks=75, target 每block 36864 KB, 合计 2.64 GB
+Loading weights:   0%|          | 0/398 [00:00<?, ?it/s]Loading weights:   0%|          | 1/398 [00:00<00:39,  9.97it/s]Loading weights:   6%|▌         | 24/398 [00:00<00:02, 134.28it/s]Loading weights:  12%|█▏        | 48/398 [00:00<00:02, 171.18it/s]Loading weights:  18%|█▊        | 71/398 [00:00<00:01, 191.92it/s]Loading weights:  24%|██▍       | 97/398 [00:00<00:01, 212.41it/s]Loading weights:  30%|██▉       | 119/398 [00:00<00:01, 209.58it/s]Loading weights:  35%|███▌      | 141/398 [00:00<00:01, 212.01it/s]Loading weights:  41%|████      | 163/398 [00:00<00:01, 210.75it/s]Loading weights:  46%|████▋     | 185/398 [00:00<00:01, 206.73it/s]Loading weights:  52%|█████▏    | 208/398 [00:01<00:00, 213.54it/s]Loading weights:  58%|█████▊    | 230/398 [00:01<00:00, 209.00it/s]Loading weights:  63%|██████▎   | 251/398 [00:01<00:00, 203.18it/s]Loading weights:  69%|██████▊   | 273/398 [00:01<00:00, 205.61it/s]Loading weights:  74%|███████▍  | 294/398 [00:01<00:00, 203.17it/s]Loading weights:  79%|███████▉  | 315/398 [00:01<00:00, 198.15it/s]Loading weights:  84%|████████▍ | 335/398 [00:01<00:00, 190.33it/s]Loading weights:  90%|████████▉ | 357/398 [00:01<00:00, 195.17it/s]Loading weights:  95%|█████████▌| 379/398 [00:01<00:00, 201.26it/s]Loading weights: 100%|██████████| 398/398 [00:01<00:00, 200.26it/s]
+{
+  "batch": 2,
+  "prompt_lengths": [
+    18,
+    23
+  ],
+  "selected_layers": [
+    1,
+    9,
+    17,
+    25,
+    33
+  ],
+  "relative_feature_rms": [
+    0.00977444276213646,
+    0.0017161312280222774
+  ],
+  "target_logit_kl": [
+    0.0013432952109724283,
+    0.0019748834893107414
+  ],
+  "target_greedy_top1_matches": [
+    true,
+    true
+  ],
+  "peak_allocated_bytes": 19032921088,
+  "pass": true
+}

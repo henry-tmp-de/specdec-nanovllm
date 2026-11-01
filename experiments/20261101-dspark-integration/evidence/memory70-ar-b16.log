@@ -1,0 +1,19 @@
+[spec] draft model: /home/ziru/nano-vllm/models/Qwen3-0.6B (28 层, vocab 151936)
+[spec] draft KV cache: 28 层 x 99 blocks, 每block 28672 KB
+[spec] blocks=99, target 每block 36864 KB, 合计 6.19 GB
+[spec] draft CUDA graph 就绪 (bs=[1, 2, 4, 8, 16], 1 token/行)
+[spec] verify CUDA graph 就绪 (shapes=[(1, 6), (2, 6), (4, 6), (8, 6), (16, 6)], 7 query/请求, 共享图池)
+[rank0]:W1101 11:32:16.757000 3028323 torch/_dynamo/convert_frame.py:1676] [0/8] torch._dynamo hit config.recompile_limit (8)
+[rank0]:W1101 11:32:16.757000 3028323 torch/_dynamo/convert_frame.py:1676] [0/8]    function: 'rms_forward' (/home/ziru/nano-vllm/dspark-integration-20261101/code/nanovllm/layers/layernorm.py:16)
+[rank0]:W1101 11:32:16.757000 3028323 torch/_dynamo/convert_frame.py:1676] [0/8]    last reason: 0/7: tensor 'x' rank mismatch. expected 2, actual 3
+[rank0]:W1101 11:32:16.757000 3028323 torch/_dynamo/convert_frame.py:1676] [0/8] To log all recompilation reasons, use TORCH_LOGS="recompiles".
+[rank0]:W1101 11:32:16.757000 3028323 torch/_dynamo/convert_frame.py:1676] [0/8] To diagnose recompilation issues, see https://pytorch.org/docs/main/compile/programming_model.recompilation.html
+{"arm": "ar", "B": 16, "panel": "code", "repeat": 0, "full_request_tps": 383.73749818867435, "decode_tps": 485.47622877183255}
+{"arm": "ar", "B": 16, "panel": "code", "repeat": 1, "full_request_tps": 393.74956192502987, "decode_tps": 501.90724163867657}
+{"arm": "ar", "B": 16, "panel": "code", "repeat": 2, "full_request_tps": 393.67492272691, "decode_tps": 501.77746073263273}
+{"arm": "ar", "B": 16, "panel": "math", "repeat": 0, "full_request_tps": 324.96349607234004, "decode_tps": 395.1524882324057}
+{"arm": "ar", "B": 16, "panel": "math", "repeat": 1, "full_request_tps": 324.521132966351, "decode_tps": 394.533001069121}
+{"arm": "ar", "B": 16, "panel": "math", "repeat": 2, "full_request_tps": 325.11976707129776, "decode_tps": 395.36447300049423}
+{"arm": "ar", "B": 16, "panel": "general", "repeat": 0, "full_request_tps": 206.53929508376132, "decode_tps": 232.45681372316815}
+{"arm": "ar", "B": 16, "panel": "general", "repeat": 1, "full_request_tps": 206.31529257599612, "decode_tps": 232.17339005934193}
+{"arm": "ar", "B": 16, "panel": "general", "repeat": 2, "full_request_tps": 206.34584338822074, "decode_tps": 232.14102213011785}

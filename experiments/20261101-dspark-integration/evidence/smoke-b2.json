@@ -1,0 +1,22 @@
+{
+  "proposal_calls": 10,
+  "candidate_rows": 18,
+  "conditional_logits_max_abs": 0.0,
+  "verify_calls": 10,
+  "feature_kv_max_abs": 0.0,
+  "verify_graph_hits": 6,
+  "batch": 2,
+  "output_lengths": [
+    24,
+    24
+  ],
+  "draft_graph_hits": 10,
+  "draft_graph_captures": 2,
+  "draft_graph_fallbacks": {},
+  "verify_graph_fallbacks": {
+    "ragged_draft_len": 4
+  },
+  "kv_blocks": 183,
+  "peak_allocated_bytes": 17289775104,
+  "pass": true
+}

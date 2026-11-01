@@ -1,0 +1,13 @@
+[spec] official DSpark: ../models/dspark-4b, block=7, target layers=(1, 9, 17, 25, 33); confidence scheduler disabled
+[spec] DSpark context KV: 5 层 x 269 blocks, 每block 5120 KB
+[spec] blocks=269, target 每block 36864 KB, 合计 10.77 GB
+[spec] verify CUDA graph 就绪 (shapes=[(1, 7), (2, 7)], 8 query/请求, 共享图池)
+{"arm": "dspark", "B": 2, "panel": "code", "repeat": 0, "full_request_tps": 338.0850223396595, "decode_tps": 398.7317446604264}
+{"arm": "dspark", "B": 2, "panel": "code", "repeat": 1, "full_request_tps": 357.3938090909146, "decode_tps": 426.0448381345919}
+{"arm": "dspark", "B": 2, "panel": "code", "repeat": 2, "full_request_tps": 357.34156064808394, "decode_tps": 425.91067727778716}
+{"arm": "dspark", "B": 2, "panel": "math", "repeat": 0, "full_request_tps": 245.46274401093982, "decode_tps": 275.6298135226174}
+{"arm": "dspark", "B": 2, "panel": "math", "repeat": 1, "full_request_tps": 245.35708912659663, "decode_tps": 275.692860263047}
+{"arm": "dspark", "B": 2, "panel": "math", "repeat": 2, "full_request_tps": 245.47223904394394, "decode_tps": 275.57414256419963}
+{"arm": "dspark", "B": 2, "panel": "general", "repeat": 0, "full_request_tps": 251.63887767543184, "decode_tps": 283.7227195752759}
+{"arm": "dspark", "B": 2, "panel": "general", "repeat": 1, "full_request_tps": 251.61140762889804, "decode_tps": 283.82298390656837}
+{"arm": "dspark", "B": 2, "panel": "general", "repeat": 2, "full_request_tps": 251.68380171291926, "decode_tps": 283.8009432305294}

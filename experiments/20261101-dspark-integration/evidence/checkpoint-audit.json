@@ -1,0 +1,14 @@
+{
+  "draft": "../models/dspark-4b",
+  "target": "/home/ziru/nano-vllm/models/Qwen3-4B",
+  "checkpoint_keys": 64,
+  "missing": [],
+  "unexpected": [],
+  "wrong_shapes": {},
+  "target_ties_embedding": true,
+  "shared_target_exact": {
+    "embed_tokens.weight": true,
+    "lm_head.weight": true
+  },
+  "pass": true
+}

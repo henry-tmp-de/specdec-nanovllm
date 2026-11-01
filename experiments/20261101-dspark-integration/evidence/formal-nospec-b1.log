@@ -1,0 +1,10 @@
+[spec] blocks=341, target 每block 36864 KB, 合计 11.99 GB
+{"arm": "nospec", "B": 1, "panel": "code", "repeat": 0, "full_request_tps": 80.05696596977654, "decode_tps": 82.94668364921165}
+{"arm": "nospec", "B": 1, "panel": "code", "repeat": 1, "full_request_tps": 80.09804991641946, "decode_tps": 83.02208830551389}
+{"arm": "nospec", "B": 1, "panel": "code", "repeat": 2, "full_request_tps": 80.123921981815, "decode_tps": 83.02962458914342}
+{"arm": "nospec", "B": 1, "panel": "math", "repeat": 0, "full_request_tps": 80.05859972505161, "decode_tps": 82.95597446280925}
+{"arm": "nospec", "B": 1, "panel": "math", "repeat": 1, "full_request_tps": 80.13657715537002, "decode_tps": 83.04171373740398}
+{"arm": "nospec", "B": 1, "panel": "math", "repeat": 2, "full_request_tps": 80.05396542272942, "decode_tps": 82.96850486861477}
+{"arm": "nospec", "B": 1, "panel": "general", "repeat": 0, "full_request_tps": 80.01033838313332, "decode_tps": 82.93957599810888}
+{"arm": "nospec", "B": 1, "panel": "general", "repeat": 1, "full_request_tps": 79.90909696104175, "decode_tps": 82.82936739387418}
+{"arm": "nospec", "B": 1, "panel": "general", "repeat": 2, "full_request_tps": 79.88135052687025, "decode_tps": 82.79219772633829}

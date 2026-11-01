@@ -1,0 +1,20 @@
+{
+  "code": {
+    "input_exact": true,
+    "output_exact": true,
+    "original_tps": 64.65884635425131,
+    "branch_tps": 64.58161463137618
+  },
+  "math": {
+    "input_exact": true,
+    "output_exact": true,
+    "original_tps": 64.52366804191888,
+    "branch_tps": 64.43000870231776
+  },
+  "general": {
+    "input_exact": true,
+    "output_exact": true,
+    "original_tps": 64.48883261692815,
+    "branch_tps": 64.42955129399957
+  }
+}

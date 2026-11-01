@@ -1,0 +1,24 @@
+{
+  "proposal_calls": 9,
+  "candidate_rows": 9,
+  "conditional_logits_max_abs": 0.0,
+  "verify_calls": 8,
+  "feature_kv_max_abs": 0.0,
+  "verify_graph_hits": 7,
+  "distribution_samples": 8192,
+  "distribution_top16_plus_other_tv": 0.013962793163955212,
+  "distribution_max_bin_error": 0.0061331987380981445,
+  "batch": 1,
+  "output_lengths": [
+    24
+  ],
+  "draft_graph_hits": 9,
+  "draft_graph_captures": 1,
+  "draft_graph_fallbacks": {},
+  "verify_graph_fallbacks": {
+    "ragged_draft_len": 1
+  },
+  "kv_blocks": 183,
+  "peak_allocated_bytes": 17443239424,
+  "pass": true
+}

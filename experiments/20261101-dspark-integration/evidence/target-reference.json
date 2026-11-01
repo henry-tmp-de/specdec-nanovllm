@@ -1,0 +1,28 @@
+{
+  "batch": 2,
+  "prompt_lengths": [
+    18,
+    23
+  ],
+  "selected_layers": [
+    1,
+    9,
+    17,
+    25,
+    33
+  ],
+  "relative_feature_rms": [
+    0.00977444276213646,
+    0.0017161312280222774
+  ],
+  "target_logit_kl": [
+    0.0013432952109724283,
+    0.0019748834893107414
+  ],
+  "target_greedy_top1_matches": [
+    true,
+    true
+  ],
+  "peak_allocated_bytes": 19032921088,
+  "pass": true
+}

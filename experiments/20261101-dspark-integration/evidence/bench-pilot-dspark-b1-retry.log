@@ -1,0 +1,7 @@
+[spec] official DSpark: ../models/dspark-4b, block=7, target layers=(1, 9, 17, 25, 33); confidence scheduler disabled
+[spec] DSpark context KV: 5 层 x 269 blocks, 每block 5120 KB
+[spec] blocks=269, target 每block 36864 KB, 合计 10.77 GB
+[spec] verify CUDA graph 就绪 (shapes=[(1, 7)], 8 query/请求, 共享图池)
+{"arm": "dspark", "B": 1, "panel": "code", "repeat": 0, "full_request_tps": 88.2602180513546, "decode_tps": 129.48302457376911}
+{"arm": "dspark", "B": 1, "panel": "math", "repeat": 0, "full_request_tps": 131.51241689527012, "decode_tps": 259.38014376297525}
+{"arm": "dspark", "B": 1, "panel": "general", "repeat": 0, "full_request_tps": 121.33357107737638, "decode_tps": 221.15429734815598}

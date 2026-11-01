@@ -1,0 +1,30 @@
+[spec] official DSpark: ../models/dspark-4b, block=7, target layers=(1, 9, 17, 25, 33); confidence scheduler disabled
+[spec] DSpark context KV: 5 层 x 151 blocks, 每block 5120 KB
+[spec] blocks=151, target 每block 36864 KB, 合计 6.05 GB
+[spec] verify CUDA graph 就绪 (shapes=[(1, 7), (2, 7)], 8 query/请求, 共享图池)
+Loading weights:   0%|          | 0/64 [00:00<?, ?it/s]Loading weights:   2%|▏         | 1/64 [00:00<00:10,  6.18it/s]Loading weights:  31%|███▏      | 20/64 [00:00<00:00, 88.25it/s]Loading weights:  64%|██████▍   | 41/64 [00:00<00:00, 135.23it/s]Loading weights:  95%|█████████▌| 61/64 [00:00<00:00, 99.70it/s] Loading weights: 100%|██████████| 64/64 [00:00<00:00, 93.93it/s]
+{
+  "batch": 2,
+  "observations": [
+    {
+      "context": 1024,
+      "max_conditional_kl": 0.001170676201581955,
+      "max_logit_abs": 0.203125,
+      "top1_matches": 7,
+      "positions": 7
+    },
+    {
+      "context": 1024,
+      "max_conditional_kl": 0.0004453514702618122,
+      "max_logit_abs": 0.1875,
+      "top1_matches": 7,
+      "positions": 7
+    }
+  ],
+  "output_lengths": [
+    8,
+    8
+  ],
+  "peak_allocated_bytes": 18888671232,
+  "pass": true
+}

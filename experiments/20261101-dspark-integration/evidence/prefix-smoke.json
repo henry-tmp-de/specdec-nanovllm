@@ -1,0 +1,11 @@
+{
+  "fresh_cached_tokens": 0,
+  "reused_cached_tokens": 256,
+  "shared_prefix_kv_bit_equal": true,
+  "prefill_target_logit_kl": 0.0016378965228796005,
+  "same_first_anchor": true,
+  "draft_first_step_kl": 0.0020103021524846554,
+  "draft_graph_hits": 16,
+  "verify_graph_hits": 11,
+  "pass": true
+}
