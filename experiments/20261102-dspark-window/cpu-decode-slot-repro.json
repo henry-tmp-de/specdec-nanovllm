@@ -1,0 +1,50 @@
+{
+  "base_commit": "cefb5a2ab2f57ad2f709fd38493ac544d6b78989",
+  "scope": "CPU-only metadata; model, sampling, CUDA and GPU not run",
+  "control": {
+    "position": 249,
+    "actual_slot": 249,
+    "target_table": [
+      0
+    ],
+    "context_len": 250,
+    "expected_slot": 249,
+    "matching": true,
+    "sequence_len": 250,
+    "num_cached_tokens": 249,
+    "scheduled_tokens": 1,
+    "remaining": 2
+  },
+  "accepted_0": {
+    "position": 250,
+    "actual_slot": 506,
+    "target_table": [
+      0,
+      1
+    ],
+    "context_len": 251,
+    "expected_slot": 250,
+    "matching": false,
+    "sequence_len": 251,
+    "num_cached_tokens": 250,
+    "scheduled_tokens": 8,
+    "remaining": 1,
+    "accepted_candidates": 0
+  },
+  "accepted_2": {
+    "position": 252,
+    "actual_slot": 508,
+    "target_table": [
+      0,
+      1
+    ],
+    "context_len": 253,
+    "expected_slot": 252,
+    "matching": false,
+    "sequence_len": 253,
+    "num_cached_tokens": 252,
+    "scheduled_tokens": 8,
+    "remaining": 1,
+    "accepted_candidates": 2
+  }
+}
