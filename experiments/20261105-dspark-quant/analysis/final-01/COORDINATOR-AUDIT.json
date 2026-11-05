@@ -1,0 +1,189 @@
+{
+  "source_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+  "raw_model_process_files": 12,
+  "valid_runs": 108,
+  "requests": 900,
+  "output_tokens": 115200,
+  "warmup_records": 12,
+  "failure_records": 0,
+  "matched_groups": 27,
+  "paired_runs": 81,
+  "candidate_bytes_including_scales": {
+    "none": 1009254400,
+    "ffn": 635919360,
+    "attention": 878269440,
+    "all": 504934400
+  },
+  "stages": 13,
+  "gpu_stage_wall_s": 1129.8392381537706,
+  "verify_ragged_fallbacks": 927,
+  "paired_ratio_medians": [
+    {
+      "batch": 1,
+      "preset": "all",
+      "panel": "code",
+      "ratio": 1.0224380746666146
+    },
+    {
+      "batch": 1,
+      "preset": "all",
+      "panel": "general",
+      "ratio": 0.9969714188149862
+    },
+    {
+      "batch": 1,
+      "preset": "all",
+      "panel": "math",
+      "ratio": 1.0217334061040677
+    },
+    {
+      "batch": 1,
+      "preset": "attention",
+      "panel": "code",
+      "ratio": 1.0080079418580357
+    },
+    {
+      "batch": 1,
+      "preset": "attention",
+      "panel": "general",
+      "ratio": 1.009723450076277
+    },
+    {
+      "batch": 1,
+      "preset": "attention",
+      "panel": "math",
+      "ratio": 1.0086198487534452
+    },
+    {
+      "batch": 1,
+      "preset": "ffn",
+      "panel": "code",
+      "ratio": 1.017824243625509
+    },
+    {
+      "batch": 1,
+      "preset": "ffn",
+      "panel": "general",
+      "ratio": 0.9912012765270474
+    },
+    {
+      "batch": 1,
+      "preset": "ffn",
+      "panel": "math",
+      "ratio": 1.0170312660683085
+    },
+    {
+      "batch": 8,
+      "preset": "all",
+      "panel": "code",
+      "ratio": 0.9988090792900581
+    },
+    {
+      "batch": 8,
+      "preset": "all",
+      "panel": "general",
+      "ratio": 0.9508022193126524
+    },
+    {
+      "batch": 8,
+      "preset": "all",
+      "panel": "math",
+      "ratio": 0.9896563940243503
+    },
+    {
+      "batch": 8,
+      "preset": "attention",
+      "panel": "code",
+      "ratio": 1.0049822029801012
+    },
+    {
+      "batch": 8,
+      "preset": "attention",
+      "panel": "general",
+      "ratio": 0.9467142030532992
+    },
+    {
+      "batch": 8,
+      "preset": "attention",
+      "panel": "math",
+      "ratio": 1.0282469773816783
+    },
+    {
+      "batch": 8,
+      "preset": "ffn",
+      "panel": "code",
+      "ratio": 0.9928091275048052
+    },
+    {
+      "batch": 8,
+      "preset": "ffn",
+      "panel": "general",
+      "ratio": 0.9413744615911205
+    },
+    {
+      "batch": 8,
+      "preset": "ffn",
+      "panel": "math",
+      "ratio": 0.9814778431438053
+    },
+    {
+      "batch": 16,
+      "preset": "all",
+      "panel": "code",
+      "ratio": 0.9595417359628751
+    },
+    {
+      "batch": 16,
+      "preset": "all",
+      "panel": "general",
+      "ratio": 0.9481769327532364
+    },
+    {
+      "batch": 16,
+      "preset": "all",
+      "panel": "math",
+      "ratio": 0.9912853721290239
+    },
+    {
+      "batch": 16,
+      "preset": "attention",
+      "panel": "code",
+      "ratio": 0.9444796216739327
+    },
+    {
+      "batch": 16,
+      "preset": "attention",
+      "panel": "general",
+      "ratio": 0.9207260800903452
+    },
+    {
+      "batch": 16,
+      "preset": "attention",
+      "panel": "math",
+      "ratio": 0.9790333923047092
+    },
+    {
+      "batch": 16,
+      "preset": "ffn",
+      "panel": "code",
+      "ratio": 0.9692107616955878
+    },
+    {
+      "batch": 16,
+      "preset": "ffn",
+      "panel": "general",
+      "ratio": 0.9617431325768466
+    },
+    {
+      "batch": 16,
+      "preset": "ffn",
+      "panel": "math",
+      "ratio": 1.0040467709441565
+    }
+  ],
+  "notes": [
+    "actual same-budget policy; different target KV pools",
+    "three same-seed timing repeats, not confidence intervals",
+    "micro and model quality claims remain separate"
+  ]
+}

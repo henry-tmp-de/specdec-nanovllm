@@ -2,3 +2,6 @@ raw/
 *.ledger.jsonl
 *.ledger.jsonl.lock
 __pycache__/
+/evidence/
+/analysis/micro-01-cpu-summary/
+/analysis/prelim-01-cpu-summary*/

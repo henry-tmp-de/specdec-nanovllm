@@ -1,0 +1,22 @@
+{
+  "file": "/home/ziru/nano-vllm/dspark-quant-20261105/final-evidence-01.tar.gz",
+  "bytes": 1527089,
+  "sha256": "bbb477c6b7dad0923cd27d97c1de959db865add710e34b510ce3b02c6b8b2681",
+  "members": [
+    "results",
+    "logs",
+    "data",
+    "BATCH-GATE.json",
+    "BATCH-LAUNCH-01.json",
+    "BATCH-STATUS.json",
+    "CODE-GATE.json",
+    "FINAL-RELEASE.json",
+    "MICRO-LAUNCH-01.json",
+    "PRELIM-GATE.json",
+    "PRELIM-LAUNCH-01.json",
+    "PRELIM-STATUS.json",
+    "operator-batch-01.py",
+    "operator-prelim-01.py"
+  ],
+  "contains_models": false
+}

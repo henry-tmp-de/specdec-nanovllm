@@ -27,7 +27,7 @@ target Qwen3-4B BF16，官方DSpark block7，draft最近512位置独立ring KV�
 
 ## 当前状态
 
-实现准备中，尚未启动任何GPU任务。2026-11-05 10:34Z现场GPU0至5空闲；GPU6/7已有compute进程。该快照不代表后续启动许可。
+本批已完成，无后续GPU任务，最终结论见FINAL_REPORT.md。历史初始快照：2026-11-05 10:34Z现场GPU0至5空闲，GPU6/7已有compute进程；不得用该历史快照重新启动作业。
 
 ## 代码与CPU检查
 
@@ -36,3 +36,21 @@ target Qwen3-4B BF16，官方DSpark block7，draft最近512位置独立ring KV�
 主协调独立执行 `D:/Anaconda/python.exe -B -c "import numpy; import pytest; raise SystemExit(pytest.main(['-q','tests/test_dspark_quant.py']))"`，25项通过（3.42秒）。编码者另交joint90项与既有工具13项CPU日志；这些不是GPU数值或速度证据。GPU数学micro和独立Sol代码审核尚待完成。
 
 原正式审计的分组字段不含量化preset，本批必须先按raw的`dspark_quant.preset`分组再复用compute_run，不能把四方案混合汇总。
+
+## GPU阶段验收
+
+冻结执行源码2ac595ee1565e1218bfabad8c827c32784a130b5；引擎与微基准分别通过Sol Medium独立代码审核。远端隔离根为`/home/ziru/nano-vllm/dspark-quant-20261105`，只用GPU0（f1619d21-c909-7c21-34f1-05c39a7b0c91），没有改其他模型/环境或使用sudo。
+
+- micro-01：15个真实layer0权重形状/batch条件、30条eager/Graph记录，量化数学与Graph检查全通过。最大同量化参照relative RMS为0.001678953，Graph/eager输出完全一致。B1 Graph代表层加速1.33–2.54倍，B16五个代表形状全部变慢。guard正常退出，用时20.879秒，显卡释放；Sol独立复核通过。
+- B1预实验：四preset各三面板、三重复，共36个实际测量run，全经compute_run及Sol独立复核有效。all对none逐重复吞吐比中位数：代码1.022438、数学1.021733、通用0.996971。量化已改变部分通用面板的接受比例，不能把kernel收益直接当生成收益。实际target KV块数none/ffn/attention/all为308/291/309/290；各方案同0.85预算，不是相同池容量。host PTQ约0/61.57/24.34/85.92秒，已包含在load_initial_graph_s，不能相加。
+- 上述五个阶段累计298.169608秒，均ok并完成清理。未改变实现，按原计划进入B8/B16各四preset对照，仍同一3600秒总账。首次启动记录`BATCH-LAUNCH-01.json`，PID1136568/start_ticks907129166；仅作本次记录，不可未来凭旧PID操作进程。
+
+本地证据先存`evidence/micro-01`与`evidence/prelim-01`，每份gpu-budget是各阶段快照，不能拼接重复计费；最终以单一完整账为准。CPU汇总工具1679c06及展示补丁2510042也经Sol审核；raw请求/计时复算与GPU身份/账目审计各有范围，不互相替代。
+
+## 最终验收与停止
+
+原计划B8/B16八组也已全部完成。完整108次测量、900条请求、115200个输出token，36组各三重复、27组共81对比较。主协调独立逐raw核验compute_run、实际模块数量/字节、保护参数、输入配对、源码、图计数与账，结果位于`analysis/final-01/COORDINATOR-AUDIT.json`；Sol Medium独立重算全部CSV字段、配对表与微基准，并审核最终人工报告，通过feature交付门禁。
+
+权重可选择性压缩，但仅部分小幅正收益：B1代码/数学all约+2.2%；B8 Attention数学约+2.8%，其余多为负；B16只有FFN数学约+0.4%，最大负收益为Attention通用约-7.9%。默认none，不合main，不继续扫参数直到出现正收益。
+
+13个GPU阶段全部ok，累计1129.839238秒，唯一smoke20.879470秒；410个自有PID/starttick身份及三个controller全部退出。FINAL-RELEASE的现场GPU0为15MiB/0%/无compute。完整原始记录在`evidence/final-01`，压缩包在D:/tools/codex-runs/dspark-quant-20261105及服务器本批根下，已核同一包，不含模型权重或凭据。没有后续GPU任务；旧PD/其他研究任务未启动。
