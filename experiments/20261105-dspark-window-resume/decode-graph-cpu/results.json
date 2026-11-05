@@ -1,0 +1,74 @@
+[
+  {
+    "name": "new_joint",
+    "command": [
+      "D:\\Anaconda\\python.exe",
+      "-B",
+      "-c",
+      "import numpy, pytest; raise SystemExit(pytest.main(['-q', '-s'] + ['tests/test_dspark_feature_rows.py', 'tests/test_dspark_window.py', 'tests/test_dspark_window_config.py', 'tests/test_dspark_window_runner.py']))"
+    ],
+    "exit_code": 0,
+    "seconds": 15.326,
+    "log": "decode-graph-cpu/new_joint.log"
+  },
+  {
+    "name": "dspark_contract",
+    "command": [
+      "D:\\Anaconda\\python.exe",
+      "-B",
+      "-c",
+      "import numpy, pytest; raise SystemExit(pytest.main(['-q', '-s'] + ['tests/test_dspark_contract.py']))"
+    ],
+    "exit_code": 0,
+    "seconds": 15.646,
+    "log": "decode-graph-cpu/dspark_contract.log"
+  },
+  {
+    "name": "dspark_pad",
+    "command": [
+      "D:\\Anaconda\\python.exe",
+      "-B",
+      "-c",
+      "import numpy, pytest; raise SystemExit(pytest.main(['-q', '-s'] + ['tests/test_dspark_pad.py']))"
+    ],
+    "exit_code": 0,
+    "seconds": 14.819,
+    "log": "decode-graph-cpu/dspark_pad.log"
+  },
+  {
+    "name": "graph_pad",
+    "command": [
+      "D:\\Anaconda\\python.exe",
+      "-B",
+      "-c",
+      "import numpy, runpy; runpy.run_path('tests/test_graph_pad.py', run_name='__main__')"
+    ],
+    "exit_code": 0,
+    "seconds": 13.557,
+    "log": "decode-graph-cpu/graph_pad.log"
+  },
+  {
+    "name": "overlap_mixed",
+    "command": [
+      "D:\\Anaconda\\python.exe",
+      "-B",
+      "-c",
+      "import numpy, runpy; runpy.run_path('tests/test_overlap_mixed.py', run_name='__main__')"
+    ],
+    "exit_code": 0,
+    "seconds": 7.929,
+    "log": "decode-graph-cpu/overlap_mixed.log"
+  },
+  {
+    "name": "mixed_preemption",
+    "command": [
+      "D:\\Anaconda\\python.exe",
+      "-B",
+      "-c",
+      "import numpy, runpy; runpy.run_path('experiments/20261105-dspark-window-resume/cpu_mixed_preemption_repro.py', run_name='__main__')"
+    ],
+    "exit_code": 0,
+    "seconds": 0.813,
+    "log": "decode-graph-cpu/mixed_preemption.log"
+  }
+]

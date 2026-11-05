@@ -1,0 +1,60 @@
+======================================================================
+§1 默认关闭：老行为逐值锁死，且【永不】返回 MixedBatchPlan
+======================================================================
+  [PASS] ① 默认关：返回的是老的两元组   got=tuple
+  [PASS] ① 默认关：返回的是老的两元组   got=tuple
+  [PASS] ① 默认关：返回的是老的两元组   got=tuple
+  [PASS] ① 默认关：返回的是老的两元组   got=tuple
+  [PASS] ① 默认关：返回的是老的两元组   got=tuple
+  [PASS] ① 默认关：返回的是老的两元组   got=tuple
+  [PASS] ① 默认关：6 轮轨迹 = 块/解码 交替，最后一块拼完后长 prompt 也进解码   [(True, [8]), (False, [1]), (True, [8]), (False, [1]), (True, [4]), (False, [1, 1])]
+  [PASS] ① 默认关：长 prompt 在最后一轮拼完后进了 running
+  [PASS] ① 默认关：分块轮置 pending=True
+  [PASS] ① 默认关：让路轮清掉 pending
+  [PASS] ① 默认关：3 条解码请求全在 scheduled 里（老行为）   n=1
+
+======================================================================
+§2 I1：一个 step 里同一条序列只出现在一条路径上
+======================================================================
+  [PASS] ② （准备）pending=True
+  [PASS] ② 混合轮返回 MixedBatchPlan   got=MixedBatchPlan
+  [PASS] ② I1：两条路径的序列集合不相交   prefill=1 decode=3
+  [PASS] ② 混合轮里 prefill 端 1 条、decode 端 3 条   prefill=1 decode=3
+  [PASS] ② 混合轮里 pending 保持 True（下一轮继续混）
+  [PASS] ② mode 从 config 透传过来   concurrent
+  [PASS] ② 混合轮确实发生了
+  [PASS] ② 拼完的长 prompt 当场进了 running
+  [PASS] ② I1：拼完的那条【没有】混进本轮的 decode 子批
+  [PASS] ② decode 子批只有原来那 2 条（没把新 RUNNING 的算进来）   n=2
+  [PASS] ② 它在 running 里只出现一次（没被 pop 丢、也没被排两次）   出现 1 次
+  [PASS] ② 对照组：不设 _round_seqs 时，两条 running 都被 decode 调度   n=2
+
+======================================================================
+§3 I3：两条路径的 KV / 计数记账各自独立
+======================================================================
+  [PASS] ③ prefill 端 num_scheduled_tokens = chunk（8）   8
+  [PASS] ③ decode 端 num_scheduled_tokens = 1（spec_k=0）   1
+  [PASS] ③ prefill 端的序列还留在 waiting[0]（本块没拼完）
+  [PASS] ③ decode 端的序列留在 running 里
+  [PASS] ③ prefill 端推进 8 个位置（0 -> 8）   0 -> 8
+  [PASS] ③ prefill 端不交付 token（中间块）
+  [PASS] ③ decode 端推进 1 个位置
+  [PASS] ③ decode 端交付 1 个 token
+
+======================================================================
+§4 I5：纯 decode step 一定走【老入口】run()，不走 run_mixed
+======================================================================
+  [PASS] ④ prefill 步走 run()（老入口）
+  [PASS] ④ 纯 decode 步也走 run()（★ 图命中率不受 P15 影响）   ['run', 'run']
+  [PASS] ④ 纯 decode 步的计数口径不变（-1）   -1
+  [PASS] ④ 全程没有一次 run_mixed
+  [PASS] ④ 混合 step 走 run_mixed
+  [PASS] ④ run_mixed 的参数是 (decode_seqs, prefill_seqs, mode)   args=([<nanovllm.engine.sequence.Sequence object at 0x00000253ECE00170>], [<nanovllm.engine.sequence.Sequence object at 0x00000253F5A68CB0>], 'concurrent')
+  [PASS] ④ 混合 step 的口径 = prefill 推进量（8）   8
+  [PASS] ④ prefill 端推进到 prompt 末尾（中间块，num_cached=8）   8
+  [PASS] ④ prefill 端中间块不交付 token
+  [PASS] ④ decode 端交付 1 个 token   1
+  [PASS] ④ 两边 num_scheduled_tokens 都被清零
+  [PASS] ④ MixedBatchPlan 拒绝空路径（空的那条应当退回老形状）
+
+✓ 全部通过

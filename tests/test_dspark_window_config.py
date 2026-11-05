@@ -39,6 +39,7 @@ def test_defaults_and_uniform_prefix_disable(tmp_path):
     default = Config(str(tmp_path))
     assert default.dspark_window_tokens == 0 and default.enable_prefix_cache
     assert default.dspark_window_storage == "full_cache"
+    assert default.decode_graph_bs == ()
     for method in ("ngram", "draft", "dspark"):
         c = Config(str(tmp_path), spec_method=method, enable_prefix_cache=False)
         assert not c.enable_prefix_cache
@@ -67,3 +68,27 @@ def test_valid_window_config(tmp_path, storage):
     c = Config(str(tmp_path), dspark_window_tokens=512, dspark_window_storage=storage,
                spec_method="dspark", spec_k=7, enable_prefix_cache=False)
     assert c.dspark_window_tokens == 512 and c.dspark_window_storage == storage
+
+
+@pytest.mark.parametrize("buckets", [[], (0, 4), (-1, 4), (1, 5), (1, 1, 4),
+                                      (1, 2, 3), (True, 4), (1.0, 4), ("1", 4)])
+def test_invalid_target_decode_graph_buckets(tmp_path, buckets):
+    with pytest.raises(ValueError, match="decode_graph_bs"):
+        Config(str(tmp_path), max_num_seqs=4, decode_graph_bs=buckets)
+
+
+def test_target_decode_graph_buckets_can_be_unsorted_and_sparse(tmp_path):
+    c = Config(str(tmp_path), max_num_seqs=4, decode_graph_bs=(4, 1))
+    assert c.decode_graph_bs == (4, 1)
+
+
+@pytest.mark.parametrize("max_batch", [11, 15])
+def test_target_decode_graph_exact_one_to_max_is_valid(tmp_path, max_batch):
+    buckets = tuple(range(1, max_batch + 1))
+    c = Config(str(tmp_path), max_num_seqs=max_batch, decode_graph_bs=buckets)
+    assert c.decode_graph_bs == buckets
+
+
+def test_target_decode_graph_buckets_above_existing_graph_limit_rejected(tmp_path):
+    with pytest.raises(ValueError, match="<= 512"):
+        Config(str(tmp_path), max_num_seqs=513, decode_graph_bs=(1, 513))

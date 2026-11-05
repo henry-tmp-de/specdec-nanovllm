@@ -160,6 +160,11 @@ class ModelRunner:
         self.verify_graph_padded = 0
         # 图/缓冲区显存（capture 后量一次，供报告单列）
         self.graph_mem = {}
+        self.decode_graph_hits = 0
+        self.decode_graph_exact_hits = 0
+        self.decode_graph_padded_hits = 0
+        self.decode_graph_bucket_histogram = {}
+        self.decode_graph_fallbacks = {}
 
         if config.spec_k > 0 and config.spec_method == "ngram":
             from nanovllm.spec_decode.ngram_proposer import NgramProposer
@@ -939,11 +944,15 @@ class ModelRunner:
     @torch.inference_mode()
     def run_model(self, input_ids: torch.Tensor, positions: torch.Tensor, is_prefill: bool):
         if is_prefill or self.enforce_eager or input_ids.size(0) > 512:
+            if not is_prefill:
+                reason = "enforce_eager" if self.enforce_eager else "batch_above_512"
+                self.decode_graph_fallbacks[reason] = self.decode_graph_fallbacks.get(reason, 0) + 1
             return self.model.compute_logits(self._target_forward_hidden(input_ids, positions))
         else:
             bs = input_ids.size(0)
             context = get_context()
-            graph = self.graphs[next(x for x in self.graph_bs if x >= bs)]
+            graph_bs = next(x for x in self.graph_bs if x >= bs)
+            graph = self.graphs[graph_bs]
             graph_vars = self.graph_vars
             graph_vars["input_ids"][:bs] = input_ids
             graph_vars["positions"][:bs] = positions
@@ -953,6 +962,12 @@ class ModelRunner:
             graph_vars["context_lens"][:bs] = context.context_lens
             graph_vars["block_tables"][:bs, :context.block_tables.size(1)] = context.block_tables
             graph.replay()
+            self.decode_graph_hits += 1
+            if graph_bs == bs:
+                self.decode_graph_exact_hits += 1
+            else:
+                self.decode_graph_padded_hits += 1
+            self.decode_graph_bucket_histogram[graph_bs] = self.decode_graph_bucket_histogram.get(graph_bs, 0) + 1
             return self.model.compute_logits(graph_vars["outputs"][:bs])
 
     def _target_forward_hidden(self, input_ids, positions):
@@ -1508,7 +1523,8 @@ class ModelRunner:
         config = self.config
         before = torch.cuda.memory_allocated()
         hf_config = config.hf_config
-        max_bs = min(self.config.max_num_seqs, 512)
+        requested_buckets = getattr(config, "decode_graph_bs", ())
+        max_bs = max(requested_buckets) if requested_buckets else min(self.config.max_num_seqs, 512)
         max_num_blocks = (config.max_model_len + self.block_size - 1) // self.block_size
         input_ids = torch.zeros(max_bs, dtype=torch.int64)
         positions = torch.zeros(max_bs, dtype=torch.int64)
@@ -1516,7 +1532,8 @@ class ModelRunner:
         context_lens = torch.zeros(max_bs, dtype=torch.int32)
         block_tables = torch.zeros(max_bs, max_num_blocks, dtype=torch.int32)
         outputs = torch.zeros(max_bs, hf_config.hidden_size)
-        self.graph_bs = [1, 2, 4, 8] + list(range(16, max_bs + 1, 16))
+        self.graph_bs = (sorted(requested_buckets) if requested_buckets else
+                         [1, 2, 4, 8] + list(range(16, max_bs + 1, 16)))
         self.graphs = {}
         self.graph_pool = None
 

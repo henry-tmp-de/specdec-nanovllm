@@ -1,10 +1,12 @@
 """CPU tests of real runner commit decisions and scheduler window lifecycle."""
 import importlib
+import copy
 import sys
 import types
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
+from contextlib import nullcontext
 
 import numpy
 import pytest
@@ -345,4 +347,141 @@ def test_verify_graph_static_mapping_and_commit_with_cpu_fake_replay(graph_batch
     expected.index_copy_(2, torch.tensor([0, 8, 9, 10, 11]),
                          scratch.index_select(2, torch.tensor([0, 8, 9, 10, 11])))
     torch.testing.assert_close(draft.cache, expected, rtol=0, atol=0)
+    reset_context()
+
+
+def fake_decode_runner(monkeypatch, max_batch, buckets, with_dspark=True):
+    """Run real capture/dispatch methods with CPU-only graph and CUDA stubs."""
+    c = SimpleNamespace(hidden_size=16, num_attention_heads=4, num_key_value_heads=2,
+                        head_dim=4, attention_bias=False, intermediate_size=24,
+                        num_hidden_layers=2, rms_norm_eps=1e-6, vocab_size=37,
+                        markov_rank=4, target_layer_ids=[0, 1], block_size=7,
+                        mask_token_id=3, enable_confidence_head=True,
+                        confidence_head_with_markov=True, rope_theta=10000)
+    draft = DSparkModel(c, torch.randn(37, 16), torch.randn(37, 16))
+    draft.bind_cache(8, 4, scratch_rows=max(max_batch * 8, 8))
+    draft.cache.zero_()
+
+    class Target:
+        def __call__(self, ids, positions, layers=None):
+            values = ids.float() + positions.float() * 0.25
+            hidden = values[:, None].expand(-1, 16)
+            return hidden if layers is None else (hidden, values[:, None].expand(-1, 32))
+
+        def compute_logits(self, hidden):
+            return hidden
+
+    class FakeGraph:
+        def pool(self):
+            return "fake-pool"
+
+        def replay(self):
+            self.callback()
+
+    monkeypatch.setattr(torch.cuda, "CUDAGraph", FakeGraph)
+    monkeypatch.setattr(torch.cuda, "graph", lambda *args: nullcontext())
+    monkeypatch.setattr(torch.cuda, "memory_allocated", lambda: 0)
+    monkeypatch.setattr(torch.cuda, "synchronize", lambda: None)
+    r = runner()
+    r.config = cfg(max_num_seqs=max_batch, max_model_len=32, decode_graph_bs=buckets,
+                   hf_config=SimpleNamespace(hidden_size=16))
+    r.block_size, r.enforce_eager = 4, False
+    r.model, r.dspark_model, r.dspark_target_layers = Target(), (draft if with_dspark else None), (0, 1)
+    r.graph_mem = {}
+    r.decode_graph_hits = r.decode_graph_exact_hits = r.decode_graph_padded_hits = 0
+    r.decode_graph_bucket_histogram, r.decode_graph_fallbacks = {}, {}
+    r.capture_cudagraph()
+    executed = []
+    for bucket, graph in r.graphs.items():
+        def replay(b=bucket):
+            executed.append(b)
+            gv = r.graph_vars
+            outer = runner_module.get_context()
+            set_context(False, slot_mapping=gv["slot_mapping"][:b],
+                        context_lens=gv["context_lens"][:b], block_tables=gv["block_tables"][:b])
+            try:
+                gv["outputs"][:b].copy_(r._target_forward_hidden(gv["input_ids"][:b], gv["positions"][:b]))
+            finally:
+                set_context(outer.is_prefill, outer.cu_seqlens_q, outer.cu_seqlens_k,
+                            outer.max_seqlen_q, outer.max_seqlen_k, outer.slot_mapping,
+                            outer.context_lens, outer.block_tables, outer.is_spec_verify)
+        graph.callback = replay
+    return r, executed, copy.deepcopy(draft)
+
+
+@pytest.mark.parametrize("max_batch", [11, 15])
+def test_target_decode_explicit_buckets_capture_replay_and_dynamic_scratch(monkeypatch, max_batch):
+    r, executed, ref = fake_decode_runner(monkeypatch, max_batch, tuple(range(1, max_batch + 1)))
+    assert r.graph_bs == list(range(1, max_batch + 1))
+    assert set(r.graphs) == set(r.graph_bs)
+    assert r.graph_vars["input_ids"].shape == (max_batch,)
+    ring_before = r.dspark_model.cache.clone()
+    rng_before = torch.random.get_rng_state()
+    for turn, batch in enumerate(list(range(1, max_batch + 1)) + [3, 1, max_batch]):
+        ids = torch.arange(batch, dtype=torch.long) + turn
+        positions = torch.arange(batch, dtype=torch.long) + turn * 2
+        set_context(False, slot_mapping=torch.arange(batch, dtype=torch.int32),
+                    context_lens=torch.arange(batch, dtype=torch.int32) + 1,
+                    block_tables=torch.zeros(batch, 1, dtype=torch.int32))
+        values = ids.float() + positions.float() * 0.25
+        expected_features = values[:, None].expand(-1, 32)
+        ref.write_context(expected_features, positions, None, scratch=True)
+        result = r.run_model(ids, positions, False)
+        assert executed[-1] == batch
+        torch.testing.assert_close(result, values[:, None].expand(-1, 16))
+        torch.testing.assert_close(r.dspark_model.scratch[:, :, :batch], ref.scratch[:, :, :batch])
+        torch.testing.assert_close(r.dspark_model.cache, ring_before, rtol=0, atol=0)
+    assert torch.equal(rng_before, torch.random.get_rng_state())
+    assert r.decode_graph_hits == r.decode_graph_exact_hits == len(executed)
+    assert r.decode_graph_padded_hits == 0
+    assert sum(r.decode_graph_bucket_histogram.values()) == len(executed)
+    reset_context()
+
+
+def test_target_decode_default_and_sparse_bucket_policy(monkeypatch):
+    r, executed, _ = fake_decode_runner(monkeypatch, 11, ())
+    assert r.graph_bs == [1, 2, 4, 8]  # exact original list, including its B11 gap
+    assert r.graph_vars["input_ids"].shape == (11,)
+    set_context(False, slot_mapping=torch.tensor([0, 1, 2], dtype=torch.int32),
+                context_lens=torch.ones(3, dtype=torch.int32),
+                block_tables=torch.zeros(3, 1, dtype=torch.int32))
+    before = r.dspark_model.cache.clone()
+    r.run_model(torch.tensor([1, 2, 3]), torch.tensor([4, 5, 6]), False)
+    assert executed == [4] and r.decode_graph_padded_hits == 1
+    assert r.graph_vars["slot_mapping"][3].item() == -1
+    torch.testing.assert_close(r.dspark_model.cache, before, rtol=0, atol=0)
+    with pytest.raises(StopIteration):
+        r.run_model(torch.zeros(11, dtype=torch.long), torch.zeros(11, dtype=torch.long), False)
+
+    sparse, calls, _ = fake_decode_runner(monkeypatch, 11, (11, 1, 4))
+    assert sparse.graph_bs == [1, 4, 11]
+    set_context(False, slot_mapping=torch.tensor([0, 1, 2], dtype=torch.int32),
+                context_lens=torch.ones(3, dtype=torch.int32),
+                block_tables=torch.zeros(3, 1, dtype=torch.int32))
+    sparse.run_model(torch.tensor([1, 2, 3]), torch.tensor([4, 5, 6]), False)
+    assert calls == [4] and sparse.decode_graph_padded_hits == 1
+    reset_context()
+
+
+def test_target_decode_eager_fallback_is_counted(monkeypatch):
+    r, calls, _ = fake_decode_runner(monkeypatch, 3, (1, 2, 3))
+    r.enforce_eager = True
+    set_context(False, slot_mapping=torch.tensor([0], dtype=torch.int32),
+                context_lens=torch.tensor([1], dtype=torch.int32),
+                block_tables=torch.zeros(1, 1, dtype=torch.int32))
+    result = r.run_model(torch.tensor([2]), torch.tensor([4]), False)
+    assert result[0, 0].item() == 3.0
+    assert not calls and r.decode_graph_hits == 0
+    assert r.decode_graph_fallbacks == {"enforce_eager": 1}
+    reset_context()
+
+
+def test_target_decode_exact_bucket_without_spec_model(monkeypatch):
+    r, calls, _ = fake_decode_runner(monkeypatch, 3, (1, 2, 3), with_dspark=False)
+    set_context(False, slot_mapping=torch.arange(3, dtype=torch.int32),
+                context_lens=torch.ones(3, dtype=torch.int32),
+                block_tables=torch.zeros(3, 1, dtype=torch.int32))
+    result = r.run_model(torch.tensor([1, 2, 3]), torch.tensor([4, 8, 12]), False)
+    assert result[:, 0].tolist() == [2.0, 4.0, 6.0]
+    assert calls == [3] and r.decode_graph_exact_hits == 1 and r.decode_graph_padded_hits == 0
     reset_context()

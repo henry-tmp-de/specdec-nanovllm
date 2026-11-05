@@ -189,6 +189,10 @@ class Config:
     #   按 12.2「新增图先只覆盖精确 B=2/4，保留 B=1 原路径」——
     #   不捕获默认 512 的全范围，未覆盖的 B 走 eager 并记录原因。
 
+    # Ordinary target decode only; empty preserves the original bucket list.
+    # To avoid padding every active batch, explicitly pass tuple(range(1, B+1)).
+    decode_graph_bs: tuple[int, ...] = ()
+
     spec_graph_pad: bool = False
     #   ★ P16：未精确捕获的 batch size **向上取整到最近的桶**，多出来的行用
     #     「空行」补齐（原版 decode 的 run_model 早就这么干，这里搬到投机路径）。
@@ -201,6 +205,17 @@ class Config:
     #     那是「每条请求要算几个」真的变了，不是 batch 维度的问题，继续退回 eager。
 
     def __post_init__(self):
+        buckets = self.decode_graph_bs
+        if not isinstance(buckets, tuple):
+            raise ValueError("decode_graph_bs must be a tuple of batch sizes")
+        if buckets:
+            if (any(type(b) is not int or b <= 0 or b > self.max_num_seqs for b in buckets)
+                    or len(set(buckets)) != len(buckets)):
+                raise ValueError("decode_graph_bs entries must be unique positive integers <= max_num_seqs")
+            if self.max_num_seqs not in buckets:
+                raise ValueError("decode_graph_bs must include max_num_seqs")
+            if self.max_num_seqs > 512:
+                raise ValueError("explicit decode_graph_bs supports max_num_seqs <= 512")
         W = self.dspark_window_tokens
         if (not isinstance(W, int) or isinstance(W, bool) or W < 0 or
                 self.dspark_window_storage not in ("full_cache", "ring")):
