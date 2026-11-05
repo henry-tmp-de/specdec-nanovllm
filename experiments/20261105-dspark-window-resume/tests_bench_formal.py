@@ -158,8 +158,9 @@ class FormalChecks(unittest.TestCase):
         bench.validate_budget("capacity", 0.85)
         bench.validate_budget("formal", 0.70)
         for phase in ("pilot", "formal"):
+            bench.validate_budget(phase, 0.85)
             with self.assertRaises(ValueError):
-                bench.validate_budget(phase, 0.85)
+                bench.validate_budget(phase, 0.80)
         for bad in (0, -0.1, 1.1, float("nan"), float("inf")):
             with self.assertRaises(ValueError):
                 bench.validate_budget("capacity", bad)
@@ -173,6 +174,8 @@ class FormalChecks(unittest.TestCase):
         self.assertNotEqual(result["jobs"][0]["arm"], result["jobs"][5]["arm"])
         self.assertEqual(len(result["cells"]) * 3, 450)
         self.assertEqual({j["gpu_memory_utilization"] for j in result["jobs"]}, {0.70})
+        self.assertEqual({c["gpu_memory_utilization"] for c in result["cells"]}, {0.70})
+        self.assertEqual(result["gpu_memory_utilization"], 0.70)
         self.assertIn("no command is launched", result["execution"])
 
     def test_pilot_and_capacity_remain_separate(self):
@@ -181,10 +184,16 @@ class FormalChecks(unittest.TestCase):
         self.assertEqual({j["batch"] for j in pilot["jobs"]}, {2, 8})
         self.assertEqual({j["window"] for j in pilot["jobs"]}, {0, 512, 1024, 2048})
         self.assertEqual({j["gpu_memory_utilization"] for j in pilot["jobs"]}, {0.70})
+        adjusted = plan.build("pilot", 1024, ("code",), 1, 0.85)
+        self.assertEqual(adjusted["gpu_memory_utilization"], 0.85)
+        self.assertEqual({j["gpu_memory_utilization"] for j in adjusted["jobs"]}, {0.85})
+        self.assertEqual({c["gpu_memory_utilization"] for c in adjusted["cells"]}, {0.85})
         capacity = plan.build("capacity", 1024, ("code",), 1)
         self.assertEqual([(x["batch"], x["ctx"], x["max_num_batched_tokens"]) for x in capacity["jobs"]],
                          [(4, 16384, 4096), (4, 16384, 4096)])
         self.assertEqual([x["gpu_memory_utilization"] for x in capacity["jobs"]], [0.85, 0.85])
+        self.assertEqual({x["gpu_memory_utilization"] for x in capacity["cells"]}, {0.85})
+        self.assertEqual(capacity["gpu_memory_utilization"], 0.85)
         self.assertIn("target pool block count may differ", capacity["jobs"][0]["capacity_policy"])
 
 

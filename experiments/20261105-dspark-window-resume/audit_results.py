@@ -210,8 +210,8 @@ def audit(rows, min_repeats, mode="diagnostic", plan=None, ledger=None, manifest
                 errors.append("capacity diagnostics are separate from fixed-batch performance")
             if not row.get("engine_commit") or not row.get("gpu_uuid") or not row.get("target_config_sha256"):
                 errors.append("formal provenance requires engine commit, GPU UUID, target config hash")
-            if row.get("gpu_memory_utilization") != 0.70:
-                errors.append("fixed-batch primary comparison requires the common 0.70 GPU budget")
+            if row.get("gpu_memory_utilization") not in (0.70, 0.85):
+                errors.append("fixed-batch comparison requires a planned 0.70 or 0.85 GPU budget")
             if row.get("graph_mode") != "graph":
                 errors.append("fixed-batch primary comparison requires graph-on")
             expected_buckets = list(range(1, row.get("requested_batch", 0) + 1))
@@ -351,15 +351,30 @@ def audit(rows, min_repeats, mode="diagnostic", plan=None, ledger=None, manifest
         return result
 
     expected_cells, plan_errors = set(), []
+    plan_budget = None
     if plan is None or not isinstance(plan.get("cells"), list) or not plan["cells"]:
         plan_errors.append("explicit non-empty expected matrix plan is required")
     else:
+        plan_budget = plan.get("gpu_memory_utilization")
+        if plan_budget is None and isinstance(plan.get("jobs"), list):
+            values = [job.get("gpu_memory_utilization") for job in plan["jobs"] if isinstance(job, dict)]
+            job_budgets = set(values) if all(type(x) in (int, float) for x in values) else set()
+            if len(job_budgets) == 1:
+                plan_budget = next(iter(job_budgets))
+        if plan_budget not in (0.70, 0.85):
+            plan_errors.append("plan must declare a single 0.70 or 0.85 GPU budget")
+        if any(r.get("gpu_memory_utilization") != plan_budget for r in raw):
+            plan_errors.append("run budget differs from the planned GPU budget")
+        if isinstance(plan.get("jobs"), list) and any(not isinstance(job, dict) or job.get("gpu_memory_utilization") != plan_budget for job in plan["jobs"]):
+            plan_errors.append("planned jobs use different GPU budgets")
         if plan.get("phase") and any(r.get("phase") != plan["phase"] for r in raw):
             plan_errors.append("run phase differs from planned phase")
         for cell in plan["cells"]:
-            if any(k not in cell for k in CELL_FIELDS):
+            if not isinstance(cell, dict) or any(k not in cell for k in CELL_FIELDS):
                 plan_errors.append("planned cell missing required fields")
                 continue
+            if cell.get("gpu_memory_utilization", plan_budget) != plan_budget:
+                plan_errors.append("planned cells use different GPU budgets")
             key = canonical({k: cell[k] for k in CELL_FIELDS})
             if key in expected_cells:
                 plan_errors.append("duplicate planned cell")
@@ -399,6 +414,7 @@ def audit(rows, min_repeats, mode="diagnostic", plan=None, ledger=None, manifest
                   unexpected_cells=[json.loads(x) for x in unexpected],
                   inconsistent_cell_configs=[json.loads(x) for x in split_configs],
                   mismatched_pairs=mismatched_pairs, plan_errors=plan_errors, ledger_errors=ledger_errors)
+    result["plan_gpu_memory_utilization"] = plan_budget
     result["matrix_scope"] = plan.get("matrix_scope", "explicit subset") if isinstance(plan, dict) else "unspecified"
     result["pass"] = bool(data_valid and plan is not None and expected_cells and not plan_errors and
                           not missing and not unexpected and not split_configs and not mismatched_pairs and sufficient)

@@ -34,8 +34,8 @@ BUCKETS = (1, 2, 4, 8, 16)
 def validate_budget(phase, utilization):
     if not math.isfinite(utilization) or not 0 < utilization <= 1:
         raise ValueError("gpu_memory_utilization must be finite and in (0, 1]")
-    if phase in ("pilot", "formal") and utilization != 0.70:
-        raise ValueError("pilot/formal fixed-batch comparisons require a common 0.70 budget")
+    if phase in ("pilot", "formal") and utilization not in (0.70, 0.85):
+        raise ValueError("pilot/formal budget must be an explicitly planned 0.70 or 0.85")
 
 
 def options_for(arm, batch, ctx, output_tokens, window, target, ar_model, dspark_model,
@@ -390,7 +390,7 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--max-num-batched-tokens", type=int, help="容量实验可显式设置相同 chunked prefill 预算")
     ap.add_argument("--gpu-memory-utilization", type=float, default=0.70,
-                    help="默认 0.70；capacity 计划预设两个 arm 均使用 0.85")
+                    help="默认 0.70；pilot/formal 可显式 0.85，capacity 按独立计划设置")
     ap.add_argument("--seed", type=int, default=20261105)
     ap.add_argument("--diagnostic-cost", action="store_true",
                     help="额外 CUDA event 与逐轮窗口观测；输出不可作为正式吞吐")

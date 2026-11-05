@@ -1,5 +1,6 @@
 """CPU-only checks: raw audit, workload construction, and prewarm planning."""
 import importlib.util
+from copy import deepcopy
 import json
 from pathlib import Path
 import sys
@@ -139,34 +140,55 @@ class CPUChecks(unittest.TestCase):
                            {"event": "child", "id": ident, "gpu_uuid": "GPU-OK"},
                            {"event": "end", "id": ident, "gpu_uuid": "GPU-OK", "kind": "formal",
                             "elapsed_s": 1, "outcome": "ok", "exit_code": 0, "ever_owned_compute_observed": True}])
-        report = audit.audit(rows, 3, "formal", {"cells": [cell]}, ledger, manifest)
+        planned = {"cells": [cell], "gpu_memory_utilization": 0.70}
+        report = audit.audit(rows, 3, "formal", planned, ledger, manifest)
         self.assertTrue(report["pass"], report)
+        adjusted = deepcopy(rows)
+        for _, _, row in adjusted:
+            if row.get("type") == "run":
+                row["gpu_memory_utilization"] = 0.85
+        plan85 = {"cells": [{**cell, "gpu_memory_utilization": 0.85}], "gpu_memory_utilization": 0.85}
+        adjusted_report = audit.audit(adjusted, 3, "formal", plan85, ledger, manifest)
+        self.assertTrue(adjusted_report["pass"], adjusted_report)
+        self.assertEqual(adjusted_report["plan_gpu_memory_utilization"], 0.85)
+        wrong_plan = audit.audit(adjusted, 3, "formal", planned, ledger, manifest)
+        self.assertFalse(wrong_plan["pass"])
+        self.assertTrue(any("run budget" in x for x in wrong_plan["plan_errors"]))
+        mixed = deepcopy(rows)
+        mixed[-1][2]["gpu_memory_utilization"] = 0.85
+        mixed_report = audit.audit(mixed, 3, "formal", planned, ledger, manifest)
+        self.assertFalse(mixed_report["pass"])
+        self.assertTrue(mixed_report["inconsistent_cell_configs"])
+        old_plan = {"cells": [cell], "jobs": [{"gpu_memory_utilization": 0.70}]}
+        self.assertTrue(audit.audit(rows, 3, "formal", old_plan, ledger, manifest)["pass"])
+        self.assertFalse(audit.audit(rows, 3, "formal", {"cells": [cell]}, ledger, manifest)["pass"])
         without_plan = audit.audit(rows, 3, "formal", None, ledger, manifest)
         self.assertFalse(without_plan["pass"])
         claimed_full = audit.audit(rows, 3, "formal", {"cells": [cell], "window_tokens": 256,
+                                    "gpu_memory_utilization": 0.70,
                                     "matrix_scope": "full minimum fixed-batch matrix"}, ledger, manifest)
         self.assertFalse(claimed_full["pass"])
         self.assertTrue(claimed_full["plan_errors"])
-        unfinished = audit.audit(rows, 3, "formal", {"cells": [cell]}, ledger[:-1], manifest)
+        unfinished = audit.audit(rows, 3, "formal", planned, ledger[:-1], manifest)
         self.assertFalse(unfinished["pass"])
         self.assertTrue(unfinished["ledger_errors"])
         rows[-1][2]["target_decode_graph"]["padded"] = 1
-        padded = audit.audit(rows, 3, "formal", {"cells": [cell]}, ledger, manifest)
+        padded = audit.audit(rows, 3, "formal", planned, ledger, manifest)
         self.assertFalse(padded["pass"])
         self.assertEqual(padded["invalid_runs"], 1)
         rows[-1][2]["target_decode_graph"]["padded"] = 0
         rows[-1][2]["graph_delta"]["verify_padded_hits"] = 1
-        padded_verify = audit.audit(rows, 3, "formal", {"cells": [cell]}, ledger, manifest)
+        padded_verify = audit.audit(rows, 3, "formal", planned, ledger, manifest)
         self.assertFalse(padded_verify["pass"])
         self.assertEqual(padded_verify["invalid_runs"], 1)
         rows[-1][2]["graph_delta"]["verify_padded_hits"] = 0
         rows[-1][2]["target_provenance"] = {"path": "different", "weight_files": [{"name": "w", "bytes": 10}]}
-        changed_target = audit.audit(rows, 3, "formal", {"cells": [cell]}, ledger, manifest)
+        changed_target = audit.audit(rows, 3, "formal", planned, ledger, manifest)
         self.assertFalse(changed_target["pass"])
         self.assertTrue(changed_target["inconsistent_cell_configs"])
         rows[-1][2]["target_provenance"] = {"path": "target", "weight_files": [{"name": "w", "bytes": 10}]}
         rows[-1][2]["engine_commit"] = "other"
-        changed = audit.audit(rows, 3, "formal", {"cells": [cell]}, ledger, manifest)
+        changed = audit.audit(rows, 3, "formal", planned, ledger, manifest)
         self.assertFalse(changed["pass"])
         self.assertTrue(changed["inconsistent_cell_configs"])
 
