@@ -23,6 +23,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(HERE))
 from bench_smoke import prewarm_shapes, read_manifest, snapshot, token_hash
+from gpu_identity import verify_visible_gpu
 
 
 def main():
@@ -57,11 +58,7 @@ def main():
         if not all(os.environ.get(x) for x in ("DS_GUARD_ID", "DS_GPU_UUID", "DS_RUN_DEADLINE_UNIX")):
             raise RuntimeError("必须通过本轮 gpu_control.py 启动 GPU 数值对拍")
         import torch
-        if torch.cuda.device_count() != 1:
-            raise RuntimeError("guard must expose exactly one CUDA device")
-        prop_uuid = getattr(torch.cuda.get_device_properties(0), "uuid", None)
-        if prop_uuid is None or str(prop_uuid).lower() != os.environ["DS_GPU_UUID"].lower():
-            raise RuntimeError(f"CUDA device UUID mismatch or unavailable: {prop_uuid!r}")
+        verify_visible_gpu(torch, os.environ["DS_GPU_UUID"])
         from nanovllm import LLM, SamplingParams
         import nanovllm.spec_decode.verify as verifier
         from nanovllm.engine.token_hook import TokenDeliveryHook

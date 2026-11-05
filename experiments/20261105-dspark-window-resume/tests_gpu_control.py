@@ -3,13 +3,16 @@ import importlib.util
 import json
 from pathlib import Path
 import tempfile
+import types
 import unittest
+import uuid
 from unittest.mock import patch
 
 HERE = Path(__file__).resolve().parent
 spec = importlib.util.spec_from_file_location("guard", HERE / "gpu_control.py")
 guard = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(guard)
+import gpu_identity
 
 
 def proc(pid, parent, ticks):
@@ -17,6 +20,32 @@ def proc(pid, parent, ticks):
 
 
 class GuardTests(unittest.TestCase):
+    def test_cuda_uuid_string_and_pybind_byte_forms(self):
+        value = uuid.UUID("e0671215-034e-dd14-093f-b3755e543b6f")
+        expected = "GPU-e0671215-034e-dd14-093f-b3755e543b6f"
+        self.assertEqual(gpu_identity.normalize_gpu_uuid("gpu-E0671215-034E-DD14-093F-B3755E543B6F"), expected)
+        self.assertEqual(gpu_identity.normalize_gpu_uuid(str(value)), expected)
+        for raw in (value.bytes, bytearray(value.bytes), memoryview(value.bytes)):
+            pybind_like = types.SimpleNamespace(bytes=raw)
+            self.assertEqual(gpu_identity.normalize_gpu_uuid(pybind_like), expected)
+        with self.assertRaises(TypeError):
+            gpu_identity.normalize_gpu_uuid(types.SimpleNamespace(bytes=list(value.bytes)))
+        with self.assertRaises(ValueError):
+            gpu_identity.normalize_gpu_uuid(types.SimpleNamespace(bytes=b"short"))
+
+    def test_visible_gpu_check_fails_closed(self):
+        expected = "GPU-e0671215-034e-dd14-093f-b3755e543b6f"
+        value = uuid.UUID(expected[4:])
+        props = types.SimpleNamespace(uuid=types.SimpleNamespace(bytes=value.bytes))
+        torch = types.SimpleNamespace(cuda=types.SimpleNamespace(device_count=lambda: 1,
+                                                                 get_device_properties=lambda n: props))
+        self.assertIs(gpu_identity.verify_visible_gpu(torch, expected), props)
+        with self.assertRaises(RuntimeError):
+            gpu_identity.verify_visible_gpu(torch, "GPU-00000000-0000-0000-0000-000000000001")
+        torch.cuda.device_count = lambda: 2
+        with self.assertRaises(RuntimeError):
+            gpu_identity.verify_visible_gpu(torch, expected)
+
     def test_parse_stat_handles_parentheses_and_spaces(self):
         # After state: fields 4..21 then start ticks (field 22).
         source = "99 (worker (gpu) 0) S " + " ".join(str(x) for x in range(4, 23))

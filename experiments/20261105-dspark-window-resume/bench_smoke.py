@@ -20,6 +20,7 @@ import traceback
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+from gpu_identity import verify_visible_gpu
 
 
 def token_hash(ids):
@@ -175,11 +176,7 @@ def main():
         if not all(os.environ.get(x) for x in ("DS_GUARD_ID", "DS_GPU_UUID", "DS_RUN_DEADLINE_UNIX")):
             raise RuntimeError("必须通过本轮 gpu_control.py 在已授权 GPU 上启动 smoke")
         import torch
-        if torch.cuda.device_count() != 1:
-            raise RuntimeError("guard must expose exactly one CUDA device")
-        actual_uuid = getattr(torch.cuda.get_device_properties(0), "uuid", None)
-        if actual_uuid is None or str(actual_uuid).lower() != os.environ["DS_GPU_UUID"].lower():
-            raise RuntimeError(f"CUDA device UUID mismatch or unavailable: {actual_uuid!r}")
+        verify_visible_gpu(torch, os.environ["DS_GPU_UUID"])
         from nanovllm import LLM, SamplingParams
         from nanovllm.config import Config
         from nanovllm.engine.token_hook import TokenDeliveryHook

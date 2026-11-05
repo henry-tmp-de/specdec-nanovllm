@@ -19,6 +19,7 @@ import subprocess
 import sys
 import time
 import uuid
+from gpu_identity import normalize_gpu_uuid
 
 TOTAL_LIMIT_S = 14400
 SMOKE_LIMIT_S = 1800
@@ -95,7 +96,7 @@ def gpu_state(index):
         if row[1] == dev_uuid:
             procs.append({"reported_pid_or_tid": int(row[0]), "gpu_uuid": row[1],
                           "used_mib": row[2]})
-    return {"index": int(i), "uuid": dev_uuid, "name": name,
+    return {"index": int(i), "uuid": normalize_gpu_uuid(dev_uuid), "name": name,
             "used_mib": int(used), "total_mib": int(total),
             "util_pct": int(util), "compute_processes": procs}
 
@@ -187,6 +188,10 @@ def main(argv=None):
     p.add_argument("--max-idle-mib", type=int, default=100, choices=range(0, 101), metavar="0..100")
     p.add_argument("command", nargs=argparse.REMAINDER)
     args = p.parse_args(argv)
+    try:
+        args.uuid = normalize_gpu_uuid(args.uuid)
+    except (TypeError, ValueError) as exc:
+        p.error(f"invalid GPU UUID: {exc}")
     command = args.command[1:] if args.command and args.command[0] == "--" else args.command
     if not command:
         p.error("-- 后必须给出子进程命令")
