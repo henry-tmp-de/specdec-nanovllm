@@ -138,6 +138,23 @@ class FormalChecks(unittest.TestCase):
         with self.assertRaises(ValueError):
             bench.options_for("dspark_ring", 16, 4096, 256, 512, "target", "ar", "ds", 64)
 
+    def test_capacity_budget_is_explicit_and_primary_budget_is_fixed(self):
+        for arm, window in (("dspark_full", 0), ("dspark_ring", 1024)):
+            options = bench.options_for(arm, 4, 16384, 256, window,
+                                        "target", "ar", "ds", 4096, 0.85)
+            self.assertEqual(options["gpu_memory_utilization"], 0.85)
+            self.assertEqual(options["max_num_seqs"], 4)
+            self.assertEqual(options["max_num_batched_tokens"], 4096)
+            self.assertEqual(options["max_model_len"], 16384 + 256 + 8)
+        bench.validate_budget("capacity", 0.85)
+        bench.validate_budget("formal", 0.70)
+        for phase in ("pilot", "formal"):
+            with self.assertRaises(ValueError):
+                bench.validate_budget(phase, 0.85)
+        for bad in (0, -0.1, 1.1, float("nan"), float("inf")):
+            with self.assertRaises(ValueError):
+                bench.validate_budget("capacity", bad)
+
     def test_full_plan_has_150_distinct_cells_and_rotates_arms(self):
         result = plan.build("formal", 1024, plan.PANELS, 3)
         self.assertEqual(len(result["jobs"]), 50)
@@ -146,6 +163,7 @@ class FormalChecks(unittest.TestCase):
         self.assertEqual(result["matrix_scope"], "full minimum fixed-batch matrix")
         self.assertNotEqual(result["jobs"][0]["arm"], result["jobs"][5]["arm"])
         self.assertEqual(len(result["cells"]) * 3, 450)
+        self.assertEqual({j["gpu_memory_utilization"] for j in result["jobs"]}, {0.70})
         self.assertIn("no command is launched", result["execution"])
 
     def test_pilot_and_capacity_remain_separate(self):
@@ -153,9 +171,11 @@ class FormalChecks(unittest.TestCase):
         self.assertEqual(len(pilot["jobs"]), 14)
         self.assertEqual({j["batch"] for j in pilot["jobs"]}, {2, 8})
         self.assertEqual({j["window"] for j in pilot["jobs"]}, {0, 512, 1024, 2048})
+        self.assertEqual({j["gpu_memory_utilization"] for j in pilot["jobs"]}, {0.70})
         capacity = plan.build("capacity", 1024, ("code",), 1)
         self.assertEqual([(x["batch"], x["ctx"], x["max_num_batched_tokens"]) for x in capacity["jobs"]],
                          [(4, 16384, 4096), (4, 16384, 4096)])
+        self.assertEqual([x["gpu_memory_utilization"] for x in capacity["jobs"]], [0.85, 0.85])
         self.assertIn("target pool block count may differ", capacity["jobs"][0]["capacity_policy"])
 
 

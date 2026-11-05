@@ -28,6 +28,7 @@ def build(phase, window, panels, repeats):
                     w = window if arm in ("ar_window", "dspark_ring") else 0
                     jobs.append({"phase": phase, "arm": arm, "mode": mode_of(arm),
                                  "batch": batch, "ctx": ctx, "window": w,
+                                 "gpu_memory_utilization": 0.70,
                                  "panels": list(panels), "repeats": repeats})
     elif phase == "pilot":
         for i, batch in enumerate((2, 8)):
@@ -37,12 +38,14 @@ def build(phase, window, panels, repeats):
             for arm, w in grid[shift:] + grid[:shift]:
                 jobs.append({"phase": phase, "arm": arm, "mode": mode_of(arm),
                              "batch": batch, "ctx": 4096, "window": w,
+                             "gpu_memory_utilization": 0.70,
                              "panels": list(panels), "repeats": repeats})
     elif phase == "capacity":
         for arm in ("dspark_full", "dspark_ring"):
             jobs.append({"phase": phase, "arm": arm, "mode": mode_of(arm),
                          "batch": 4, "ctx": 16384, "window": window if arm == "dspark_ring" else 0,
                          "panels": list(panels), "repeats": repeats, "max_num_batched_tokens": 4096,
+                         "gpu_memory_utilization": 0.85,
                          "capacity_policy": "fixed total GPU budget; target pool block count may differ"})
     else:
         raise ValueError("unknown phase")

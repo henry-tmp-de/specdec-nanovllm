@@ -11,6 +11,7 @@ import argparse
 from dataclasses import fields
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import subprocess
@@ -30,7 +31,15 @@ ARMS = ("nospec", "ar_full", "ar_window", "dspark_full", "dspark_window_full", "
 BUCKETS = (1, 2, 4, 8, 16)
 
 
-def options_for(arm, batch, ctx, output_tokens, window, target, ar_model, dspark_model, batched_tokens):
+def validate_budget(phase, utilization):
+    if not math.isfinite(utilization) or not 0 < utilization <= 1:
+        raise ValueError("gpu_memory_utilization must be finite and in (0, 1]")
+    if phase in ("pilot", "formal") and utilization != 0.70:
+        raise ValueError("pilot/formal fixed-batch comparisons require a common 0.70 budget")
+
+
+def options_for(arm, batch, ctx, output_tokens, window, target, ar_model, dspark_model,
+                batched_tokens, gpu_memory_utilization=0.70):
     if arm not in ARMS or batch not in BUCKETS or ctx <= 0 or output_tokens < 9:
         raise ValueError("invalid fixed-batch cell")
     window_arms = ("ar_window", "dspark_window_full", "dspark_ring")
@@ -39,9 +48,11 @@ def options_for(arm, batch, ctx, output_tokens, window, target, ar_model, dspark
     k = 0 if arm == "nospec" else 6 if arm.startswith("ar_") else 7
     if batched_tokens < max(batch * (k + 1), 1):
         raise ValueError("max_num_batched_tokens cannot hold the fixed decode batch")
+    if not math.isfinite(gpu_memory_utilization) or not 0 < gpu_memory_utilization <= 1:
+        raise ValueError("gpu_memory_utilization must be finite and in (0, 1]")
     # Same model-length and block-table capacity for every arm.
     options = dict(max_num_seqs=batch, max_model_len=ctx + output_tokens + 8,
-                   max_num_batched_tokens=batched_tokens, gpu_memory_utilization=0.70,
+                   max_num_batched_tokens=batched_tokens, gpu_memory_utilization=gpu_memory_utilization,
                    tensor_parallel_size=1, enforce_eager=False, spec_cuda_graph=True,
                    spec_graph_bs=BUCKETS, spec_graph_pad=True, spec_overlap_mixed=False,
                    enable_prefix_cache=False)
@@ -396,14 +407,17 @@ def main():
     ap.add_argument("--manifest", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--max-num-batched-tokens", type=int, help="容量实验可显式设置相同 chunked prefill 预算")
+    ap.add_argument("--gpu-memory-utilization", type=float, default=0.70,
+                    help="默认 0.70；capacity 计划预设两个 arm 均使用 0.85")
     ap.add_argument("--seed", type=int, default=20261105)
     ap.add_argument("--diagnostic-cost", action="store_true",
                     help="额外 CUDA event 与逐轮窗口观测；输出不可作为正式吞吐")
     a = ap.parse_args()
     batched = a.max_num_batched_tokens if a.max_num_batched_tokens is not None else a.batch * a.ctx
     try:
+        validate_budget(a.phase, a.gpu_memory_utilization)
         options = options_for(a.arm, a.batch, a.ctx, a.output_tokens, a.window,
-                              a.target, a.ar_model, a.dspark_model, batched)
+                              a.target, a.ar_model, a.dspark_model, batched, a.gpu_memory_utilization)
     except ValueError as exc:
         ap.error(str(exc))
     panels = [a.panel] if a.panel else a.panels if a.panels else ["code", "math", "general"]
@@ -434,7 +448,7 @@ def main():
              "output_tokens": a.output_tokens, "panels": panels, "repeats": repeats,
              "seed": a.seed, "temperature": 1.0, "ignore_eos": True, "spec_k": k,
              "max_num_batched_tokens": batched, "max_model_len": options["max_model_len"],
-             "gpu_memory_utilization": 0.70, "graph_mode": "graph",
+             "gpu_memory_utilization": options["gpu_memory_utilization"], "graph_mode": "graph",
              "graph_policy": {"target_verify_padding": True, "draft_padding": True,
                               "buckets": list(BUCKETS)},
              "prefix_lookup": False, "mixed_overlap": False,

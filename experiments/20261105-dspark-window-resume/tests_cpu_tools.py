@@ -73,6 +73,17 @@ class CPUChecks(unittest.TestCase):
         self.assertFalse(formal["pass"])
         self.assertEqual(formal["invalid_runs"], 3)
 
+    def test_audit_does_not_group_distinct_memory_budgets(self):
+        rows = []
+        for repeat, budget in enumerate((0.70, 0.85)):
+            row = sample_run()
+            row.update(repeat=repeat, gpu_memory_utilization=budget)
+            rows.append(("x", repeat + 1, row))
+        result = audit.audit(rows, 1)
+        self.assertTrue(result["data_valid"])
+        self.assertEqual({g["configuration"]["gpu_memory_utilization"] for g in result["groups"]},
+                         {0.70, 0.85})
+
     def test_audit_rejects_wrong_landed_and_proposal_counts(self):
         row = sample_run()
         row["rounds"][1]["sequences"][0]["accepted_prefix"] = 0
