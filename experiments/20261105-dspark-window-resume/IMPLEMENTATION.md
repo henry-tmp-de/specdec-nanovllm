@@ -1,6 +1,6 @@
 # 实现与证据边界
 
-`dspark_window_tokens` 默认 0，`dspark_window_storage` 默认 `full_cache`；W>0 的 `full_cache` 仍分配与 target 块等量的 DSpark 缓存，只截断读取；`ring` 每活跃序列拥有 W/块大小个独立块。W>0 时 `DSparkProposer._inputs()` 仍返回 `(anchors, lengths, tables, bucket, temperatures)`：`lengths` 是绝对 anchor C；`tables` 是按历史顺序排列的逐 token 物理槽，补位 -1。W0 则保持原来的块表输入。可见历史是 `[max(0,C-W),C)`，noise block 使用绝对位置 `C..C+6`。target KV 不截断。
+`dspark_window_tokens` 默认 0，`dspark_window_storage` 默认 `full_cache`；W>0 的 `full_cache` 仍分配与 target 块等量的 DSpark 缓存，读取只取窗口内历史，且和 `ring` 一样在真实 prefill 时裁剪 feature 与投影；`ring` 每活跃序列拥有 W/块大小个独立块。因此 W0→full_cache 是读取与 prefill feature/投影一起变化，不是旧计划中只改变读取的 A 对照；同 W 的 full_cache→ring 比较物理存储、确认提交与预算分配。W>0 时 `DSparkProposer._inputs()` 仍返回 `(anchors, lengths, tables, bucket, temperatures)`：`lengths` 是绝对 anchor C；`tables` 是按历史顺序排列的逐 token 物理槽，补位 -1。W0 则保持原来的块表输入。可见历史是 `[max(0,C-W),C)`，noise block 使用绝对位置 `C..C+6`。target KV 不截断。
 
 `enable_prefix_cache=False` 在 `BlockManager.can_allocate()` 中禁用查找和复用，并禁用哈希登记；W>0 必须选择该设置，其他 arm 也可显式选择。默认值为 True。池不够时 ring 不回退到不存在的全缓存。owner 绑定序列和分配代次，检查块表和连续已确认区间；preemption、完成和引擎 step 异常经 deallocate 清空，重新准入从头构建。当前不支持 TP>1、mixed overlap 和取消 API。
 

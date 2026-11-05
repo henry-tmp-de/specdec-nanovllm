@@ -1,8 +1,10 @@
 """No-model configuration and prefix-policy admission checks."""
+import importlib.util
 import sys
 import types
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import numpy
 import pytest
@@ -19,11 +21,18 @@ class FakeAutoConfig:
 
 
 transformers.AutoConfig = FakeAutoConfig
-sys.modules["transformers"] = transformers
 quant = types.ModuleType("nanovllm.layers.quant")
 quant.hf_names_to_modules = lambda names: names
-sys.modules["nanovllm.layers.quant"] = quant
-from nanovllm.config import Config
+spec = importlib.util.spec_from_file_location("isolated_dspark_config", ROOT / "nanovllm/config.py")
+config_module = importlib.util.module_from_spec(spec)
+with patch.dict(sys.modules, {"transformers": transformers, spec.name: config_module}):
+    spec.loader.exec_module(config_module)
+Config = config_module.Config
+
+
+@pytest.fixture(autouse=True)
+def isolated_quant_dependency(monkeypatch):
+    monkeypatch.setitem(sys.modules, "nanovllm.layers.quant", quant)
 
 
 def test_defaults_and_uniform_prefix_disable(tmp_path):

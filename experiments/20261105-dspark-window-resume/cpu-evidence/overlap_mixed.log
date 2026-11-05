@@ -49,7 +49,7 @@
   [PASS] ④ 纯 decode 步的计数口径不变（-1）   -1
   [PASS] ④ 全程没有一次 run_mixed
   [PASS] ④ 混合 step 走 run_mixed
-  [PASS] ④ run_mixed 的参数是 (decode_seqs, prefill_seqs, mode)   args=([<nanovllm.engine.sequence.Sequence object at 0x0000022014A9FE30>], [<nanovllm.engine.sequence.Sequence object at 0x000002201D790A70>], 'concurrent')
+  [PASS] ④ run_mixed 的参数是 (decode_seqs, prefill_seqs, mode)   args=([<nanovllm.engine.sequence.Sequence object at 0x000001CDAC800170>], [<nanovllm.engine.sequence.Sequence object at 0x000001CDB542CCB0>], 'concurrent')
   [PASS] ④ 混合 step 的口径 = prefill 推进量（8）   8
   [PASS] ④ prefill 端推进到 prompt 末尾（中间块，num_cached=8）   8
   [PASS] ④ prefill 端中间块不交付 token

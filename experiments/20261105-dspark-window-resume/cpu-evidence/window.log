@@ -3,4 +3,4 @@ W>=history max_abs_hidden=0 max_abs_q=0
 .W=8 10 rounds max_abs_hidden=3.57627869e-07 max_abs_q=2.86102295e-06
 .W=12 10 rounds max_abs_hidden=2.98023224e-07 max_abs_q=1.90734863e-06
 ....
-7 passed in 5.43s
+7 passed in 4.71s

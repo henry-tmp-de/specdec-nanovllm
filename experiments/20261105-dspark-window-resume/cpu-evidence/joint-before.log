@@ -1,0 +1,86 @@
+..........F........FF............                                        [100%]
+================================== FAILURES ===================================
+__________________ test_defaults_and_uniform_prefix_disable ___________________
+
+tmp_path = WindowsPath('C:/Users/85935/AppData/Local/Temp/pytest-of-85935/pytest-615/test_defaults_and_uniform_pref0')
+
+    def test_defaults_and_uniform_prefix_disable(tmp_path):
+>       default = Config(str(tmp_path))
+                  ^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_dspark_window_config.py:30: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:53: in __init__
+    ???
+nanovllm\config.py:229: in __post_init__
+    self.quant_modules, self.quant_config) = _resolve_quant(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+model_dir = 'C:\\Users\\85935\\AppData\\Local\\Temp\\pytest-of-85935\\pytest-615\\test_defaults_and_uniform_pref0'
+kind = None, granularity = 'per_channel', group_size = 128
+
+    def _resolve_quant(model_dir, kind, granularity, group_size):
+        """模型目录里有 quant_config.json 就自动启用，并按其中列出的层选层。"""
+>       from nanovllm.layers.quant import hf_names_to_modules
+E       ImportError: cannot import name 'hf_names_to_modules' from 'nanovllm.layers.quant' (unknown location)
+
+nanovllm\config.py:242: ImportError
+____________________ test_valid_window_config[full_cache] _____________________
+
+tmp_path = WindowsPath('C:/Users/85935/AppData/Local/Temp/pytest-of-85935/pytest-615/test_valid_window_config_full_0')
+storage = 'full_cache'
+
+    @pytest.mark.parametrize("storage", ["full_cache", "ring"])
+    def test_valid_window_config(tmp_path, storage):
+>       c = Config(str(tmp_path), dspark_window_tokens=512, dspark_window_storage=storage,
+                   spec_method="dspark", spec_k=7, enable_prefix_cache=False)
+
+tests\test_dspark_window_config.py:58: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:53: in __init__
+    ???
+nanovllm\config.py:229: in __post_init__
+    self.quant_modules, self.quant_config) = _resolve_quant(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+model_dir = 'C:\\Users\\85935\\AppData\\Local\\Temp\\pytest-of-85935\\pytest-615\\test_valid_window_config_full_0'
+kind = None, granularity = 'per_channel', group_size = 128
+
+    def _resolve_quant(model_dir, kind, granularity, group_size):
+        """模型目录里有 quant_config.json 就自动启用，并按其中列出的层选层。"""
+>       from nanovllm.layers.quant import hf_names_to_modules
+E       ImportError: cannot import name 'hf_names_to_modules' from 'nanovllm.layers.quant' (unknown location)
+
+nanovllm\config.py:242: ImportError
+_______________________ test_valid_window_config[ring] ________________________
+
+tmp_path = WindowsPath('C:/Users/85935/AppData/Local/Temp/pytest-of-85935/pytest-615/test_valid_window_config_ring_0')
+storage = 'ring'
+
+    @pytest.mark.parametrize("storage", ["full_cache", "ring"])
+    def test_valid_window_config(tmp_path, storage):
+>       c = Config(str(tmp_path), dspark_window_tokens=512, dspark_window_storage=storage,
+                   spec_method="dspark", spec_k=7, enable_prefix_cache=False)
+
+tests\test_dspark_window_config.py:58: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+<string>:53: in __init__
+    ???
+nanovllm\config.py:229: in __post_init__
+    self.quant_modules, self.quant_config) = _resolve_quant(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+model_dir = 'C:\\Users\\85935\\AppData\\Local\\Temp\\pytest-of-85935\\pytest-615\\test_valid_window_config_ring_0'
+kind = None, granularity = 'per_channel', group_size = 128
+
+    def _resolve_quant(model_dir, kind, granularity, group_size):
+        """模型目录里有 quant_config.json 就自动启用，并按其中列出的层选层。"""
+>       from nanovllm.layers.quant import hf_names_to_modules
+E       ImportError: cannot import name 'hf_names_to_modules' from 'nanovllm.layers.quant' (unknown location)
+
+nanovllm\config.py:242: ImportError
+=========================== short test summary info ===========================
+FAILED tests/test_dspark_window_config.py::test_defaults_and_uniform_prefix_disable
+FAILED tests/test_dspark_window_config.py::test_valid_window_config[full_cache]
+FAILED tests/test_dspark_window_config.py::test_valid_window_config[ring] - I...
+3 failed, 30 passed in 4.72s

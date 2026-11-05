@@ -13,6 +13,8 @@ OUT = Path(__file__).with_name("cpu-evidence")
 OUT.mkdir(exist_ok=True)
 PY = sys.executable
 tests = [
+    ("joint_new", "pytest_joint", ["tests/test_dspark_feature_rows.py", "tests/test_dspark_window.py",
+                                     "tests/test_dspark_window_config.py", "tests/test_dspark_window_runner.py"]),
     ("window", "pytest", "tests/test_dspark_window.py"),
     ("runner", "pytest", "tests/test_dspark_window_runner.py"),
     ("features", "pytest", "tests/test_dspark_feature_rows.py"),
@@ -33,7 +35,9 @@ env = os.environ.copy()
 env["PYTHONUTF8"] = "1"
 records = []
 for name, kind, path in tests:
-    if kind == "pytest":
+    if kind == "pytest_joint":
+        code = f"import numpy, pytest; raise SystemExit(pytest.main(['-q', '-s'] + {path!r}))"
+    elif kind == "pytest":
         code = f"import numpy, pytest; raise SystemExit(pytest.main(['-q', '-s', {path!r}]))"
     elif kind == "slot":
         code = ("import sys, runpy; sys.argv = [" + repr(path) + ", '--output', "

@@ -1,8 +1,10 @@
 """CPU tests of real runner commit decisions and scheduler window lifecycle."""
+import importlib
 import sys
 import types
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import numpy
 import pytest
@@ -17,25 +19,30 @@ sys.modules.setdefault("nanovllm", pkg)
 def stub(name, **members):
     module = types.ModuleType(name)
     module.__dict__.update(members)
-    sys.modules[name] = module
+    return module
 
 
-stub("nanovllm.config", Config=object)
-stub("transformers", AutoTokenizer=object)
-stub("nanovllm.models.qwen3", Qwen3ForCausalLM=object)
-stub("nanovllm.layers.sampler", Sampler=object)
-stub("nanovllm.layers.quant", apply_int8_quant=lambda *a, **kw: None)
-stub("nanovllm.spec_decode.draft_proposer", DraftWindow=object,
-     window_realign_target=lambda *a, **kw: None)
-stub("nanovllm.utils.loader", load_model=lambda *a, **kw: None)
-
-from nanovllm.engine.model_runner import ModelRunner
-from nanovllm.engine.scheduler import Scheduler
 from nanovllm.engine.sequence import Sequence, SequenceStatus
 from nanovllm.sampling_params import SamplingParams
 from nanovllm.spec_decode.dspark_model import DSparkModel
 from nanovllm.spec_decode.dspark_window import begin_owner, mark_confirmed, selected_prefill_rows
-from nanovllm.utils.context import set_context, reset_context
+
+stubs = {
+    "nanovllm.config": stub("nanovllm.config", Config=object),
+    "transformers": stub("transformers", AutoTokenizer=object),
+    "nanovllm.models.qwen3": stub("nanovllm.models.qwen3", Qwen3ForCausalLM=object),
+    "nanovllm.layers.sampler": stub("nanovllm.layers.sampler", Sampler=object),
+    "nanovllm.layers.quant": stub("nanovllm.layers.quant", apply_int8_quant=lambda *a, **kw: None),
+    "nanovllm.spec_decode.draft_proposer": stub("nanovllm.spec_decode.draft_proposer", DraftWindow=object,
+                                                window_realign_target=lambda *a, **kw: None),
+    "nanovllm.utils.loader": stub("nanovllm.utils.loader", load_model=lambda *a, **kw: None),
+}
+with patch.dict(sys.modules, stubs):
+    runner_module = importlib.import_module("nanovllm.engine.model_runner")
+    ModelRunner = runner_module.ModelRunner
+    Scheduler = importlib.import_module("nanovllm.engine.scheduler").Scheduler
+    LLMEngine = importlib.import_module("nanovllm.engine.llm_engine").LLMEngine
+    set_context, reset_context = runner_module.set_context, runner_module.reset_context
 
 
 def cfg(**updates):
@@ -143,7 +150,6 @@ def test_ring_capacity_failure_is_explicit_and_does_not_allocate_target():
 
 
 def test_engine_forward_error_releases_window_and_requeues():
-    from nanovllm.engine.llm_engine import LLMEngine
     Sequence.block_size = 4
     scheduler = Scheduler(cfg())
     seq = Sequence([1, 2, 3, 4], SamplingParams(max_tokens=10))
@@ -162,7 +168,6 @@ def test_engine_forward_error_releases_window_and_requeues():
 
 
 def test_engine_postprocess_error_releases_window_and_requeues(monkeypatch):
-    from nanovllm.engine.llm_engine import LLMEngine
     Sequence.block_size = 4
     scheduler = Scheduler(cfg())
     seq = Sequence([1, 2, 3, 4], SamplingParams(max_tokens=10))
@@ -185,7 +190,6 @@ def test_engine_postprocess_error_releases_window_and_requeues(monkeypatch):
 
 
 def test_real_warmup_entry_before_cache_has_no_window_owner(monkeypatch):
-    import nanovllm.engine.model_runner as runner_module
     c = SimpleNamespace(hidden_size=16, num_attention_heads=4, num_key_value_heads=2,
                         head_dim=4, attention_bias=False, intermediate_size=24,
                         num_hidden_layers=2, rms_norm_eps=1e-6, vocab_size=37,

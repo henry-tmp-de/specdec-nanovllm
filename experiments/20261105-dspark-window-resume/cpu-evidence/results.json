@@ -1,5 +1,17 @@
 [
   {
+    "name": "joint_new",
+    "command": [
+      "D:\\Anaconda\\python.exe",
+      "-B",
+      "-c",
+      "import numpy, pytest; raise SystemExit(pytest.main(['-q', '-s'] + ['tests/test_dspark_feature_rows.py', 'tests/test_dspark_window.py', 'tests/test_dspark_window_config.py', 'tests/test_dspark_window_runner.py']))"
+    ],
+    "exit_code": 0,
+    "seconds": 8.876,
+    "log": "cpu-evidence/joint_new.log"
+  },
+  {
     "name": "window",
     "command": [
       "D:\\Anaconda\\python.exe",
@@ -8,7 +20,7 @@
       "import numpy, pytest; raise SystemExit(pytest.main(['-q', '-s', 'tests/test_dspark_window.py']))"
     ],
     "exit_code": 0,
-    "seconds": 7.887,
+    "seconds": 7.214,
     "log": "cpu-evidence/window.log"
   },
   {
@@ -20,7 +32,7 @@
       "import numpy, pytest; raise SystemExit(pytest.main(['-q', '-s', 'tests/test_dspark_window_runner.py']))"
     ],
     "exit_code": 0,
-    "seconds": 7.886,
+    "seconds": 7.579,
     "log": "cpu-evidence/runner.log"
   },
   {
@@ -32,7 +44,7 @@
       "import numpy, pytest; raise SystemExit(pytest.main(['-q', '-s', 'tests/test_dspark_feature_rows.py']))"
     ],
     "exit_code": 0,
-    "seconds": 7.511,
+    "seconds": 7.362,
     "log": "cpu-evidence/features.log"
   },
   {
@@ -44,7 +56,7 @@
       "import numpy, pytest; raise SystemExit(pytest.main(['-q', '-s', 'tests/test_dspark_window_config.py']))"
     ],
     "exit_code": 0,
-    "seconds": 1.092,
+    "seconds": 1.189,
     "log": "cpu-evidence/config.log"
   },
   {
@@ -56,7 +68,7 @@
       "import numpy, pytest; raise SystemExit(pytest.main(['-q', '-s', 'tests/test_dspark_contract.py']))"
     ],
     "exit_code": 0,
-    "seconds": 7.397,
+    "seconds": 7.473,
     "log": "cpu-evidence/existing_dspark.log"
   },
   {
@@ -68,7 +80,7 @@
       "import numpy, pytest; raise SystemExit(pytest.main(['-q', '-s', 'tests/test_dspark_pad.py']))"
     ],
     "exit_code": 0,
-    "seconds": 7.113,
+    "seconds": 7.773,
     "log": "cpu-evidence/existing_dspark_pad.log"
   },
   {
@@ -80,7 +92,7 @@
       "import numpy, runpy; runpy.run_path('tests/test_graph_pad.py', run_name='__main__')"
     ],
     "exit_code": 0,
-    "seconds": 7.226,
+    "seconds": 7.393,
     "log": "cpu-evidence/existing_graph_pad.log"
   },
   {
@@ -92,7 +104,7 @@
       "import numpy, runpy; runpy.run_path('tests/test_overlap_mixed.py', run_name='__main__')"
     ],
     "exit_code": 0,
-    "seconds": 3.391,
+    "seconds": 4.138,
     "log": "cpu-evidence/overlap_mixed.log"
   },
   {
@@ -104,7 +116,7 @@
       "import numpy, runpy; runpy.run_path('tests/test_block_alloc.py', run_name='__main__')"
     ],
     "exit_code": 0,
-    "seconds": 0.253,
+    "seconds": 0.374,
     "log": "cpu-evidence/block_alloc.log"
   },
   {
@@ -116,7 +128,7 @@
       "import numpy, runpy; runpy.run_path('tests/test_prefill_chunk_gate.py', run_name='__main__')"
     ],
     "exit_code": 0,
-    "seconds": 0.279,
+    "seconds": 0.468,
     "log": "cpu-evidence/prefill_chunk.log"
   },
   {
@@ -128,7 +140,7 @@
       "import numpy, runpy; runpy.run_path('tests/test_prefill_multiseq.py', run_name='__main__')"
     ],
     "exit_code": 0,
-    "seconds": 0.276,
+    "seconds": 0.314,
     "log": "cpu-evidence/prefill_multiseq.log"
   },
   {
@@ -140,7 +152,7 @@
       "import numpy, runpy; runpy.run_path('tests/test_spec_gate.py', run_name='__main__')"
     ],
     "exit_code": 0,
-    "seconds": 0.26,
+    "seconds": 0.37,
     "log": "cpu-evidence/spec_gate.log"
   },
   {
@@ -152,7 +164,7 @@
       "import numpy, runpy; runpy.run_path('tests/test_prefix_hash.py', run_name='__main__')"
     ],
     "exit_code": 0,
-    "seconds": 0.272,
+    "seconds": 0.4,
     "log": "cpu-evidence/prefix_hash.log"
   },
   {
@@ -164,7 +176,7 @@
       "import numpy, runpy; runpy.run_path('experiments/20261105-dspark-window-resume/cpu_mixed_preemption_repro.py', run_name='__main__')"
     ],
     "exit_code": 0,
-    "seconds": 0.39,
+    "seconds": 0.518,
     "log": "cpu-evidence/mixed_preemption.log"
   },
   {
@@ -176,7 +188,7 @@
       "import sys, runpy; sys.argv = ['experiments/20261102-dspark-window/cpu_decode_slot_repro.py', '--output', 'D:\\\\学习\\\\specdec-dspark-window\\\\experiments\\\\20261105-dspark-window-resume\\\\cpu-evidence\\\\decode-slot.json']; runpy.run_path('experiments/20261102-dspark-window/cpu_decode_slot_repro.py', run_name='__main__')"
     ],
     "exit_code": 0,
-    "seconds": 0.369,
+    "seconds": 0.685,
     "log": "cpu-evidence/decode_slot.log"
   }
 ]

@@ -3,6 +3,7 @@ import importlib.util
 import sys
 import types
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy
 import pytest
@@ -18,20 +19,23 @@ sys.modules.setdefault("nanovllm", pkg)
 def stub(name, **members):
     mod = types.ModuleType(name)
     mod.__dict__.update(members)
-    sys.modules[name] = mod
+    return mod
 
 
-stub("transformers", Qwen3Config=object)
-stub("nanovllm.layers.activation", SiluAndMul=object)
-stub("nanovllm.layers.attention", Attention=object)
-stub("nanovllm.layers.layernorm", RMSNorm=object)
-stub("nanovllm.layers.linear", QKVParallelLinear=object,
-     MergedColumnParallelLinear=object, RowParallelLinear=object)
-stub("nanovllm.layers.rotary_embedding", get_rope=lambda *a, **kw: None)
-stub("nanovllm.layers.embed_head", VocabParallelEmbedding=object, ParallelLMHead=object)
+stubs = {
+    "transformers": stub("transformers", Qwen3Config=object),
+    "nanovllm.layers.activation": stub("nanovllm.layers.activation", SiluAndMul=object),
+    "nanovllm.layers.attention": stub("nanovllm.layers.attention", Attention=object),
+    "nanovllm.layers.layernorm": stub("nanovllm.layers.layernorm", RMSNorm=object),
+    "nanovllm.layers.linear": stub("nanovllm.layers.linear", QKVParallelLinear=object,
+                                    MergedColumnParallelLinear=object, RowParallelLinear=object),
+    "nanovllm.layers.rotary_embedding": stub("nanovllm.layers.rotary_embedding", get_rope=lambda *a, **kw: None),
+    "nanovllm.layers.embed_head": stub("nanovllm.layers.embed_head", VocabParallelEmbedding=object, ParallelLMHead=object),
+}
 spec = importlib.util.spec_from_file_location("qwen3_feature_test", ROOT / "nanovllm/models/qwen3.py")
 module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(module)
+with patch.dict(sys.modules, stubs):
+    spec.loader.exec_module(module)
 
 
 class Layer(nn.Module):
