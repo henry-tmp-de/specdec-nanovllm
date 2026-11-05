@@ -1,0 +1,34 @@
+CPU only; no GPU, SSH, or remote execution.
+
+Command: D:\Anaconda\python.exe -B tests_gpu_control.py -v
+
+test_descendants_and_pid_reuse (__main__.GuardTests.test_descendants_and_pid_reuse) ... ok
+test_ledger_counts_failures_and_retries_and_rejects_open_job (__main__.GuardTests.test_ledger_counts_failures_and_retries_and_rejects_open_job) ... ok
+test_nvml_tid_resolves_to_tgid_and_unknown_fails_closed (__main__.GuardTests.test_nvml_tid_resolves_to_tgid_and_unknown_fails_closed) ... ok
+test_parse_stat_handles_parentheses_and_spaces (__main__.GuardTests.test_parse_stat_handles_parentheses_and_spaces) ... ok
+test_pidfd_identity_checked_before_signalling (__main__.GuardTests.test_pidfd_identity_checked_before_signalling) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.068s
+
+OK
+
+Exit code: 0
+
+Command: D:\Anaconda\python.exe -B tests_cpu_tools.py -v
+
+test_audit_rejects_wrong_landed_and_proposal_counts (__main__.CPUChecks.test_audit_rejects_wrong_landed_and_proposal_counts) ... ok
+test_diagnostic_groups_do_not_mix_windows_or_graph_modes (__main__.CPUChecks.test_diagnostic_groups_do_not_mix_windows_or_graph_modes) ... ok
+test_formal_requires_plan_provenance_guard_and_matching_inputs (__main__.CPUChecks.test_formal_requires_plan_provenance_guard_and_matching_inputs) ... ok
+test_invalid_and_failure_are_never_hidden (__main__.CPUChecks.test_invalid_and_failure_are_never_hidden) ... ok
+test_local_wiki_build_uses_disjoint_token_slices (__main__.CPUChecks.test_local_wiki_build_uses_disjoint_token_slices) ... ok
+test_old_manifest_synthetic_mode_is_auditable (__main__.CPUChecks.test_old_manifest_synthetic_mode_is_auditable) ... ok
+test_prewarm_includes_context_crossing_and_tail_batch (__main__.CPUChecks.test_prewarm_includes_context_crossing_and_tail_batch) ... ok
+test_raw_recomputation_and_real_delivery_gaps (__main__.CPUChecks.test_raw_recomputation_and_real_delivery_gaps) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.103s
+
+OK
+
+Exit code: 0
