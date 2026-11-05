@@ -28,3 +28,11 @@ target Qwen3-4B BF16，官方DSpark block7，draft最近512位置独立ring KV�
 ## 当前状态
 
 实现准备中，尚未启动任何GPU任务。2026-11-05 10:34Z现场GPU0至5空闲；GPU6/7已有compute进程。该快照不代表后续启动许可。
+
+## 代码与CPU检查
+
+实现commit为6fea041。主协调已阅读新增DSpark专用量化模块、config/model_runner差异、bench wrapper与guard入口；调用顺序是严格加载官方权重后、全部warmup/capture前替换。Attention的k/v在write_context及proposal中调用同一模块，fc与KV精度仍为BF16，拒绝采样生产代码没有替换q。
+
+主协调独立执行 `D:/Anaconda/python.exe -B -c "import numpy; import pytest; raise SystemExit(pytest.main(['-q','tests/test_dspark_quant.py']))"`，25项通过（3.42秒）。编码者另交joint90项与既有工具13项CPU日志；这些不是GPU数值或速度证据。GPU数学micro和独立Sol代码审核尚待完成。
+
+原正式审计的分组字段不含量化preset，本批必须先按raw的`dspark_quant.preset`分组再复用compute_run，不能把四方案混合汇总。
