@@ -94,24 +94,30 @@ class CPUChecks(unittest.TestCase):
     def test_formal_requires_plan_provenance_guard_and_matching_inputs(self):
         token_ids = [42] * 252
         h = audit.token_hash(token_ids)
+        source_meta = {"input_sha256": h, "wiki_tokens": 249, "task_tokens": 3,
+                       "task_truncated_from_left": False, "dataset": "fake", "row": 0}
         manifest = {"context_tokens": 252, "panels": {"code": [{"token_ids": token_ids,
-                                                                   "metadata": {"input_sha256": h}}]}}
+                                                                   "metadata": source_meta}]}}
         cell = {"arm": "dspark_ring", "mode": "ring", "ctx": 252, "requested_batch": 1,
                 "panel": "code", "window": 256, "graph_mode": "graph"}
         rows, ledger = [], []
         for repeat in range(3):
             ident = f"job{repeat}"
             row = sample_run()
-            row.update(**cell, repeat=repeat, seed=3, temperature=1.0, gpu_uuid="GPU-OK",
+            row.update(**cell, phase="formal", repeat=repeat, seed=3, temperature=1.0, gpu_uuid="GPU-OK",
                        engine_commit="commit", engine_dirty=False, gpu_memory_utilization=0.70,
                        max_num_seqs=1, max_model_len=264, max_num_batched_tokens=264,
                        prefix_lookup=False, graph_policy={"padding": True}, mixed_overlap=False,
                        target_config_sha256="target", draft_config_sha256="draft", guard_id=ident,
-                       diagnostic_instrumented=False, spec_k=7, graph_delta={}, prefix_lookup_count=0,
-                       prefix_hit_blocks=0, input_metadata=[{"actual_input_sha256": h}])
+                       diagnostic_instrumented=False, spec_k=7, graph_delta={"verify_hits": 1, "graph_hits": 1}, prefix_lookup_count=0,
+                       target_decode_graph={"exact": 0, "padded": 0, "fallback": 0},
+                       prefix_hit_blocks=0, input_metadata=[{**source_meta, "actual_input_sha256": h,
+                                                             "wiki_fraction": 249 / 252}], kv_block_size=256)
             rows.extend([("x", repeat * 2 + 1, {"type": "warmup", "guard_id": ident,
                          "prewarm_s": 1, "prewarm_shapes": [[1, 256]],
-                         "expected_prewarm_shapes": [[1, 256]], "memory_after_prewarm": {}}),
+                         "expected_prewarm_shapes": [[1, 256]], "prewarm_head_batches": [1],
+                         "target_decode_graph_buckets": [1], "target_verify_graph_shapes": [[1, 7]],
+                         "ar_draft_graph_buckets": [], "warmup_graph_delta": {}, "memory_after_prewarm": {}}),
                          ("x", repeat * 2 + 2, row)])
             ledger.extend([{"event": "start", "id": ident, "gpu_uuid": "GPU-OK"},
                            {"event": "child", "id": ident, "gpu_uuid": "GPU-OK"},
@@ -121,6 +127,13 @@ class CPUChecks(unittest.TestCase):
         self.assertTrue(report["pass"], report)
         without_plan = audit.audit(rows, 3, "formal", None, ledger, manifest)
         self.assertFalse(without_plan["pass"])
+        claimed_full = audit.audit(rows, 3, "formal", {"cells": [cell], "window_tokens": 256,
+                                    "matrix_scope": "full minimum fixed-batch matrix"}, ledger, manifest)
+        self.assertFalse(claimed_full["pass"])
+        self.assertTrue(claimed_full["plan_errors"])
+        unfinished = audit.audit(rows, 3, "formal", {"cells": [cell]}, ledger[:-1], manifest)
+        self.assertFalse(unfinished["pass"])
+        self.assertTrue(unfinished["ledger_errors"])
         rows[-1][2]["engine_commit"] = "other"
         changed = audit.audit(rows, 3, "formal", {"cells": [cell]}, ledger, manifest)
         self.assertFalse(changed["pass"])

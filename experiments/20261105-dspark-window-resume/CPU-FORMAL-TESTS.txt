@@ -1,0 +1,63 @@
+CPU only; no GPU, SSH, remote execution, or claim of model correctness.
+
+Command: D:\Anaconda\python.exe -B tests_gpu_control.py -v
+
+test_cuda_uuid_string_and_pybind_byte_forms (__main__.GuardTests.test_cuda_uuid_string_and_pybind_byte_forms) ... ok
+test_descendants_and_pid_reuse (__main__.GuardTests.test_descendants_and_pid_reuse) ... ok
+test_ledger_counts_failures_and_retries_and_rejects_open_job (__main__.GuardTests.test_ledger_counts_failures_and_retries_and_rejects_open_job) ... ok
+test_nvml_tid_resolves_to_tgid_and_unknown_fails_closed (__main__.GuardTests.test_nvml_tid_resolves_to_tgid_and_unknown_fails_closed) ... ok
+test_parse_stat_handles_parentheses_and_spaces (__main__.GuardTests.test_parse_stat_handles_parentheses_and_spaces) ... ok
+test_pidfd_identity_checked_before_signalling (__main__.GuardTests.test_pidfd_identity_checked_before_signalling) ... ok
+test_visible_gpu_check_fails_closed (__main__.GuardTests.test_visible_gpu_check_fails_closed) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.068s
+
+OK
+
+Exit code: 0
+
+Command: D:\Anaconda\python.exe -B tests_workload_speed.py -v
+
+test_vocab_size_is_not_recomputed_per_token (__main__.WorkloadCPUChecks.test_vocab_size_is_not_recomputed_per_token) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.078s
+
+OK
+
+Exit code: 0
+
+Command: D:\Anaconda\python.exe -B tests_cpu_tools.py -v
+
+test_ar_tail_acceptance_is_not_mistaken_for_delivered_tokens (__main__.CPUChecks.test_ar_tail_acceptance_is_not_mistaken_for_delivered_tokens) ... ok
+test_audit_rejects_wrong_landed_and_proposal_counts (__main__.CPUChecks.test_audit_rejects_wrong_landed_and_proposal_counts) ... ok
+test_diagnostic_groups_do_not_mix_windows_or_graph_modes (__main__.CPUChecks.test_diagnostic_groups_do_not_mix_windows_or_graph_modes) ... ok
+test_formal_requires_plan_provenance_guard_and_matching_inputs (__main__.CPUChecks.test_formal_requires_plan_provenance_guard_and_matching_inputs) ... ok
+test_invalid_and_failure_are_never_hidden (__main__.CPUChecks.test_invalid_and_failure_are_never_hidden) ... ok
+test_local_wiki_build_uses_disjoint_token_slices (__main__.CPUChecks.test_local_wiki_build_uses_disjoint_token_slices) ... ok
+test_old_manifest_synthetic_mode_is_auditable (__main__.CPUChecks.test_old_manifest_synthetic_mode_is_auditable) ... ok
+test_prewarm_includes_context_crossing_and_tail_batch (__main__.CPUChecks.test_prewarm_includes_context_crossing_and_tail_batch) ... ok
+test_raw_recomputation_and_real_delivery_gaps (__main__.CPUChecks.test_raw_recomputation_and_real_delivery_gaps) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.121s
+
+OK
+
+Exit code: 0
+
+Command: D:\Anaconda\python.exe -B tests_bench_formal.py -v
+
+test_five_arms_use_same_budget_model_length_and_graph_policy (__main__.FormalChecks.test_five_arms_use_same_budget_model_length_and_graph_policy) ... ok
+test_full_plan_has_150_distinct_cells_and_rotates_arms (__main__.FormalChecks.test_full_plan_has_150_distinct_cells_and_rotates_arms) ... ok
+test_invalid_or_implicit_capacity_changes_fail (__main__.FormalChecks.test_invalid_or_implicit_capacity_changes_fail) ... ok
+test_pilot_and_capacity_remain_separate (__main__.FormalChecks.test_pilot_and_capacity_remain_separate) ... ok
+test_repeated_runs_reset_hooks_and_count_actual_graph_replays_on_cpu_fake (__main__.FormalChecks.test_repeated_runs_reset_hooks_and_count_actual_graph_replays_on_cpu_fake) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.001s
+
+OK
+
+Exit code: 0
