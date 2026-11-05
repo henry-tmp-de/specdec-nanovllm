@@ -17,9 +17,15 @@ def normalize_gpu_uuid(value):
             return "GPU-" + str(uuid.UUID(text))
         except ValueError as exc:
             raise ValueError("invalid GPU UUID string") from exc
-    raw = value if isinstance(value, (bytes, bytearray, memoryview)) else getattr(value, "bytes", None)
+    raw = value if isinstance(value, (bytes, bytearray, memoryview, list, tuple)) else getattr(value, "bytes", None)
+    # PyTorch 2.10.0+cu128 exposed the 16 UUID bytes as a list of unsigned
+    # Python integers on the authorized machine. Reject all ambiguous values.
+    if type(raw) in (list, tuple):
+        if len(raw) != 16 or any(type(x) is not int or not 0 <= x <= 255 for x in raw):
+            raise ValueError("CUDA UUID list must contain exactly 16 unsigned integer bytes")
+        raw = bytes(raw)
     if not isinstance(raw, (bytes, bytearray, memoryview)):
-        raise TypeError("CUDA UUID must expose 16 bytes or be a UUID string")
+        raise TypeError("CUDA UUID must expose 16 unsigned bytes or be a UUID string")
     raw = bytes(raw)
     if len(raw) != 16:
         raise ValueError("CUDA UUID must contain exactly 16 bytes")

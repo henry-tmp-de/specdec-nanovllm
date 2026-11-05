@@ -28,8 +28,16 @@ class GuardTests(unittest.TestCase):
         for raw in (value.bytes, bytearray(value.bytes), memoryview(value.bytes)):
             pybind_like = types.SimpleNamespace(bytes=raw)
             self.assertEqual(gpu_identity.normalize_gpu_uuid(pybind_like), expected)
+        for raw in (list(value.bytes), tuple(value.bytes)):
+            self.assertEqual(gpu_identity.normalize_gpu_uuid(types.SimpleNamespace(bytes=raw)), expected)
+        actual = [241, 97, 157, 33, 201, 9, 124, 33, 52, 241, 5, 195, 154, 123, 12, 145]
+        self.assertEqual(gpu_identity.normalize_gpu_uuid(types.SimpleNamespace(bytes=actual)),
+                         "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91")
+        for invalid in ([1] * 15, [1] * 15 + [True], [1] * 15 + [-1], [1] * 15 + [256]):
+            with self.assertRaises(ValueError):
+                gpu_identity.normalize_gpu_uuid(types.SimpleNamespace(bytes=invalid))
         with self.assertRaises(TypeError):
-            gpu_identity.normalize_gpu_uuid(types.SimpleNamespace(bytes=list(value.bytes)))
+            gpu_identity.normalize_gpu_uuid(types.SimpleNamespace(bytes="unknown"))
         with self.assertRaises(ValueError):
             gpu_identity.normalize_gpu_uuid(types.SimpleNamespace(bytes=b"short"))
 
