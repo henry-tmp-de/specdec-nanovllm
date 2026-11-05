@@ -19,7 +19,8 @@ class Scheduler:
             config.num_kvcache_blocks, config.kvcache_block_size,
             num_draft_blocks=getattr(config, "num_draft_blocks", 0),
             draft_window_blocks=getattr(config, "draft_window_blocks", 0),
-            draft_head_blocks=getattr(config, "draft_head_blocks", 0))
+            draft_head_blocks=getattr(config, "draft_head_blocks", 0),
+            enable_prefix_cache=getattr(config, "enable_prefix_cache", True))
         self.waiting: deque[Sequence] = deque()
         self.running: deque[Sequence] = deque()
         # ---------- 投机解码 ----------
@@ -166,6 +167,16 @@ class Scheduler:
                 if remaining == 0:
                     break
                 if not seq.block_table:
+                    dspark_window = int(getattr(self.config, "dspark_window_tokens", 0))
+                    dspark_ring = (dspark_window > 0 and
+                                   getattr(self.config, "dspark_window_storage", "full_cache") == "ring")
+                    if dspark_ring and len(self.block_manager.draft_free) < self.block_manager.draft_window_blocks:
+                        if not self.running:
+                            raise RuntimeError("DSpark ring pool cannot admit waiting sequence")
+                        if rot is not None:
+                            rot.skip(self.waiting, seq)
+                            continue
+                        break
                     num_cached_blocks = self.block_manager.can_allocate(seq)
                     if num_cached_blocks == -1:
                         if rot is not None:
@@ -202,6 +213,9 @@ class Scheduler:
                     # 窗口模式：给这条序列分配它自己的滑窗块（池子够大就不会失败；
                     # 不够说明 max_num_seqs * W/block_size 超过了预算，配置问题要显式报出来）
                     if self.block_manager.draft_window_blocks and not self.block_manager.draft_acquire(seq):
+                        if dspark_ring:
+                            self.block_manager.deallocate(seq)
+                            raise RuntimeError("DSpark ring allocation failed")
                         # ★ 优雅回退：池子不够就【整条序列】退回全上下文 draft
                         #   （draft_block_table 留空 → _draft_request 自然走老路径）。
                         #   半新半旧才是危险的，这里宁可退一整条。
@@ -209,6 +223,12 @@ class Scheduler:
                         if self._window_fallbacks in (1, 2, 10, 100):
                             print(f"[spec] draft 滑窗池不足，第 {self._window_fallbacks} 次"
                                   f"回退到全上下文（seq {seq.seq_id}）")
+                    if dspark_window:
+                        if num_cached_blocks:
+                            self.block_manager.deallocate(seq)
+                            raise RuntimeError("DSpark window cannot reuse target prefixes")
+                        from nanovllm.spec_decode.dspark_window import begin_owner
+                        begin_owner(seq, dspark_window)
                 seq.num_scheduled_tokens = min(num_tokens, budget)
                 num_batched_tokens += seq.num_scheduled_tokens
                 if seq.num_cached_tokens + seq.num_scheduled_tokens == seq.num_tokens:
@@ -342,6 +362,21 @@ class Scheduler:
         #   有效水位必须归零。重新 prefill 后会由 prepare_prefill 重新建立。
         seq.draft_valid_len = 0
         self.waiting.appendleft(seq)
+
+    def abort_dspark_step(self, seqs):
+        """Discard partially written window state after a failed forward."""
+        for seq in seqs:
+            if seq.is_finished:
+                continue
+            if seq in self.running:
+                self.running.remove(seq)
+            if seq in self.waiting:
+                self.waiting.remove(seq)
+            seq.num_scheduled_tokens = 0
+            seq.draft_tokens = []
+            seq.draft_logits = None
+            self.preempt(seq)
+        self._prefill_chunk_pending = False
 
     def postprocess(self, seqs: list[Sequence], token_ids: list, is_prefill: bool) -> int:
         """收尾，并返回【本步实际交付给用户的 token 数】。

@@ -1,5 +1,6 @@
 import os
 import pickle
+from time import perf_counter
 import torch
 import torch.distributed as dist
 from multiprocessing.synchronize import Event
@@ -126,6 +127,12 @@ class ModelRunner:
         self.draft_model = None
         self.dspark_model = None
         self.dspark_target_layers = None
+        self._dspark_prefill = None
+        self.dspark_window_stats = dict(prefill_target_rows=0, prefill_feature_rows=0,
+                                        max_feature_tensor_bytes=0,
+                                        max_projection_tensor_bytes=0,
+                                        commit_calls=0, commit_rows=0,
+                                        commit_host_enqueue_s=0.0)
         self.draft_hf_config = None
         self._last_cu_seqlens_q = None
         # 投机路径的静态形状 CUDA graph（见 capture_*_cudagraph）
@@ -198,7 +205,7 @@ class ModelRunner:
                 raise ValueError("DSpark integration currently supports TP=1 only")
             if (config.quant_weights or config.draft_quant_weights or config.spec_draft_window
                     or config.spec_overlap_mixed):
-                raise ValueError("DSpark integration requires BF16, full context, and no mixed batching")
+                raise ValueError("DSpark integration requires BF16, no AR draft window, and no mixed batching")
             if not config.spec_batch_draft:
                 raise ValueError("DSpark integration requires true batched proposals")
             self.draft_hf_config = AutoConfig.from_pretrained(config.draft_model, local_files_only=True)
@@ -207,6 +214,7 @@ class ModelRunner:
             self.dspark_model = DSparkModel(self.draft_hf_config,
                                            self.model.model.embed_tokens.weight,
                                            self.model.lm_head.weight)
+            self.dspark_model.window_tokens = config.dspark_window_tokens
             load_official_weights(self.dspark_model, config.draft_model)
             self.spec_proposer = DSparkProposer(self.dspark_model, config)
             print(f"[spec] official DSpark: {config.draft_model}, block=7, "
@@ -342,7 +350,25 @@ class ModelRunner:
         #   块级环形缓冲），target 拿走剩下的全部预算 → 容量上升。
         W = self._window_tokens()
         P = self._head_blocks()
-        if draft_block_bytes and W > 0:
+        dspark_window = int(getattr(config, "dspark_window_tokens", 0))
+        dspark_ring = (self.dspark_model is not None and dspark_window > 0 and
+                       config.dspark_window_storage == "ring")
+        scratch_rows = max(config.max_num_seqs * (config.spec_k + 1), 8) if dspark_ring else 0
+        scratch_bytes = scratch_rows * (draft_block_bytes // self.block_size) if dspark_ring else 0
+        sentinel_bytes = draft_block_bytes // self.block_size if self.dspark_model is not None else 0
+        if dspark_ring:
+            M = dspark_window // self.block_size
+            draft_pool = M * config.max_num_seqs
+            room = budget - draft_pool * draft_block_bytes - scratch_bytes - sentinel_bytes
+            if room < tgt_block_bytes:
+                raise RuntimeError("DSpark ring plus scratch leaves no target KV block")
+            config.num_kvcache_blocks = int(room // tgt_block_bytes)
+            config.num_draft_blocks = draft_pool
+            config.draft_window_blocks = M
+            config.draft_head_blocks = 0
+            self.draft_window_blocks = 0  # AR-only machinery stays disabled
+            self.draft_head_blocks = 0
+        elif draft_block_bytes and W > 0:
             assert W % self.block_size == 0, (
                 f"spec_draft_window={W} 必须是 kvcache_block_size={self.block_size} 的整数倍")
             M = W // self.block_size
@@ -418,9 +444,17 @@ class ModelRunner:
             print(f"[spec] draft KV cache: {dl} 层 x {n_draft} blocks, "
                   f"每block {draft_block_bytes/1024:.0f} KB")
         elif self.dspark_model is not None:
-            self.dspark_model.bind_cache(config.num_kvcache_blocks, self.block_size)
+            n_dspark = config.num_draft_blocks if dspark_ring else config.num_kvcache_blocks
+            self.dspark_model.bind_cache(n_dspark, self.block_size, scratch_rows=scratch_rows)
             print(f"[spec] DSpark context KV: {d_hf.num_hidden_layers} 层 x "
-                  f"{config.num_kvcache_blocks} blocks, 每block {draft_block_bytes/1024:.0f} KB")
+                  f"{n_dspark} blocks, 每block {draft_block_bytes/1024:.0f} KB")
+            self.dspark_window_stats.update(
+                storage=config.dspark_window_storage, window_tokens=dspark_window,
+                target_cache_bytes=self.kv_cache.numel() * self.kv_cache.element_size(),
+                dspark_cache_bytes=self.dspark_model.cache.numel() * self.dspark_model.cache.element_size(),
+                scratch_bytes=(self.dspark_model.scratch.numel() * self.dspark_model.scratch.element_size()
+                               if self.dspark_model.scratch is not None else 0),
+                scratch_rows=scratch_rows)
         n_draft_used = config.num_draft_blocks or config.num_kvcache_blocks
         kv_total_gb = (config.num_kvcache_blocks * tgt_block_bytes
                        + n_draft_used * draft_block_bytes) / 2**30
@@ -924,6 +958,27 @@ class ModelRunner:
     def _target_forward_hidden(self, input_ids, positions):
         if self.dspark_model is None:
             return self.model(input_ids, positions)
+        window = int(getattr(self.config, "dspark_window_tokens", 0))
+        context = get_context()
+        if window and self.dspark_model.cache is not None:
+            if context.is_prefill and not context.is_spec_verify:
+                selected = self._dspark_prefill
+                if selected is None:
+                    raise RuntimeError("DSpark prefill feature mapping is missing")
+                rows, slots = selected
+                hidden, features = self.model(input_ids, positions, self.dspark_target_layers, rows)
+                self.dspark_model.write_context(features, positions.index_select(0, rows), slots)
+                stats = self.dspark_window_stats
+                stats["max_feature_tensor_bytes"] = max(stats["max_feature_tensor_bytes"],
+                                                         features.numel() * features.element_size())
+                stats["max_projection_tensor_bytes"] = max(
+                    stats["max_projection_tensor_bytes"],
+                    features.shape[0] * self.dspark_model.cfg.hidden_size * features.element_size())
+                return hidden
+            hidden, features = self.model(input_ids, positions, self.dspark_target_layers)
+            ring = self.config.dspark_window_storage == "ring"
+            self.dspark_model.write_context(features, positions, context.slot_mapping, scratch=ring)
+            return hidden
         hidden, features = self.model(input_ids, positions, self.dspark_target_layers)
         # During graph capture this projection and slot write are captured too.
         # Replays therefore materialize features from *this* input, not stale
@@ -974,7 +1029,23 @@ class ModelRunner:
             for seq in seqs:
                 self.spec_proposer.reset_watermark(seq.token_ids)
         temperatures = self.prepare_sample(seqs) if self.rank == 0 else None
-        logits = self.run_model(input_ids, positions, True)
+        window = int(getattr(self.config, "dspark_window_tokens", 0))
+        # Initial warmup runs before cache allocation and has no sequence owners.
+        # Keep that existing full-feature warmup path until the cache is bound.
+        if window and self.dspark_model is not None and self.dspark_model.cache is not None:
+            from nanovllm.spec_decode.dspark_window import selected_prefill_rows
+            rows, slots, ranges = selected_prefill_rows(
+                seqs, self.config.dspark_window_storage, self.block_size, window)
+            self.dspark_window_stats["prefill_target_rows"] += input_ids.shape[0]
+            self.dspark_window_stats["prefill_feature_rows"] += len(rows)
+            self._dspark_prefill = (
+                torch.tensor(rows, device=input_ids.device, dtype=torch.long),
+                torch.tensor(slots, device=input_ids.device, dtype=torch.int32))
+            self._dspark_pending_prefill_ranges = ranges
+        try:
+            logits = self.run_model(input_ids, positions, True)
+        finally:
+            self._dspark_prefill = None
         return logits, temperatures
 
     def run_mixed(self, decode_seqs: list[Sequence], prefill_seqs: list[Sequence],
@@ -990,6 +1061,54 @@ class ModelRunner:
             self._mixed = MixedForward(self)
         return self._mixed.run(decode_seqs, prefill_seqs, mode)
 
+    def _dspark_commit_outputs(self, seqs, outputs, row_starts, real_rows):
+        """Commit only confirmed rows; finished sequences will release their pool."""
+        window = int(getattr(self.config, "dspark_window_tokens", 0))
+        if not window:
+            return outputs
+        started = perf_counter()
+        from nanovllm.spec_decode.dspark_window import commit_mapping, mark_confirmed
+        row_starts = list(row_starts)
+        if len(seqs) != len(outputs) or len(seqs) != len(row_starts):
+            raise RuntimeError("DSpark output/query ownership mismatch")
+        row_ends = row_starts[1:] + [real_rows]
+        bounded, plans, all_rows, all_slots = [], [], [], []
+        for seq, tokens, row_start, row_end in zip(seqs, outputs, row_starts, row_ends):
+            if row_start < 0 or row_end < row_start or row_end > real_rows:
+                raise RuntimeError("invalid DSpark query row boundaries")
+            remaining = seq.max_tokens - seq.num_completion_tokens
+            if remaining <= 0 or not tokens:
+                raise RuntimeError("DSpark output has no remaining delivery capacity")
+            landed = []
+            for token in tokens[:remaining]:
+                landed.append(token)
+                if not seq.ignore_eos and token == self.config.eos:
+                    break
+            if row_start + len(landed) > row_end:
+                raise RuntimeError("DSpark commit crosses a sequence query boundary")
+            bounded.append(landed)
+            finished = (len(landed) >= remaining or
+                        (not seq.ignore_eos and landed[-1] == self.config.eos))
+            if finished:
+                continue
+            anchor = len(seq) - 1
+            rows, slots = commit_mapping(seq, anchor, len(landed), row_start, row_end,
+                                         self.config.dspark_window_storage, self.block_size, window)
+            all_rows.extend(rows)
+            all_slots.extend(slots)
+            plans.append((seq, anchor, anchor + len(landed)))
+        if self.config.dspark_window_storage == "ring":
+            if len(all_slots) != len(set(all_slots)):
+                raise RuntimeError("DSpark owners share a commit slot")
+            self.dspark_model.commit_scratch(all_rows, all_slots)
+        for seq, start, end in plans:
+            mark_confirmed(seq, start, end, window)
+        if hasattr(self, "dspark_window_stats"):
+            self.dspark_window_stats["commit_calls"] += 1
+            self.dspark_window_stats["commit_rows"] += len(all_rows)
+            self.dspark_window_stats["commit_host_enqueue_s"] += perf_counter() - started
+        return bounded
+
     def run(self, seqs: list[Sequence], is_prefill: bool) -> list:
         """返回值的形态随路径不同：
            prefill        -> list[int]              每序列 1 个
@@ -1003,6 +1122,12 @@ class ModelRunner:
             #   自己把重叠取消掉）。理由与不变量见 engine/mixed_batch.py。
             logits, temperatures = self._prefill_forward(seqs)
             token_ids = self.sampler(logits, temperatures).tolist() if self.rank == 0 else None
+            if (int(getattr(self.config, "dspark_window_tokens", 0)) and
+                    self.dspark_model is not None and self.dspark_model.cache is not None):
+                from nanovllm.spec_decode.dspark_window import mark_confirmed
+                for seq, start, end in self._dspark_pending_prefill_ranges:
+                    mark_confirmed(seq, start, end, self.config.dspark_window_tokens)
+                self._dspark_pending_prefill_ranges = []
             reset_context()
             return token_ids
         elif self.spec_proposer is not None and any(s.num_scheduled_tokens > 1 for s in seqs):
@@ -1064,6 +1189,9 @@ class ModelRunner:
                 temperatures = self.prepare_sample(seqs) if self.rank == 0 else None
                 logits = self.run_model(input_ids, positions, False)
                 token_ids = self.sampler(logits, temperatures).tolist() if self.rank == 0 else None
+                if token_ids is not None and getattr(self.config, "dspark_window_tokens", 0):
+                    token_ids = [row[0] for row in self._dspark_commit_outputs(
+                        seqs, [[t] for t in token_ids], range(len(seqs)), len(seqs))]
                 reset_context()
                 return token_ids
             return self.run_verify(seqs)
@@ -1072,6 +1200,9 @@ class ModelRunner:
         temperatures = self.prepare_sample(seqs) if self.rank == 0 else None
         logits = self.run_model(input_ids, positions, is_prefill)
         token_ids = self.sampler(logits, temperatures).tolist() if self.rank == 0 else None
+        if token_ids is not None and getattr(self.config, "dspark_window_tokens", 0):
+            token_ids = [row[0] for row in self._dspark_commit_outputs(
+                seqs, [[t] for t in token_ids], range(len(seqs)), len(seqs))]
         reset_context()
         return token_ids
 
@@ -1175,6 +1306,8 @@ class ModelRunner:
                 toks = [self.sampler(sub1, t).tolist()[0]]
             seq.last_accepted = len(toks)
             out.append(toks)
+        if getattr(self.config, "dspark_window_tokens", 0):
+            return self._dspark_commit_outputs(seqs, out, cu[:-1], cu[-1])
         return out
 
     # ==================================================================
@@ -1259,6 +1392,9 @@ class ModelRunner:
             if reason is not None:
                 self.verify_graph_fallbacks[reason] = \
                     self.verify_graph_fallbacks.get(reason, 0) + 1
+        elif ex is not None and hasattr(self, "verify_graph_fallbacks"):
+            reason = "graph_unavailable"
+            self.verify_graph_fallbacks[reason] = self.verify_graph_fallbacks.get(reason, 0) + 1
         return self.run_model(input_ids, positions, True)
 
     def _graph_bs(self) -> list[int]:
@@ -1370,6 +1506,7 @@ class ModelRunner:
     @torch.inference_mode()
     def capture_cudagraph(self):
         config = self.config
+        before = torch.cuda.memory_allocated()
         hf_config = config.hf_config
         max_bs = min(self.config.max_num_seqs, 512)
         max_num_blocks = (config.max_model_len + self.block_size - 1) // self.block_size
@@ -1403,3 +1540,5 @@ class ModelRunner:
             block_tables=block_tables,
             outputs=outputs,
         )
+        self.graph_mem["decode_graphs_gb"] = round(
+            (torch.cuda.memory_allocated() - before) / 2**30, 4)

@@ -45,6 +45,11 @@ class Config:
     # DSpark-only experimental path: keep random sampling on the real batch.
     dspark_split_graph: bool = False
     dspark_graph_pad: bool = False
+    # DSpark's exact token window excludes the anchor. Zero keeps the old path.
+    dspark_window_tokens: int = 0
+    dspark_window_storage: str = "full_cache"  # full_cache | ring
+    # Disable lookup and registration for matched cache-policy comparisons.
+    enable_prefix_cache: bool = True
     #   True  = 同一候选位置把 B 条请求一起前向（k 次批量前向）
     #   False = 逐请求循环（B×k 次单序列前向）—— 消融 S1 的对照开关（= C 组行为）
     spec_batch_verify_graph: bool = True
@@ -196,6 +201,24 @@ class Config:
     #     那是「每条请求要算几个」真的变了，不是 batch 维度的问题，继续退回 eager。
 
     def __post_init__(self):
+        W = self.dspark_window_tokens
+        if (not isinstance(W, int) or isinstance(W, bool) or W < 0 or
+                self.dspark_window_storage not in ("full_cache", "ring")):
+            raise ValueError("invalid DSpark window size or storage mode")
+        if W == 0 and self.dspark_window_storage != "full_cache":
+            raise ValueError("ring storage requires a positive DSpark window")
+        if W:
+            if W % self.kvcache_block_size:
+                raise ValueError("dspark_window_tokens must be a multiple of kvcache_block_size")
+            if self.spec_method != "dspark" or self.spec_k != 7:
+                raise ValueError("DSpark window requires spec_method=dspark and spec_k=7")
+            if self.tensor_parallel_size != 1 or self.spec_overlap_mixed:
+                raise ValueError("DSpark window supports TP=1 and no mixed overlap")
+            if (self.spec_draft_window or self.spec_draft_head_blocks or
+                    self.spec_draft_win_align or self.spec_draft_win_realign):
+                raise ValueError("DSpark window cannot be combined with AR window or sink")
+            if self.enable_prefix_cache:
+                raise ValueError("DSpark window requires enable_prefix_cache=False")
         assert os.path.isdir(self.model)
         assert self.kvcache_block_size % 256 == 0
         assert 1 <= self.tensor_parallel_size <= 8

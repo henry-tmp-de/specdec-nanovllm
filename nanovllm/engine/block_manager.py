@@ -37,10 +37,13 @@ class BlockManager:
 
     def __init__(self, num_blocks: int, block_size: int,
                  num_draft_blocks: int = 0, draft_window_blocks: int = 0,
-                 draft_head_blocks: int = 0):
+                 draft_head_blocks: int = 0, enable_prefix_cache: bool = True):
         self.block_size = block_size
         self.blocks: list[Block] = [Block(i) for i in range(num_blocks)]
         self.hash_to_block_id: dict[int, int] = dict()
+        self.enable_prefix_cache = enable_prefix_cache
+        self.prefix_lookup_count = 0
+        self.prefix_hit_blocks = 0
         self.free_block_ids: deque[int] = deque(range(num_blocks))
         self.used_block_ids: set[int] = set()
         # ---------- B 步：draft 自己的小池子（与 target 的池子完全独立）----------
@@ -88,6 +91,9 @@ class BlockManager:
                 self.draft_used.discard(b)
                 self.draft_free.append(b)
         seq.draft_block_table = []
+        seq.dspark_owner = None
+        seq.dspark_ring_blocks = None
+        seq.dspark_valid_start = seq.dspark_valid_end = 0
 
     def draft_pool_usage(self):
         return dict(window_blocks=self.draft_window_blocks,
@@ -119,6 +125,9 @@ class BlockManager:
         self.free_block_ids.append(block_id)
 
     def can_allocate(self, seq: Sequence) -> int:
+        if not self.enable_prefix_cache:
+            return 0 if len(self.free_block_ids) >= seq.num_blocks else -1
+        self.prefix_lookup_count += 1
         h = -1
         num_cached_blocks = 0
         num_new_blocks = seq.num_blocks
@@ -133,6 +142,7 @@ class BlockManager:
                 num_new_blocks -= 1
         if len(self.free_block_ids) < num_new_blocks:
             return -1
+        self.prefix_hit_blocks += num_cached_blocks
         return num_cached_blocks
 
     def allocate(self, seq: Sequence, num_cached_blocks: int):
@@ -240,7 +250,7 @@ class BlockManager:
           以及「前一块还没登记过」的断链块，一律不登记：
           登记错了 → 下次相同前缀命中错误缓存 → 静默输出错误 token。
         """
-        if num_new_tokens <= 0:
+        if not self.enable_prefix_cache or num_new_tokens <= 0:
             return
         bs = self.block_size
         start = (seq.num_cached_tokens - num_new_tokens) // bs

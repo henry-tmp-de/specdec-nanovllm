@@ -1,0 +1,80 @@
+======================================================================
+§1 桶选择：向上取整到最近的桶
+======================================================================
+  [PASS] ① B=1（最小桶）→ 1，pad=0
+  [PASS] ① B=2（恰好等于桶）→ 2，pad=0
+  [PASS] ① B=3（没捕获）→ 4，pad=1  ★ 本项优化的目标形状
+  [PASS] ① B=4（最大桶，恰好等于）→ 4，pad=0
+  [PASS] ① B=5（超过所有桶）→ None ⇒ 必须退回 eager
+  [PASS] ① B=0/负数 → 最小桶（不会出现在正常路径，但不能崩）
+  [PASS] ① 桶集合为空 → None（没图 ⇒ 退回 eager）
+  [PASS] ① 桶乱序 / 含重复 → 仍取最小可用桶
+  [PASS] ① 单桶集合（如 spec_graph_bs=(1,)）：B=1 命中、B=2 无桶
+
+======================================================================
+§2 空行元数据：每一条都对应一个安全不变量
+======================================================================
+  [PASS] ② PAD_SLOT = -1（store_kvcache 见到 -1 直接 return，不写 KV）   -1
+  [PASS] ② PAD_ROW_BLOCK = 0（块 0 永远已分配；-1 会非法访存）   0
+  [PASS] ② PAD_CTX_LEN = 0（归零：空行读不到任何 key，与 vLLM 的 seq_lens=0 一致）   0
+  [PASS] ② PAD_TOKEN = 0（合法值，词表内）   0
+  [PASS] ② PAD_Q_LEN 默认 None（= 与真实行同宽 nq，保持 cu_seqlens_q 是等差数列）   None
+  [PASS] ② draft_pad_rows 的 key 与图静态缓冲区同名   ['context_lens', 'input_ids', 'positions', 'slot_mapping']
+  [PASS] ② 每个空行张量长度 = pad   {'input_ids': (3,), 'positions': (3,), 'slot_mapping': (3,), 'context_lens': (3,)}
+  [PASS] ② 空行 dtype：token/position int64，slot/ctx int32
+  [PASS] ② 空行 slot 全 -1（不写 KV）   [-1, -1, -1]
+  [PASS] ② 空行 context_len 全 0（归零：读不到任何 key）   [0, 0, 0]
+  [PASS] ② 空行 token / position 全 0
+  [PASS] ② pad=0 → 空 dict（老路径不产生任何额外张量）
+
+======================================================================
+§3 验证图空行的 cu_seqlens：单调 + 步长自洽 + key 侧归零
+======================================================================
+  [PASS] ③ 长度 = B+pad+1   5
+  [PASS] ③ dtype/device 与输入一致
+  [PASS] ③ 真实前缀原样保留（切 logits 靠它）
+  [PASS] ③ query 步长恒为 nq（形状与捕获时逐字一致）   [0, 7, 14, 21, 28]
+  [PASS] ③ ★ key 侧单调**不减**（cu_seqlens 是前缀和，flash-attn 的硬要求）—— 归零后是等值台阶，仍然合法   [0, 100, 250, 700, 700]
+  [PASS] ③ 空行的 key 长度 = PAD_CTX_LEN = 0（归零）   空行段长=0
+  [PASS] ③ 多补几行也成立（pad=4：4 个等值台阶，仍单调）
+  [PASS] ③ pad=0 → 原样返回（同一对象，老路径零开销）
+  [PASS] ③ 不引入 D2H 同步：输出 device 跟随输入（用 meta 设备验证）
+  [PASS] ③ PAD_Q_LEN=0（vLLM 的 query_start_loc 做法）也能构造：q 侧同样是等值台阶
+
+======================================================================
+§4 验证图静态缓冲区：真实行原样、空行安全、返回值切到真实行
+======================================================================
+  [PASS] ④ 返回值 = 真实行数 Q = B*nq（调用方靠它切 logits）   21
+  [PASS] ④ 真实行的 input_ids / positions / slot_mapping 原样拷入
+  [PASS] ④ 空行 input_ids / positions 全 0
+  [PASS] ④ 空行 slot_mapping 全 -1（★ 不写 KV —— 写了就是污染别人的 KV）   [-1, -1, -1, -1, -1, -1, -1]
+  [PASS] ④ 真实行 block_table 原样拷入
+  [PASS] ④ 空行 block_table 全 = 块 0（★ 留 -1 会非法访存）   [[0, 0, 0, 0, 0, 0]]
+  [PASS] ④ cu_seqlens_q 真实前缀保留 + 空行步长仍为 nq   [0, 7, 14, 21, 28]
+  [PASS] ④ cu_seqlens_k 真实前缀保留 + 空行各 0 个 key + 仍单调   [0, 5, 33, 400, 400]
+  [PASS] ④ 第二步重写后无残留（空行块表不残留上一轮的 99）
+  [PASS] ④ block_tables=None（无前缀缓存）时不崩，且全为块 0
+  [PASS] ④ 边界 B=1、pad=3：真实行 7 行、空行 21 行、cu 全单调   cu_k=[0, 12, 12, 12, 12]
+
+======================================================================
+§5 draft 图：_forward_group 的 padding wiring（CPU 上真跑一遍）
+======================================================================
+  [PASS] ⑤ 关着时 B=3 未捕获 → 退回 eager（老行为不变）   eager=1 graphed=0
+  [PASS] ⑤ eager 返回 [B,V] 且非静态缓冲区
+  [PASS] ⑤ 开着时 B=3 用 B=4 的图（n_graphed=1、n_padded=1）   graphed=1 padded=1
+  [PASS] ⑤ 只交真实行：返回 shape = [B,V]（不是 [B+pad,V]）   (3, 32)
+  [PASS] ⑤ ★ 真实行 logits 与 eager 路径逐元素相同   max_abs=0.000e+00
+  [PASS] ⑤ 真实行的 4 个元数据都按行写对   tokens=[5, 6, 7, 0] slot=[101, 202, 303, -1]
+  [PASS] ⑤ 空行 token/position 全 0
+  [PASS] ⑤ 空行 slot = -1（★ 不写 KV）   slot=[101, 202, 303, -1]
+  [PASS] ⑤ 空行 context_len = 0（归零：读不到任何 key）   clen=[12, 21, 32, 0]
+  [PASS] ⑤ 空行 block_table 全 0 = 块 0（★ 留 -1 会非法访存）   bt[3]=[0, 0, 0, 0, 0, 0]
+  [PASS] ⑤ 真实行 block_table 原样（未用列仍是 -1，与老路径一致）
+  [PASS] ⑤ 边界 B 恰好等于桶（B=3 用 B=3 的图）：pad=0、不算 padded   padded=0 graphed=1
+  [PASS] ⑤ 边界 B=max=4（最大桶）：pad=0、形状 [4,V]   padded=0 shape=(4, 32)
+  [PASS] ⑤ 边界 B=5 > 最大桶 4 → 退回 eager（绝不写越界）   eager=1
+  [PASS] ⑤ 第二轮 replay：空行元数据仍正确（无上一轮残留）
+  [PASS] ⑤ 第二轮真实行已更新为新输入
+  [PASS] ⑤ 块表宽度超过静态宽度 → 退回 eager（padding 不能绕过这道保护）   eager=1
+
+✓ 全部通过

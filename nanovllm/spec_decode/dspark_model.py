@@ -115,8 +115,10 @@ class DSparkModel(nn.Module):
         self.cache = None
         self.block_size = None
         self.sentinel = None
+        self.window_tokens = 0
+        self.scratch = None
 
-    def bind_cache(self, num_blocks, block_size):
+    def bind_cache(self, num_blocks, block_size, scratch_rows=0):
         c = self.cfg
         self.block_size = block_size
         self.sentinel = num_blocks * block_size
@@ -126,25 +128,48 @@ class DSparkModel(nn.Module):
                                  c.num_key_value_heads, c.head_dim,
                                  dtype=self.fc.weight.dtype, device=self.fc.weight.device)
         self.cache[:, :, self.sentinel].zero_()
+        if scratch_rows:
+            self.scratch = torch.empty(2, c.num_hidden_layers, scratch_rows,
+                                       c.num_key_value_heads, c.head_dim,
+                                       dtype=self.fc.weight.dtype, device=self.fc.weight.device)
 
-    def write_context(self, features, positions, slots):
+    def write_context(self, features, positions, slots, scratch=False):
         """Project selected target outputs into each layer's separate context KV."""
         if self.cache is None:  # target warmup, before the cache is allocated
             return
         x = self.hidden_norm(self.fc(features))
         c = self.cfg
-        safe_slots = slots.long().clamp(min=0)
-        safe_slots = torch.where(slots >= 0, safe_slots, self.sentinel)
+        if scratch:
+            if self.scratch is None or features.shape[0] > self.scratch.shape[2]:
+                raise RuntimeError("DSpark scratch capacity is insufficient")
+        else:
+            safe_slots = slots.long().clamp(min=0)
+            safe_slots = torch.where(slots >= 0, safe_slots, self.sentinel)
         for i, layer in enumerate(self.layers):
             attn = layer.self_attn
             key = attn.k_norm(attn.k_proj(x).view(-1, c.num_key_value_heads, c.head_dim))
             key = rotary(key, positions, self.inv_freq)
             value = attn.v_proj(x).view(-1, c.num_key_value_heads, c.head_dim)
-            self.cache[0, i].index_copy_(0, safe_slots, key)
-            self.cache[1, i].index_copy_(0, safe_slots, value)
+            if scratch:
+                self.scratch[0, i, :features.shape[0]].copy_(key)
+                self.scratch[1, i, :features.shape[0]].copy_(value)
+            else:
+                self.cache[0, i].index_copy_(0, safe_slots, key)
+                self.cache[1, i].index_copy_(0, safe_slots, value)
         # Padding writes to the sentinel are ignored by the mask.  Restore zero
         # for the next gather; this also handles multiple padded rows safely.
-        self.cache[:, :, self.sentinel].zero_()
+        if not scratch:
+            self.cache[:, :, self.sentinel].zero_()
+
+    def commit_scratch(self, rows, slots):
+        if len(rows) != len(slots):
+            raise ValueError("DSpark commit row/slot count mismatch")
+        if not rows:
+            return
+        device = self.cache.device
+        src = torch.tensor(rows, device=device, dtype=torch.long)
+        dst = torch.tensor(slots, device=device, dtype=torch.long)
+        self.cache.index_copy_(2, dst, self.scratch.index_select(2, src))
 
     def forward_hidden(self, anchors, context_lens, block_tables, context_bucket):
         """One noncausal seven-position backbone forward for a whole batch."""
@@ -155,10 +180,17 @@ class DSparkModel(nn.Module):
         ids[:, 0] = anchors
         hidden = F.embedding(ids, self.embedding_weight)
         offsets = torch.arange(context_bucket, device=anchors.device)
-        logical_blocks = torch.div(offsets, self.block_size, rounding_mode="floor")
-        physical = block_tables[:, logical_blocks].long()
-        indices = physical * self.block_size + offsets.remainder(self.block_size)
-        valid = (offsets[None, :] < context_lens[:, None]) & (physical >= 0)
+        if self.window_tokens:
+            # Window mode receives explicit slots in chronological order;
+            # context_lens still holds the absolute anchor position for RoPE.
+            indices = block_tables.long()
+            visible_lens = context_lens.clamp(max=self.window_tokens)
+            valid = (offsets[None, :] < visible_lens[:, None]) & (indices >= 0)
+        else:
+            logical_blocks = torch.div(offsets, self.block_size, rounding_mode="floor")
+            physical = block_tables[:, logical_blocks].long()
+            indices = physical * self.block_size + offsets.remainder(self.block_size)
+            valid = (offsets[None, :] < context_lens[:, None]) & (physical >= 0)
         indices = torch.where(valid, indices, self.sentinel).reshape(-1)
         noise_valid = torch.ones(B, c.block_size, dtype=torch.bool, device=anchors.device)
         attn_mask = torch.cat((valid, noise_valid), dim=1)[:, None, None, :]

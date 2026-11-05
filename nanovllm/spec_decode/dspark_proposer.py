@@ -24,6 +24,9 @@ class DSparkProposer:
         self.graph_runtime_shapes = []
         self.graph_fallbacks = {}
         self.active_batch_histogram = {}
+        self.context_bucket_histogram = {}
+        self.input_prepare_calls = 0
+        self.input_prepare_wall_s = 0.0
         self.proposals = 0
         self.head_graphs = {}
         self.head_graph_hits = 0
@@ -51,21 +54,34 @@ class DSparkProposer:
         self.graph_fallbacks[reason] = self.graph_fallbacks.get(reason, 0) + 1
 
     def _inputs(self, seqs):
+        started = perf_counter()
         B = len(seqs)
         bs = self.model.block_size
         lengths = [len(s) - 1 for s in seqs]  # history strictly before anchor
-        bucket = max(bs, ((max(lengths) + bs - 1) // bs) * bs)
+        window = self.model.window_tokens
+        visible = [min(n, window) if window else n for n in lengths]
+        bucket = max(bs, ((max(visible) + bs - 1) // bs) * bs)
+        self.context_bucket_histogram[bucket] = self.context_bucket_histogram.get(bucket, 0) + 1
         nblocks = bucket // bs
         tables = []
         for seq in seqs:
-            if len(seq.block_table) < (len(seq) - 1 + bs - 1) // bs:
-                raise RuntimeError("DSpark context block table does not cover confirmed history")
-            tables.append((list(seq.block_table[:nblocks]) + [-1] * nblocks)[:nblocks])
+            if window:
+                from nanovllm.spec_decode.dspark_window import visible_slots
+                slots = visible_slots(seq, len(seq) - 1, self.config.dspark_window_storage,
+                                      bs, window)
+                tables.append(slots + [-1] * (bucket - len(slots)))
+            else:
+                if len(seq.block_table) < (len(seq) - 1 + bs - 1) // bs:
+                    raise RuntimeError("DSpark context block table does not cover confirmed history")
+                tables.append((list(seq.block_table[:nblocks]) + [-1] * nblocks)[:nblocks])
         device = self.model.fc.weight.device
-        return (torch.tensor([s.last_token for s in seqs], device=device, dtype=torch.long),
-                torch.tensor(lengths, device=device, dtype=torch.long),
-                torch.tensor(tables, device=device, dtype=torch.int32), bucket,
-                torch.tensor([s.temperature for s in seqs], device=device, dtype=torch.float32))
+        result = (torch.tensor([s.last_token for s in seqs], device=device, dtype=torch.long),
+                  torch.tensor(lengths, device=device, dtype=torch.long),
+                  torch.tensor(tables, device=device, dtype=torch.int32), bucket,
+                  torch.tensor([s.temperature for s in seqs], device=device, dtype=torch.float32))
+        self.input_prepare_calls += 1
+        self.input_prepare_wall_s += perf_counter() - started
+        return result
 
     def _capture(self, anchors, lengths, tables, bucket, temperatures):
         # Capture one exact batch/context shape, including the sequential Markov
@@ -101,7 +117,7 @@ class DSparkProposer:
         started = perf_counter()
         model = self.model
         dev = model.fc.weight.device
-        blocks = context_bucket // model.block_size
+        blocks = context_bucket if model.window_tokens else context_bucket // model.block_size
         anchors = torch.zeros(graph_b, device=dev, dtype=torch.long)
         lengths = torch.zeros(graph_b, device=dev, dtype=torch.long)
         tables = torch.full((graph_b, blocks), -1, device=dev, dtype=torch.int32)

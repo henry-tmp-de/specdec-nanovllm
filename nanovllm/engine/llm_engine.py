@@ -69,12 +69,17 @@ class LLMEngine:
         # chunk 也照样算，它们不产出 token 但确实占了算力）。必须在 postprocess
         # 把 num_scheduled_tokens 清零之前取出来。
         num_prompt_tokens = sum(seq.num_scheduled_tokens for seq in seqs) if is_prefill else 0
-        token_ids = self.model_runner.call("run", seqs, is_prefill)
+        try:
+            token_ids = self.model_runner.call("run", seqs, is_prefill)
+            num_delivered = self.scheduler.postprocess(seqs, token_ids, is_prefill)
+        except Exception:
+            if getattr(self.scheduler.config, "dspark_window_tokens", 0):
+                self.scheduler.abort_dspark_step(seqs)
+            raise
         # ★ 正式吞吐口径：本步【实际交付的 token IDs 数】，由 postprocess 数出来。
         #   旧写法 `-sum(1 + getattr(seq, "last_accepted", 1))` 不是落地数：
         #   last_accepted 是「上一轮落地了几个」的遗留字段（普通 decode 路径恒为 0），
         #   缺省还会补 1，退化时变成每序列 2。投机一轮交付 k+1 个就记 k+1 个。
-        num_delivered = self.scheduler.postprocess(seqs, token_ids, is_prefill)
         outputs = [(seq.seq_id, seq.completion_token_ids) for seq in seqs if seq.is_finished]
         # 符号仍然表示方向（正 = prefill，负 = decode），generate() 的 tqdm 语义不变
         num_tokens = num_prompt_tokens if is_prefill else -num_delivered

@@ -1,0 +1,182 @@
+[
+  {
+    "name": "window",
+    "command": [
+      "D:\\Anaconda\\python.exe",
+      "-B",
+      "-c",
+      "import numpy, pytest; raise SystemExit(pytest.main(['-q', '-s', 'tests/test_dspark_window.py']))"
+    ],
+    "exit_code": 0,
+    "seconds": 7.887,
+    "log": "cpu-evidence/window.log"
+  },
+  {
+    "name": "runner",
+    "command": [
+      "D:\\Anaconda\\python.exe",
+      "-B",
+      "-c",
+      "import numpy, pytest; raise SystemExit(pytest.main(['-q', '-s', 'tests/test_dspark_window_runner.py']))"
+    ],
+    "exit_code": 0,
+    "seconds": 7.886,
+    "log": "cpu-evidence/runner.log"
+  },
+  {
+    "name": "features",
+    "command": [
+      "D:\\Anaconda\\python.exe",
+      "-B",
+      "-c",
+      "import numpy, pytest; raise SystemExit(pytest.main(['-q', '-s', 'tests/test_dspark_feature_rows.py']))"
+    ],
+    "exit_code": 0,
+    "seconds": 7.511,
+    "log": "cpu-evidence/features.log"
+  },
+  {
+    "name": "config",
+    "command": [
+      "D:\\Anaconda\\python.exe",
+      "-B",
+      "-c",
+      "import numpy, pytest; raise SystemExit(pytest.main(['-q', '-s', 'tests/test_dspark_window_config.py']))"
+    ],
+    "exit_code": 0,
+    "seconds": 1.092,
+    "log": "cpu-evidence/config.log"
+  },
+  {
+    "name": "existing_dspark",
+    "command": [
+      "D:\\Anaconda\\python.exe",
+      "-B",
+      "-c",
+      "import numpy, pytest; raise SystemExit(pytest.main(['-q', '-s', 'tests/test_dspark_contract.py']))"
+    ],
+    "exit_code": 0,
+    "seconds": 7.397,
+    "log": "cpu-evidence/existing_dspark.log"
+  },
+  {
+    "name": "existing_dspark_pad",
+    "command": [
+      "D:\\Anaconda\\python.exe",
+      "-B",
+      "-c",
+      "import numpy, pytest; raise SystemExit(pytest.main(['-q', '-s', 'tests/test_dspark_pad.py']))"
+    ],
+    "exit_code": 0,
+    "seconds": 7.113,
+    "log": "cpu-evidence/existing_dspark_pad.log"
+  },
+  {
+    "name": "existing_graph_pad",
+    "command": [
+      "D:\\Anaconda\\python.exe",
+      "-B",
+      "-c",
+      "import numpy, runpy; runpy.run_path('tests/test_graph_pad.py', run_name='__main__')"
+    ],
+    "exit_code": 0,
+    "seconds": 7.226,
+    "log": "cpu-evidence/existing_graph_pad.log"
+  },
+  {
+    "name": "overlap_mixed",
+    "command": [
+      "D:\\Anaconda\\python.exe",
+      "-B",
+      "-c",
+      "import numpy, runpy; runpy.run_path('tests/test_overlap_mixed.py', run_name='__main__')"
+    ],
+    "exit_code": 0,
+    "seconds": 3.391,
+    "log": "cpu-evidence/overlap_mixed.log"
+  },
+  {
+    "name": "block_alloc",
+    "command": [
+      "D:\\Anaconda\\python.exe",
+      "-B",
+      "-c",
+      "import numpy, runpy; runpy.run_path('tests/test_block_alloc.py', run_name='__main__')"
+    ],
+    "exit_code": 0,
+    "seconds": 0.253,
+    "log": "cpu-evidence/block_alloc.log"
+  },
+  {
+    "name": "prefill_chunk",
+    "command": [
+      "D:\\Anaconda\\python.exe",
+      "-B",
+      "-c",
+      "import numpy, runpy; runpy.run_path('tests/test_prefill_chunk_gate.py', run_name='__main__')"
+    ],
+    "exit_code": 0,
+    "seconds": 0.279,
+    "log": "cpu-evidence/prefill_chunk.log"
+  },
+  {
+    "name": "prefill_multiseq",
+    "command": [
+      "D:\\Anaconda\\python.exe",
+      "-B",
+      "-c",
+      "import numpy, runpy; runpy.run_path('tests/test_prefill_multiseq.py', run_name='__main__')"
+    ],
+    "exit_code": 0,
+    "seconds": 0.276,
+    "log": "cpu-evidence/prefill_multiseq.log"
+  },
+  {
+    "name": "spec_gate",
+    "command": [
+      "D:\\Anaconda\\python.exe",
+      "-B",
+      "-c",
+      "import numpy, runpy; runpy.run_path('tests/test_spec_gate.py', run_name='__main__')"
+    ],
+    "exit_code": 0,
+    "seconds": 0.26,
+    "log": "cpu-evidence/spec_gate.log"
+  },
+  {
+    "name": "prefix_hash",
+    "command": [
+      "D:\\Anaconda\\python.exe",
+      "-B",
+      "-c",
+      "import numpy, runpy; runpy.run_path('tests/test_prefix_hash.py', run_name='__main__')"
+    ],
+    "exit_code": 0,
+    "seconds": 0.272,
+    "log": "cpu-evidence/prefix_hash.log"
+  },
+  {
+    "name": "mixed_preemption",
+    "command": [
+      "D:\\Anaconda\\python.exe",
+      "-B",
+      "-c",
+      "import numpy, runpy; runpy.run_path('experiments/20261105-dspark-window-resume/cpu_mixed_preemption_repro.py', run_name='__main__')"
+    ],
+    "exit_code": 0,
+    "seconds": 0.39,
+    "log": "cpu-evidence/mixed_preemption.log"
+  },
+  {
+    "name": "decode_slot",
+    "command": [
+      "D:\\Anaconda\\python.exe",
+      "-B",
+      "-c",
+      "import sys, runpy; sys.argv = ['experiments/20261102-dspark-window/cpu_decode_slot_repro.py', '--output', 'D:\\\\学习\\\\specdec-dspark-window\\\\experiments\\\\20261105-dspark-window-resume\\\\cpu-evidence\\\\decode-slot.json']; runpy.run_path('experiments/20261102-dspark-window/cpu_decode_slot_repro.py', run_name='__main__')"
+    ],
+    "exit_code": 0,
+    "seconds": 0.369,
+    "log": "cpu-evidence/decode_slot.log"
+  }
+]

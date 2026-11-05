@@ -65,6 +65,12 @@ class Sequence:
         # 由 Scheduler 在 prefill 时分配（BlockManager.draft_acquire）、抢占时释放。
         # ★ 必须一起过进程边界：TP>1 时每条 rank 都要按同一套块表跑 draft。
         self.draft_block_table: list[int] = []
+        # DSpark window ownership is valid only for the current allocation.
+        self.dspark_generation = 0
+        self.dspark_owner = None
+        self.dspark_ring_blocks = None
+        self.dspark_valid_start = 0
+        self.dspark_valid_end = 0
 
     def __len__(self):
         return self.num_tokens
