@@ -109,6 +109,8 @@ class CPUChecks(unittest.TestCase):
                        max_num_seqs=1, max_model_len=264, max_num_batched_tokens=264,
                        prefix_lookup=False, graph_policy={"padding": True}, mixed_overlap=False,
                        target_config_sha256="target", draft_config_sha256="draft", guard_id=ident,
+                       target_provenance={"path": "target", "weight_files": [{"name": "w", "bytes": 10}]},
+                       draft_provenance={"path": "draft", "weight_files": [{"name": "w", "bytes": 10}]},
                        diagnostic_instrumented=False, spec_k=7, graph_delta={"verify_hits": 1, "graph_hits": 1}, prefix_lookup_count=0,
                        target_decode_graph={"exact": 0, "padded": 0, "fallback": 0},
                        prefix_hit_blocks=0, input_metadata=[{**source_meta, "actual_input_sha256": h,
@@ -134,6 +136,11 @@ class CPUChecks(unittest.TestCase):
         unfinished = audit.audit(rows, 3, "formal", {"cells": [cell]}, ledger[:-1], manifest)
         self.assertFalse(unfinished["pass"])
         self.assertTrue(unfinished["ledger_errors"])
+        rows[-1][2]["target_provenance"] = {"path": "different", "weight_files": [{"name": "w", "bytes": 10}]}
+        changed_target = audit.audit(rows, 3, "formal", {"cells": [cell]}, ledger, manifest)
+        self.assertFalse(changed_target["pass"])
+        self.assertTrue(changed_target["inconsistent_cell_configs"])
+        rows[-1][2]["target_provenance"] = {"path": "target", "weight_files": [{"name": "w", "bytes": 10}]}
         rows[-1][2]["engine_commit"] = "other"
         changed = audit.audit(rows, 3, "formal", {"cells": [cell]}, ledger, manifest)
         self.assertFalse(changed["pass"])

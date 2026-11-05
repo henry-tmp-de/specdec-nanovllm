@@ -145,7 +145,8 @@ CELL_FIELDS = ("arm", "mode", "ctx", "requested_batch", "panel", "window", "grap
 GROUP_FIELDS = CELL_FIELDS + ("phase", "seed", "temperature", "output_tokens", "gpu_uuid", "engine_commit",
                                "engine_dirty", "gpu_memory_utilization", "max_num_seqs", "max_model_len",
                                "max_num_batched_tokens", "prefix_lookup", "graph_policy", "mixed_overlap", "spec_k",
-                               "ignore_eos", "target_config_sha256", "draft_config_sha256")
+                               "ignore_eos", "target_config_sha256", "draft_config_sha256",
+                               "target_provenance", "draft_provenance")
 FORMAL_REQUIRED = GROUP_FIELDS + ("guard_id", "diagnostic_instrumented", "ignore_eos", "spec_k",
                                   "input_metadata", "graph_delta", "prefix_lookup_count", "prefix_hit_blocks")
 
@@ -379,7 +380,7 @@ def audit(rows, min_repeats, mode="diagnostic", plan=None, ledger=None, manifest
         workload = [x.get("actual_input_sha256", x.get("input_sha256")) for x in r["input_metadata"]]
         paired = {k: r.get(k) for k in ("seed", "temperature", "output_tokens", "gpu_uuid", "engine_commit",
                                        "engine_dirty", "gpu_memory_utilization", "prefix_lookup", "graph_policy",
-                                       "target_config_sha256", "max_num_batched_tokens", "max_model_len", "phase")}
+                                       "target_config_sha256", "target_provenance", "max_num_batched_tokens", "max_model_len", "phase")}
         pair[key].append(canonical({"settings": paired, "input_hashes": workload}))
     mismatched_pairs = [list(key) for key, vals in pair.items() if len(set(vals)) != 1]
     sufficient = all(g["enough_repeats"] and g["unique_repeats"] for g in summaries)
