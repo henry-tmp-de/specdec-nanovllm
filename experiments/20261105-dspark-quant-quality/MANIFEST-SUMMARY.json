@@ -1,0 +1,104 @@
+{
+  "schema": "dspark-quant-quality-manifest-v1",
+  "seed": 20261105,
+  "context_tokens": 1024,
+  "window_tokens": 512,
+  "block_size": 7,
+  "offsets": [
+    0,
+    64,
+    128,
+    192
+  ],
+  "provenance": {
+    "source_workload_path": "D:\\学习\\specdec-dspark-window\\experiments\\20261105-dspark-window-resume\\evidence\\final-all-01\\data\\workload-1k-original.json",
+    "source_workload_sha256": "9d55fe52e24943b559882c470eafda2503ab14e571b5089677590185b95c3337",
+    "source_raw_path": "D:\\学习\\specdec-dspark-window\\experiments\\20261105-dspark-window-resume\\evidence\\final-all-01\\results\\formal4a085-35-nospec-b8-c1024.jsonl",
+    "source_raw_sha256": "09b7b217b87ee674f2ab8221e6e6d0cfe1530452d2a2f5dd8519d7c8701df337",
+    "source_engine_commit": "4a4a64b29192e57b3e27eb24d6a8a3069dfbd18f",
+    "source_target_config_sha256": "8ba006f74fecfaaeb392872a60f4a480e7ec9860153d2e1b769ec81f9a147f8a",
+    "source_target_provenance": {
+      "path": "/home/ziru/nano-vllm/models/Qwen3-4B",
+      "config_sha256": "8ba006f74fecfaaeb392872a60f4a480e7ec9860153d2e1b769ec81f9a147f8a",
+      "weight_files": [
+        {
+          "name": "model-00001-of-00003.safetensors",
+          "bytes": 3957900840
+        },
+        {
+          "name": "model-00002-of-00003.safetensors",
+          "bytes": 3987450520
+        },
+        {
+          "name": "model-00003-of-00003.safetensors",
+          "bytes": 99630640
+        }
+      ],
+      "weight_content_hash_note": "file sizes only; weights not rehashed by this script"
+    },
+    "source_gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+    "source_graph_mode": "graph",
+    "source_graph_policy": {
+      "name": "exact_all",
+      "target_decode_padding": false,
+      "target_verify_padding": false,
+      "draft_padding": false,
+      "buckets": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    "source_temperature": 1.0,
+    "source_sampling": "historical native target-only autoregressive samples; T=1, repeat 0",
+    "reference_boundary": "HF target uses the same weights; numerical identity to native target is not assumed"
+  },
+  "trajectories": 24,
+  "cases": 96,
+  "scored_positions": 672,
+  "offset_counts": {
+    "0": 24,
+    "64": 24,
+    "128": 24,
+    "192": 24
+  },
+  "panels": {
+    "code": {
+      "trajectories": 8,
+      "cases": 32,
+      "scored_positions": 224,
+      "datasets": [
+        "humaneval.jsonl"
+      ],
+      "wiki_fraction_min": 0.853515625,
+      "wiki_fraction_max": 0.8916015625
+    },
+    "math": {
+      "trajectories": 8,
+      "cases": 32,
+      "scored_positions": 224,
+      "datasets": [
+        "gsm8k.jsonl"
+      ],
+      "wiki_fraction_min": 0.865234375,
+      "wiki_fraction_max": 0.9482421875
+    },
+    "general": {
+      "trajectories": 8,
+      "cases": 32,
+      "scored_positions": 224,
+      "datasets": [
+        "alpaca.jsonl"
+      ],
+      "wiki_fraction_min": 0.96875,
+      "wiki_fraction_max": 0.9814453125
+    }
+  },
+  "interpretation": "96 cases are four correlated slices of each of 24 target-sampled trajectories; Wiki-filled prompts, not human gold or standard language-model perplexity",
+  "manifest_sha256": "b37d4c071a6f7b65877dd85156abb43343a42c368362cb490b640a4bdcc2d028"
+}
