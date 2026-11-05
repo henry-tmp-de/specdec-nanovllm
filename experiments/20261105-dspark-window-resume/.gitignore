@@ -2,3 +2,5 @@ evidence/
 analysis/**/REPORT.json
 analysis/formal-final-01/REPORT.md
 analysis/formal-final-01/plots-4a085-v2/
+analysis/formal-final-01/plots-4a085/
+analysis/**/pdf-render-check/
