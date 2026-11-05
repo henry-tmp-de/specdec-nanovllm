@@ -26,6 +26,8 @@ Linux 示例（仅传已经存在的输入、manifest 和计划；`--input` / `-
 
 完整实验有 16K 容量或正式矩阵时，分别增加对应 raw、16K manifest 和 capacity/formal plan。未提供计划时只能显示已观察单元，不能判断矩阵齐全；没提供匹配 manifest、完整台账或预热记录的主实验标为未验证，不能算成配对结果。允许有失败的台账阶段，但总 GPU 时长超过 14400 秒、smoke 超过 1800 秒、ledger 未闭合或身份不一致时，报告阻止全部 matched 和曲线数值。ledger 只统计已结束阶段；有运行中阶段时不会将其当成零耗时。
 
+未确认完整正式矩阵时，Markdown 标为 Interim；因此单独导入旧 0.70 pilot 不会呈现成完整正式结果。
+
 - 完整请求吞吐：真实交付 token 数 / 从首个请求入队前至全部结束的墙钟。decode span：第一个 decode 轮的 `start_s` 至最后一个 decode 轮的 `end_s`，包含轮间 host 间隙；旧逐轮耗时之和另列，不能冒充 span。满 B 前缀仅指最初连续满批 decode 轮。
 - TTFT、TPOT 及真实交付批次间隔从每个请求的交付记录复算，报告每次 P50/P95/P99 和样本数；批次间隔不插值、不称 SSE。accepted/proposed 与真实交付 tau 分列。
 - 同 ctx/B/panel、输入 hash、种子、源码提交、GPU、目标模型元数据及运行条件匹配时，至少三个相同 repeat 才给全部配对比值、中位数和范围；不生成置信区间。跨 arm 的输出 hash 差异只作观测，随机 T=1 时不是正确性判断。

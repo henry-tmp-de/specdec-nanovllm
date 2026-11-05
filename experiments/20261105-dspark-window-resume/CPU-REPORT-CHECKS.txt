@@ -18,10 +18,10 @@ test_unmatched_and_failed_attempts_never_become_comparable (__main__.ReportCheck
 test_warmup_identity_mismatch_blocks_the_run (__main__.ReportChecks.test_warmup_identity_mismatch_blocks_the_run) ... ok
 
 ----------------------------------------------------------------------
-Ran 15 tests in 0.036s
+Ran 15 tests in 0.035s
 
 OK
 
 Exit code: 0
 
-Existing raw check: B11 padded KL in Markdown; both UUID failure records retained; no primary performance claim.
+Existing raw check: report Interim, B11 padded KL preserved, both UUID failures retained.

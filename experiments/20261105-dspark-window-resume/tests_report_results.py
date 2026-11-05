@@ -134,6 +134,7 @@ class ReportChecks(unittest.TestCase):
         self.assertFalse(result["summary"]["primary_summary_is_complete"])
         json.dumps(result, allow_nan=False)
         text = report.markdown(result)
+        self.assertIn("Interim", text)
         self.assertIn("decode span", text)
         self.assertIn("不插值", text)
 

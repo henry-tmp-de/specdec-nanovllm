@@ -961,6 +961,8 @@ def compact_json(value):
 
 def markdown(report):
     lines = ["# DSpark 实验报告", "",
+             ("状态：正式完整矩阵已覆盖，仍需独立审核。" if report["summary"]["primary_summary_is_complete"]
+              else "状态：Interim（阶段性报告；正式完整矩阵尚未确认）。"),
              "本报告由 raw 逐请求/逐轮和守护台账离线生成；诊断和 capacity 单列。缺测不是 0，失败不会被过滤。",
              "这是当前 nano-vLLM 分支内的模型与缓存策略对照，不是 vLLM、SGLang 或其他推理引擎之间的横向测试。DSpark 滑窗实验关闭 target prefix lookup，在线 mixed 流量不受支持；结果不外推到启用前缀复用或在线混批。",
              "本报告不将历史 prefill、量化、kernel 或混批数字归入本轮 DSpark 结果；matched 对照只说明其列出的模型、负载、批量和条件，不能单凭这一报告推导普遍加速或任务质量。AR k=6、DSpark k=7；AR 块对齐窗口与 DSpark 最近 W 个历史 token 语义不同。W0 为原路径对照，不能将 W0 结果归因为新滑窗工程收益。",
