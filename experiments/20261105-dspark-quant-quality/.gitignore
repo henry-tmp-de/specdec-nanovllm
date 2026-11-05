@@ -1,0 +1,4 @@
+# Local evidence includes full token-bearing raw records and manifests.
+/evidence/
+# The native per-run JSON can be reproduced from the retained raw evidence.
+/analysis/native-final-01/formal-summary.json
