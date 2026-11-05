@@ -146,6 +146,7 @@ def main():
                     "q_eager_exact_kl": max_kl(q_eager, q_exact),
                     "q_eager_padded_kl": max_kl(q_eager, q_padded),
                     "q_exact_padded_kl": max_kl(q_exact, q_padded),
+                    "actual_own_chain_kl": max_kl(actual_reconstruction, q_actual),
                     "actual_own_chain_max_abs": float((q_actual.float() - actual_reconstruction.float()).abs().max()),
                     "exact_padded_rng_equal": bool(torch.equal(exact_rng, padded_rng))}
                 write({"type": "draft_probe", **identity, **observations["draft_probe"]})
@@ -310,7 +311,7 @@ def main():
         failures = []
         if not draft or any(draft[k] >= 0.02 for k in ("q_eager_exact_kl", "q_eager_padded_kl", "q_exact_padded_kl")):
             failures.append("draft q KL")
-        if not draft or draft["actual_own_chain_max_abs"] >= 0.1 or not draft["exact_padded_rng_equal"]:
+        if not draft or draft["actual_own_chain_kl"] >= 0.02 or not draft["exact_padded_rng_equal"]:
             failures.append("draft real-chain q or padded RNG")
         if not target or any(target[k] >= 0.02 for k in ("eager_exact_kl", "eager_padded_kl")):
             failures.append("target verify KL")

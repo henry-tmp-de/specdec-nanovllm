@@ -2,7 +2,7 @@
 
 这些脚本只提供实验入口，**当前没有本轮 GPU 执行结果**。模型是现场已有的 Qwen3-4B、官方 DSpark block-7；T=1，七候选。`bench_smoke.py` 的额外数值检查改变了执行开销，其吞吐不能作为正式性能结论。强制接受仅用于数值诊断，不是采样分布测试。
 
-本地 CPU 验证（13 个测试；原始输出见 [CPU-TOOL-TESTS.txt](CPU-TOOL-TESTS.txt)）：
+本地 CPU 验证（14 个测试；原始输出见 [CPU-TOOL-TESTS.txt](CPU-TOOL-TESTS.txt)）：
 
 ```powershell
 D:\Anaconda\python.exe -B experiments\20261105-dspark-window-resume\tests_gpu_control.py -v
@@ -44,7 +44,7 @@ cd "$RUN_ROOT"
   --out "$RUN_OUT/padding-b3.jsonl" --batch 3
 ```
 
-固定对拍的阈值在运行前规定：相同前驱 q / target logits 的最大 KL < 0.02、KV 相对 RMS < 0.05，参考旧 [GPU-CHECKS.md](../20261101-dspark-verify-opt/GPU-CHECKS.md)。最大 logit 绝对误差作为诊断值报告；仅同一个 backbone 的自身前驱重建沿用旧的 < 0.1。目标 KV 在固定对拍中抽查若干绝对位置，不宣称所有位置逐项对拍。多 owner 合同验证真实 verify scratch 对应各 owner 的独立环槽，以及应保留的旧槽没有被覆盖。
+固定对拍的阈值在运行前规定：相同前驱 q / target logits 的最大 KL < 0.02、KV 相对 RMS < 0.05，参考旧 [GPU-CHECKS.md](../20261101-dspark-verify-opt/GPU-CHECKS.md)。最大 logit 绝对误差只作为诊断值报告。目标 KV 在固定对拍中抽查若干绝对位置，不宣称所有位置逐项对拍。多 owner 合同验证真实 verify scratch 对应各 owner 的独立环槽，以及应保留的旧槽没有被覆盖。
 
 构造 4K 固定长度 workload，先在服务器 CPU 执行，使用本地 tokenizer、DeepSpec 任务与不重叠 Wiki 片段，不请求 GPU：
 

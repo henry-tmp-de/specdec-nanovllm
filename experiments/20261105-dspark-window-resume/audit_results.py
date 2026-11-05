@@ -81,12 +81,15 @@ def compute_run(run):
             sid, d, k, a = seq["seq_id"], seq["delivered"], seq["proposed"], seq["accepted_prefix"]
             check(sid in request_map, f"round {i}: unknown request {sid}")
             check(all(type(n) is int and n >= 0 for n in (d, k, a)), f"round {i}: negative/noninteger counts")
-            check(a <= k and a <= d, f"round {i}: accepted > proposed or delivered")
+            check(a <= k, f"round {i}: accepted > proposed")
             if not row["prefill"] and run.get("ignore_eos") is True:
-                check(d == (a + 1 if k else 1),
-                      f"round {i}: delivered count disagrees with accepted prefix plus bonus")
+                verified = seq.get("verified_output_tokens", a + 1 if k else 1)
+                remaining = seq.get("remaining_before")
+                check(verified == (a + 1 if k else 1),
+                      f"round {i}: verified output disagrees with accepted prefix plus bonus")
+                check(d == (min(verified, remaining) if type(remaining) is int else verified),
+                      f"round {i}: delivered count disagrees with verified output and cap")
                 if run.get("arm") in ("dspark", "dspark_full", "dspark_ring"):
-                    remaining = seq.get("remaining_before")
                     check(type(remaining) is int and k <= max(0, remaining - 1),
                           f"round {i}: DSpark proposed beyond remaining output budget")
             per_request[sid] += d
@@ -203,8 +206,8 @@ def audit(rows, min_repeats, mode="diagnostic", plan=None, ledger=None, manifest
                 errors.append("formal sampling policy is not T=1 and ignore_eos")
             if row.get("mixed_overlap") is not False:
                 errors.append("unsupported mixed overlap or missing setting")
-            if row.get("max_model_len", 0) < row.get("ctx", 0) + row.get("output_tokens", 0) + row.get("spec_k", 0):
-                errors.append("max_model_len does not cover prompt + output + speculation")
+            if row.get("max_model_len", 0) != row.get("ctx", 0) + row.get("output_tokens", 0) + 8:
+                errors.append("formal arms require common max_model_len = prompt + output + 8")
             if row.get("graph_delta", {}).get("graph_runtime_captures", 0) or row.get("graph_delta", {}).get("head_runtime_captures", 0):
                 errors.append("unexpected measured-phase graph captures")
             guard = ledger_records.get(row.get("guard_id"))

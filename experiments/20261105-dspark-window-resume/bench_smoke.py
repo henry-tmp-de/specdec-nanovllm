@@ -331,6 +331,7 @@ def main():
                 accepted = max(0, len(o) - 1) if proposed and isinstance(o, list) else 0
                 C = anchors_before[s.seq_id]
                 entries.append({"seq_id": s.seq_id, "proposed": proposed, "accepted_prefix": accepted,
+                                "verified_output_tokens": len(o) if isinstance(o, list) else 1,
                                 "remaining_before": s.max_tokens - before_counts[s.seq_id],
                                 "anchor_absolute_position": C,
                                 "expected_draft_history_start": max(0, C - a.window) if a.window else 0,

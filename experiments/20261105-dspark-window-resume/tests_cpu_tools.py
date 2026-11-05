@@ -81,6 +81,16 @@ class CPUChecks(unittest.TestCase):
         row["rounds"][1]["sequences"][0]["proposed"] = 4
         self.assertFalse(audit.compute_run(row)["valid"])
 
+    def test_ar_tail_acceptance_is_not_mistaken_for_delivered_tokens(self):
+        row = sample_run()
+        row["arm"] = "ar_full"
+        last = row["rounds"][-1]["sequences"][0]
+        last.update(proposed=6, accepted_prefix=3, verified_output_tokens=4, remaining_before=1)
+        result = audit.compute_run(row)
+        self.assertTrue(result["valid"], result["errors"])
+        self.assertEqual(result["accepted_prefix_tokens"], 4)
+        self.assertEqual(result["output_tokens"], 4)
+
     def test_formal_requires_plan_provenance_guard_and_matching_inputs(self):
         token_ids = [42] * 252
         h = audit.token_hash(token_ids)
@@ -94,7 +104,7 @@ class CPUChecks(unittest.TestCase):
             row = sample_run()
             row.update(**cell, repeat=repeat, seed=3, temperature=1.0, gpu_uuid="GPU-OK",
                        engine_commit="commit", engine_dirty=False, gpu_memory_utilization=0.70,
-                       max_num_seqs=1, max_model_len=263, max_num_batched_tokens=263,
+                       max_num_seqs=1, max_model_len=264, max_num_batched_tokens=264,
                        prefix_lookup=False, graph_policy={"padding": True}, mixed_overlap=False,
                        target_config_sha256="target", draft_config_sha256="draft", guard_id=ident,
                        diagnostic_instrumented=False, spec_k=7, graph_delta={}, prefix_lookup_count=0,

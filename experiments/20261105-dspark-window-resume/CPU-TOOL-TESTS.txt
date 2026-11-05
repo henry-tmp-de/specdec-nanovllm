@@ -9,7 +9,7 @@ test_parse_stat_handles_parentheses_and_spaces (__main__.GuardTests.test_parse_s
 test_pidfd_identity_checked_before_signalling (__main__.GuardTests.test_pidfd_identity_checked_before_signalling) ... ok
 
 ----------------------------------------------------------------------
-Ran 5 tests in 0.068s
+Ran 5 tests in 0.015s
 
 OK
 
@@ -17,6 +17,7 @@ Exit code: 0
 
 Command: D:\Anaconda\python.exe -B tests_cpu_tools.py -v
 
+test_ar_tail_acceptance_is_not_mistaken_for_delivered_tokens (__main__.CPUChecks.test_ar_tail_acceptance_is_not_mistaken_for_delivered_tokens) ... ok
 test_audit_rejects_wrong_landed_and_proposal_counts (__main__.CPUChecks.test_audit_rejects_wrong_landed_and_proposal_counts) ... ok
 test_diagnostic_groups_do_not_mix_windows_or_graph_modes (__main__.CPUChecks.test_diagnostic_groups_do_not_mix_windows_or_graph_modes) ... ok
 test_formal_requires_plan_provenance_guard_and_matching_inputs (__main__.CPUChecks.test_formal_requires_plan_provenance_guard_and_matching_inputs) ... ok
@@ -27,7 +28,7 @@ test_prewarm_includes_context_crossing_and_tail_batch (__main__.CPUChecks.test_p
 test_raw_recomputation_and_real_delivery_gaps (__main__.CPUChecks.test_raw_recomputation_and_real_delivery_gaps) ... ok
 
 ----------------------------------------------------------------------
-Ran 8 tests in 0.103s
+Ran 9 tests in 0.127s
 
 OK
 
