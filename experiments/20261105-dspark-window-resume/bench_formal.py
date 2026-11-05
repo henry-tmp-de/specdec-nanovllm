@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(HERE))
-from bench_smoke import prewarm_shapes, read_manifest, token_hash
+from bench_smoke import prewarm_shapes, prewarm_snapshot, prewarm_record, read_manifest, token_hash
 from audit_results import compute_run
 from gpu_identity import verify_visible_gpu
 
@@ -495,14 +495,17 @@ def main():
         mem_init = memory(runner)
         stage = "graph_prewarm"
         expected_shapes = []
+        requested_heads = list(range(1, a.batch + 1)) if a.arm.startswith("dspark_") else []
+        before_prewarm = prewarm_snapshot(prop)
         before_warm = snapshot(runner)
         warm_start = time.perf_counter()
         if a.arm.startswith("dspark_"):
             expected_shapes = prewarm_shapes(a.batch, a.batch, a.ctx, a.output_tokens,
                                              a.window, runner.block_size, tuple(range(1, a.batch + 1)))
-            prop.prewarm(expected_shapes, range(1, a.batch + 1))
+            prop.prewarm(expected_shapes, requested_heads)
         torch.cuda.synchronize()
         prewarm_s = time.perf_counter() - warm_start
+        warm_metadata = prewarm_record(prop, expected_shapes, requested_heads, before_prewarm)
         mem_after_prewarm = memory(runner)
         after_prewarm = snapshot(runner)
         stage = "warmup_requests"
@@ -511,10 +514,7 @@ def main():
         warm = run_once(llm, [x for x, _ in panel_rows[panels[0]]], min(16, a.output_tokens), a.seed,
                         float(os.environ["DS_RUN_DEADLINE_UNIX"]), warm_state, a.diagnostic_cost)
         warm_graph_delta = delta(after_prewarm, snapshot(runner))
-        write({"type": "warmup", **ident, "prewarm_s": prewarm_s,
-               "expected_prewarm_shapes": expected_shapes,
-               "prewarm_shapes": list(getattr(prop, "prewarmed_shapes", [])) if expected_shapes else [],
-               "prewarm_head_batches": list(range(1, a.batch + 1)) if expected_shapes else [],
+        write({"type": "warmup", **ident, "prewarm_s": prewarm_s, **warm_metadata,
                "target_decode_graph_buckets": list(runner.graph_bs),
                "target_verify_graph_shapes": [list(x) for x in sorted(runner.verify_graphs)],
                "ar_draft_graph_buckets": sorted(getattr(prop, "_graphs", {}).keys()) if prop is not None else [],

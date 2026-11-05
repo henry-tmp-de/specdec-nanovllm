@@ -46,6 +46,39 @@ def prewarm_shapes(batch, max_seqs, ctx, output_tokens, window, block_size, grap
     return [(b, c) for b in graph_batches for c in contexts]
 
 
+def prewarm_snapshot(proposer):
+    """Read existing graph keys and capture counters without touching CUDA."""
+    if proposer is None:
+        return {"backbone_graph_shapes": [], "prewarmed_shapes": [], "head_batches": [], "head_captures": None}
+    return {"backbone_graph_shapes": list(getattr(proposer, "graphs", {})),
+            "prewarmed_shapes": list(getattr(proposer, "prewarmed_shapes", [])),
+            "head_batches": list(getattr(proposer, "head_graphs", {})),
+            "head_captures": getattr(proposer, "head_graph_captures", None)}
+
+
+def prewarm_record(proposer, requested_shapes, requested_heads, before):
+    """Separate requested coverage from insertion-ordered graph keys/captures."""
+    after = prewarm_snapshot(proposer)
+    previous_shapes = before["prewarmed_shapes"]
+    if after["prewarmed_shapes"][:len(previous_shapes)] != previous_shapes:
+        raise RuntimeError("prewarmed shape history was not append-only")
+    before_heads = set(before["head_batches"])
+    old_count, new_count = before["head_captures"], after["head_captures"]
+    return {"expected_prewarm_shapes": list(requested_shapes),
+            "expected_prewarm_shapes_semantics": "requested coverage set; list order is not capture order",
+            "prewarm_shapes": after["prewarmed_shapes"],
+            "prewarm_shapes_semantics": "proposer prewarmed_shapes insertion order; may include earlier prewarm",
+            "preexisting_backbone_graph_shapes": before["backbone_graph_shapes"],
+            "new_prewarm_shapes": after["prewarmed_shapes"][len(previous_shapes):],
+            "requested_prewarm_head_batches": list(requested_heads),
+            "prewarm_head_batches": after["head_batches"],
+            "prewarm_head_batches_semantics": "head_graphs key insertion order after prewarm; includes existing graphs",
+            "preexisting_head_graph_batches": before["head_batches"],
+            "new_prewarm_head_batches": [b for b in after["head_batches"] if b not in before_heads],
+            "new_head_graph_captures": (new_count - old_count
+                                        if type(old_count) is int and type(new_count) is int else None)}
+
+
 def read_manifest(path, panel, batch, ctx):
     data = json.loads(Path(path).read_text(encoding="utf-8"))
     source_ctx = data["context_tokens"]
@@ -234,16 +267,18 @@ def main():
         mem_init = memory(runner)
         warm_shapes = []
         warm_s = 0.0
+        warm_heads = list(range(1, a.batch + 1)) if a.graph != "eager" else []
+        before_prewarm = prewarm_snapshot(prop)
         if a.graph != "eager":
             warm_shapes = prewarm_shapes(a.batch, a.max_seqs, a.ctx, a.output_tokens,
                                          a.window, runner.block_size, buckets)
             warm_started = time.perf_counter()
-            prop.prewarm(warm_shapes, range(1, a.batch + 1))
+            prop.prewarm(warm_shapes, warm_heads)
             torch.cuda.synchronize()
             warm_s = time.perf_counter() - warm_started
+        warm_metadata = prewarm_record(prop, warm_shapes, warm_heads, before_prewarm)
         write({"type": "warmup", **{k: v for k, v in ident.items() if k != "type"},
-               "init_s": init_s, "prewarm_s": warm_s, "prewarm_shapes": warm_shapes,
-               "prewarm_head_batches": list(range(1, a.batch + 1)) if a.graph != "eager" else [],
+               "init_s": init_s, "prewarm_s": warm_s, **warm_metadata,
                "graph_after_prewarm": snapshot(runner), "memory_after_init": mem_init,
                "memory_after_prewarm": memory(runner)})
         print(f"模型加载与预热完成：{a.mode}，B={a.batch}，{a.graph}", flush=True)

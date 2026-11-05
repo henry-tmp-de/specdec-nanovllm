@@ -205,6 +205,25 @@ class CPUChecks(unittest.TestCase):
         self.assertEqual(smoke.target_decode_bucket(11), 16)
         self.assertEqual(smoke.target_decode_bucket(15), 16)
 
+    def test_prewarm_metadata_separates_requested_existing_and_actual_order(self):
+        proposer = types.SimpleNamespace(graphs={(1, 256): object()}, prewarmed_shapes=[(1, 256)],
+                                         head_graphs={2: object()}, head_graph_captures=5)
+        before = smoke.prewarm_snapshot(proposer)
+        proposer.graphs[(4, 512)] = object()
+        proposer.graphs[(2, 512)] = object()
+        proposer.prewarmed_shapes.extend([(4, 512), (2, 512)])
+        proposer.head_graphs[3] = object()
+        proposer.head_graphs[1] = object()
+        proposer.head_graph_captures += 2
+        out = smoke.prewarm_record(proposer, [(1, 256), (2, 512), (4, 512)], [1, 2, 3], before)
+        self.assertEqual(out["requested_prewarm_head_batches"], [1, 2, 3])
+        self.assertEqual(out["prewarm_head_batches"], [2, 3, 1])
+        self.assertEqual(out["preexisting_head_graph_batches"], [2])
+        self.assertEqual(out["new_prewarm_head_batches"], [3, 1])
+        self.assertEqual(out["new_head_graph_captures"], 2)
+        self.assertEqual(out["new_prewarm_shapes"], [(4, 512), (2, 512)])
+        self.assertEqual(set(out["prewarm_head_batches"]), {1, 2, 3})
+
     def test_exact_owner_contract_reserves_guard_and_uses_no_padding(self):
         for batch in (3, 11, 15):
             settings = contract.contract_graph_settings(batch, "exact_all")
