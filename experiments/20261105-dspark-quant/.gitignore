@@ -1,0 +1,4 @@
+raw/
+*.ledger.jsonl
+*.ledger.jsonl.lock
+__pycache__/

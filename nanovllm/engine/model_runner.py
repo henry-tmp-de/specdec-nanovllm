@@ -126,6 +126,8 @@ class ModelRunner:
         self.spec_proposer = None
         self.draft_model = None
         self.dspark_model = None
+        self.dspark_quant_stats = []
+        self.dspark_quant_host_s = 0.0
         self.dspark_target_layers = None
         self._dspark_prefill = None
         self.dspark_window_stats = dict(prefill_target_rows=0, prefill_feature_rows=0,
@@ -221,6 +223,20 @@ class ModelRunner:
                                            self.model.lm_head.weight)
             self.dspark_model.window_tokens = config.dspark_window_tokens
             load_official_weights(self.dspark_model, config.draft_model)
+            if config.dspark_quant_preset != "none":
+                from nanovllm.spec_decode.dspark_quant import apply_dspark_quant
+                quant_started = perf_counter()
+                self.dspark_quant_stats = apply_dspark_quant(
+                    self.dspark_model, config.dspark_quant_preset)
+                self.dspark_quant_host_s = perf_counter() - quant_started
+                print("[dspark_quant] " + json.dumps({
+                    "preset": config.dspark_quant_preset,
+                    "loading": "BF16 checkpoint on model device; CPU row-chunk PTQ; device INT8 buffers",
+                    "quantize_host_wall_s": self.dspark_quant_host_s,
+                    "modules": self.dspark_quant_stats,
+                    "bytes_before": sum(s["bytes_before"] for s in self.dspark_quant_stats),
+                    "bytes_after": sum(s["bytes_after"] for s in self.dspark_quant_stats),
+                }), flush=True)
             self.spec_proposer = DSparkProposer(self.dspark_model, config)
             print(f"[spec] official DSpark: {config.draft_model}, block=7, "
                   f"target layers={self.dspark_target_layers}; confidence scheduler disabled")
@@ -233,7 +249,8 @@ class ModelRunner:
         #   `0.9*total - used - peak + current`，而 used 取的是【驱动级】
         #   已用量（含 allocator 缓存）—— 不还回去，量化省下的显存会被它吃掉。
         #   默认（bf16）路径一行不变。
-        if config.quant_weights == "int8" or config.draft_quant_weights == "int8":
+        if (config.quant_weights == "int8" or config.draft_quant_weights == "int8"
+                or config.dspark_quant_preset != "none"):
             torch.cuda.empty_cache()
         self.allocate_kv_cache()
         _mem_snap("after_allocate_kv_cache")
