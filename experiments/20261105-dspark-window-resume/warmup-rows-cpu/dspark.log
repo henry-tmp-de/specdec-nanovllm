@@ -1,0 +1,5 @@
+mixed fixture capture calls: [('backbone', 4, 8), ('backbone', 4, 4), ('backbone', 2, 8), ('backbone', 2, 4), ('backbone', 1, 8), ('head', 4), ('head', 3), ('head', 2)]
+..B8 backbone capture order: [(8, 4352), (8, 4096), (7, 4352), (7, 4096), (6, 4352), (6, 4096), (5, 4352), (5, 4096), (4, 4352), (4, 4096), (3, 4352), (3, 4096), (2, 4352), (2, 4096), (1, 4352), (1, 4096)]
+B8 head capture order: [8, 7, 6, 5, 4, 3, 2, 1]
+..................
+20 passed in 3.28s

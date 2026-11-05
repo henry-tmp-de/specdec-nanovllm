@@ -304,11 +304,21 @@ class ModelRunner:
         torch.cuda.reset_peak_memory_stats()
         _mem_snap("warmup_after_reset")
         max_num_batched_tokens, max_model_len = self.config.max_num_batched_tokens, self.config.max_model_len
-        seq_len = min(max_num_batched_tokens, max_model_len)
-        num_seqs = min(max_num_batched_tokens // seq_len, self.config.max_num_seqs)
-        seqs = [Sequence([0] * seq_len) for _ in range(num_seqs)]
+        max_num_seqs = self.config.max_num_seqs
+        if min(max_num_batched_tokens, max_model_len, max_num_seqs) <= 0:
+            raise ValueError("warmup requires positive token budget, model length, and sequence limit")
+        total = min(max_num_batched_tokens, max_num_seqs * max_model_len)
+        full, remainder = divmod(total, max_model_len)
+        lengths = [max_model_len] * full + ([remainder] if remainder else [])
+        seqs = [Sequence([0] * length) for length in lengths]
         for seq in seqs:
-            seq.num_scheduled_tokens = seq_len
+            seq.num_scheduled_tokens = len(seq)
+        self.warmup_profile = dict(
+            max_num_batched_tokens=max_num_batched_tokens,
+            max_model_len=max_model_len, max_num_seqs=max_num_seqs,
+            target_rows=total, scheduled_rows=sum(s.num_scheduled_tokens for s in seqs),
+            sequence_lengths=[len(s) for s in seqs])
+        print("[warmup] " + json.dumps(self.warmup_profile), flush=True)
         self.run(seqs, True)
         _mem_snap("warmup_after_prefill")
         torch.cuda.empty_cache()

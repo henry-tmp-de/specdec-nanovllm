@@ -1,0 +1,26 @@
+[warmup] {"max_num_batched_tokens": 32768, "max_model_len": 4360, "max_num_seqs": 8, "target_rows": 32768, "scheduled_rows": 32768, "sequence_lengths": [4360, 4360, 4360, 4360, 4360, 4360, 4360, 2248]}
+no_spec budget=32768 lengths=[4360, 4360, 4360, 4360, 4360, 4360, 4360, 2248] target_rows=32768 expected_rows=32768
+.[warmup] {"max_num_batched_tokens": 32768, "max_model_len": 4360, "max_num_seqs": 8, "target_rows": 32768, "scheduled_rows": 32768, "sequence_lengths": [4360, 4360, 4360, 4360, 4360, 4360, 4360, 2248]}
+dspark_w0 budget=32768 lengths=[4360, 4360, 4360, 4360, 4360, 4360, 4360, 2248] target_rows=32768 expected_rows=32768
+.[warmup] {"max_num_batched_tokens": 32768, "max_model_len": 4360, "max_num_seqs": 8, "target_rows": 32768, "scheduled_rows": 32768, "sequence_lengths": [4360, 4360, 4360, 4360, 4360, 4360, 4360, 2248]}
+dspark_window budget=32768 lengths=[4360, 4360, 4360, 4360, 4360, 4360, 4360, 2248] target_rows=32768 expected_rows=32768
+.[warmup] {"max_num_batched_tokens": 31, "max_model_len": 10, "max_num_seqs": 8, "target_rows": 31, "scheduled_rows": 31, "sequence_lengths": [10, 10, 10, 1]}
+no_spec budget=31 lengths=[10, 10, 10, 1] target_rows=31 expected_rows=31
+.[warmup] {"max_num_batched_tokens": 31, "max_model_len": 10, "max_num_seqs": 8, "target_rows": 31, "scheduled_rows": 31, "sequence_lengths": [10, 10, 10, 1]}
+dspark_w0 budget=31 lengths=[10, 10, 10, 1] target_rows=31 expected_rows=31
+.[warmup] {"max_num_batched_tokens": 31, "max_model_len": 10, "max_num_seqs": 8, "target_rows": 31, "scheduled_rows": 31, "sequence_lengths": [10, 10, 10, 1]}
+dspark_window budget=31 lengths=[10, 10, 10, 1] target_rows=31 expected_rows=31
+.[warmup] {"max_num_batched_tokens": 6, "max_model_len": 10, "max_num_seqs": 8, "target_rows": 6, "scheduled_rows": 6, "sequence_lengths": [6]}
+.[warmup] {"max_num_batched_tokens": 6, "max_model_len": 10, "max_num_seqs": 8, "target_rows": 6, "scheduled_rows": 6, "sequence_lengths": [6]}
+.[warmup] {"max_num_batched_tokens": 6, "max_model_len": 10, "max_num_seqs": 8, "target_rows": 6, "scheduled_rows": 6, "sequence_lengths": [6]}
+.[warmup] {"max_num_batched_tokens": 30, "max_model_len": 10, "max_num_seqs": 8, "target_rows": 30, "scheduled_rows": 30, "sequence_lengths": [10, 10, 10]}
+.[warmup] {"max_num_batched_tokens": 30, "max_model_len": 10, "max_num_seqs": 8, "target_rows": 30, "scheduled_rows": 30, "sequence_lengths": [10, 10, 10]}
+.[warmup] {"max_num_batched_tokens": 30, "max_model_len": 10, "max_num_seqs": 8, "target_rows": 30, "scheduled_rows": 30, "sequence_lengths": [10, 10, 10]}
+.[warmup] {"max_num_batched_tokens": 100, "max_model_len": 10, "max_num_seqs": 3, "target_rows": 30, "scheduled_rows": 30, "sequence_lengths": [10, 10, 10]}
+.[warmup] {"max_num_batched_tokens": 100, "max_model_len": 10, "max_num_seqs": 3, "target_rows": 30, "scheduled_rows": 30, "sequence_lengths": [10, 10, 10]}
+.[warmup] {"max_num_batched_tokens": 100, "max_model_len": 10, "max_num_seqs": 3, "target_rows": 30, "scheduled_rows": 30, "sequence_lengths": [10, 10, 10]}
+.[warmup] {"max_num_batched_tokens": 16384, "max_model_len": 4096, "max_num_seqs": 512, "target_rows": 16384, "scheduled_rows": 16384, "sequence_lengths": [4096, 4096, 4096, 4096]}
+.[warmup] {"max_num_batched_tokens": 16384, "max_model_len": 4096, "max_num_seqs": 512, "target_rows": 16384, "scheduled_rows": 16384, "sequence_lengths": [4096, 4096, 4096, 4096]}
+.[warmup] {"max_num_batched_tokens": 16384, "max_model_len": 4096, "max_num_seqs": 512, "target_rows": 16384, "scheduled_rows": 16384, "sequence_lengths": [4096, 4096, 4096, 4096]}
+....
+21 passed in 1.94s
