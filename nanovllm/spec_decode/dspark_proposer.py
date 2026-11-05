@@ -165,7 +165,7 @@ class DSparkProposer:
 
     @torch.inference_mode()
     def prewarm(self, shapes, real_batches):
-        """Capture only explicitly listed (bucket-B, ctx) and real-B shapes."""
+        """Capture the requested shapes, larger shared-pool workloads first."""
         if not getattr(self.config, "dspark_split_graph", False):
             raise ValueError("split graph must be enabled before prewarming")
         if self.config.enforce_eager or not self.config.spec_cuda_graph:
@@ -174,16 +174,15 @@ class DSparkProposer:
                    if 1 <= int(b) <= int(self.config.max_num_seqs)}
         self.prewarm_in_progress = True
         try:
-            for B, ctx in shapes:
-                B, ctx = int(B), int(ctx)
+            shapes = [(int(B), int(ctx)) for B, ctx in shapes]
+            for B, ctx in sorted(shapes, key=lambda shape: (shape[0] * shape[1], *shape), reverse=True):
                 if B not in allowed or ctx <= 0 or ctx % self.model.block_size:
                     raise ValueError(f"unsupported prewarm shape ({B}, {ctx})")
                 key = (B, ctx)
                 if key not in self.graphs:
                     self.graphs[key] = self._capture_backbone(B, ctx)
                     self.prewarmed_shapes.append(key)
-            for B in real_batches:
-                B = int(B)
+            for B in sorted((int(B) for B in real_batches), reverse=True):
                 if not 1 <= B <= self.config.max_num_seqs:
                     raise ValueError(f"unsupported real batch {B}")
                 if B not in self.head_graphs:
