@@ -130,6 +130,12 @@ def test_input_and_inventory_splits_do_not_merge():
     result = audit.prior.summarize(rows(data))
     assert len(result["groups"]) == 3 and not result["invalid"]
     assert all(p["summary"] is None for p in audit.pair_selected(result))
+    for row in data[3:]:
+        row["dspark_quant"] = inventory("q_o_down", n=32)
+    result = audit.prior.summarize(rows(data))
+    pair = audit.pair_selected(result)[0]
+    assert len(result["groups"]) == 2 and not result["invalid"]
+    assert pair["summary"] is None and "35层形状不一致" in pair["status"]
 
 
 def test_failure_blocks_guard_and_missing_metadata_is_retained():

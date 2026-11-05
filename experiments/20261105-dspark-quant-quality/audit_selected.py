@@ -29,7 +29,8 @@ SELECTED_SUFFIXES = {"none": (), "q_o": ("self_attn.q_proj", "self_attn.o_proj")
 EXPECTED = {p: {f"layers.{layer}.{suffix}" for layer in range(5) for suffix in suffixes}
             for p, suffixes in SELECTED_SUFFIXES.items()}
 ALL_NAMES = {f"layers.{layer}.{suffix}" for layer in range(5) for suffix in SUFFIXES}
-INVENTORY_FIELDS = ("quantized_module_names", "candidate_total_bytes", "candidate_inventory_sha256", "target_kv_blocks")
+INVENTORY_FIELDS = ("quantized_module_names", "candidate_total_bytes", "candidate_inventory_sha256",
+                    "candidate_shapes_sha256", "target_kv_blocks")
 
 _prior_identity = prior.run_identity
 _prior_summarize = prior.summarize
@@ -125,8 +126,11 @@ def inventory_identity(row):
     # Include actual inventory in within-preset grouping. Pairing deliberately
     # retains a fixed total budget but allows different KV counts across presets.
     digest = hashlib.sha256(prior.old.canonical(sorted(modules, key=lambda item: item["name"])).encode("utf-8")).hexdigest()
+    shapes = [{"name": item["name"], "shape": item.get("shape")} for item in sorted(modules, key=lambda x: x["name"])]
+    shape_digest = hashlib.sha256(prior.old.canonical(shapes).encode("utf-8")).hexdigest()
     identity = {"quantized_module_names": sorted(selected), "candidate_total_bytes": actual.get("candidate_total_bytes"),
-                "candidate_inventory_sha256": digest, "target_kv_blocks": target_blocks}
+                "candidate_inventory_sha256": digest, "candidate_shapes_sha256": shape_digest,
+                "target_kv_blocks": target_blocks}
     return identity, problems
 
 
@@ -195,6 +199,11 @@ def pair_selected(result):
             pairs.append({"configuration": config, "baseline_preset": "none", "pairs": [], "summary": None,
                           "status": "无唯一同条件 none 或存在多种实际库存/KV配置"})
             continue
+        if (not config.get("candidate_shapes_sha256") or
+                config["candidate_shapes_sha256"] != baseline[0]["configuration"].get("candidate_shapes_sha256")):
+            pairs.append({"configuration": config, "baseline_preset": "none", "pairs": [], "summary": None,
+                          "status": "候选与 none 的35层形状不一致"})
+            continue
         def alias(item, label):
             filtered = {k: v for k, v in item["configuration"].items() if k not in INVENTORY_FIELDS}
             filtered["dspark_quant_preset"] = label
@@ -231,7 +240,7 @@ def selected_markdown(result):
     text = _prior_markdown(result).replace("# DSpark W8A16 完整请求：CPU 原始记录汇总",
                                           "# DSpark W8A16 选层性能：CPU 原始记录汇总", 1)
     note = ("\n预设真实量化层：none=0、q_o=10、down=5、q_o_down=15；其他候选层、target 与共享权重为 BF16。"
-            "逐 run 的选中层名、库存 SHA、KV 块数和字节记录在 formal-summary.json。"
+            "逐 run 的选中层名、库存/形状 SHA、KV 块数和字节记录在 formal-summary.json。"
             "verify 的 ragged_draft_len 回退单独记录；同预算允许实际 target KV 块数不同。"
             "此报告不验证 GPU guard ledger，亦不是 teacher-forced 质量评分。\n")
     return text + note
