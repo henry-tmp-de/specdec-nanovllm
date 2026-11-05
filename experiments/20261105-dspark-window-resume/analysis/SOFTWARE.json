@@ -1,0 +1,1 @@
+{"python": "3.10.12 (main, Aug 31 2026, 10:18:17) [GCC 11.4.0]", "torch": "2.10.0+cu128", "torch_cuda": "12.8", "transformers": "5.15.1", "triton": "3.6.0", "flash_attn": "2.8.3.post1"}

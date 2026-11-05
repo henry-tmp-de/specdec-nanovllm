@@ -5,3 +5,5 @@ __pycache__/
 venv/
 build/
 dist/
+/analysis/partial-formal-plots-01/
+/out/workload-20261105-4k-test.json

@@ -1,0 +1,1507 @@
+{
+  "interim": false,
+  "figure_badge": "正式批量结束 · 覆盖不全",
+  "formal_coverage_complete": false,
+  "input_report": "D:\\学习\\specdec-dspark-window\\experiments\\20261105-dspark-window-resume\\analysis\\formal-final-01\\REPORT.json",
+  "source_commit": "4a4a64b29192e57b3e27eb24d6a8a3069dfbd18f",
+  "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+  "budget": 0.85,
+  "seed": 20261105,
+  "target_provenance": {
+    "config_sha256": "8ba006f74fecfaaeb392872a60f4a480e7ec9860153d2e1b769ec81f9a147f8a",
+    "path": "/home/ziru/nano-vllm/models/Qwen3-4B",
+    "weight_content_hash_note": "file sizes only; weights not rehashed by this script",
+    "weight_files": [
+      {
+        "bytes": 3957900840,
+        "name": "model-00001-of-00003.safetensors"
+      },
+      {
+        "bytes": 3987450520,
+        "name": "model-00002-of-00003.safetensors"
+      },
+      {
+        "bytes": 99630640,
+        "name": "model-00003-of-00003.safetensors"
+      }
+    ]
+  },
+  "font_file": "C:\\Windows\\Fonts\\msyh.ttc",
+  "relative_series": [
+    "dspark_full",
+    "dspark_ring"
+  ],
+  "note": "statistics and gap segments come from report_results; no interpolation or additional ratios",
+  "rows": [
+    {
+      "ctx": 1024,
+      "panel": "code",
+      "arm": "nospec",
+      "batches": {
+        "1": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "2": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "4": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "8": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "16": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        }
+      }
+    },
+    {
+      "ctx": 1024,
+      "panel": "code",
+      "arm": "ar_full",
+      "batches": {
+        "1": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "2": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "4": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "8": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "16": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        }
+      }
+    },
+    {
+      "ctx": 1024,
+      "panel": "code",
+      "arm": "ar_window",
+      "batches": {
+        "1": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "2": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "4": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "8": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "16": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        }
+      }
+    },
+    {
+      "ctx": 1024,
+      "panel": "code",
+      "arm": "dspark_full",
+      "batches": {
+        "1": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "2": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "4": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "8": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "16": {
+          "status": "failed_attempt_present",
+          "metrics": {
+            "full_request_tps": "缺测/无效",
+            "ttft_p50_s": "缺测/无效",
+            "tpot_p50_s": "缺测/无效",
+            "relative_to_nospec": "缺测/不匹配"
+          }
+        }
+      }
+    },
+    {
+      "ctx": 1024,
+      "panel": "code",
+      "arm": "dspark_ring",
+      "batches": {
+        "1": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "2": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "4": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "8": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "16": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        }
+      }
+    },
+    {
+      "ctx": 1024,
+      "panel": "math",
+      "arm": "nospec",
+      "batches": {
+        "1": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "2": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "4": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "8": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "16": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        }
+      }
+    },
+    {
+      "ctx": 1024,
+      "panel": "math",
+      "arm": "ar_full",
+      "batches": {
+        "1": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "2": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "4": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "8": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "16": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        }
+      }
+    },
+    {
+      "ctx": 1024,
+      "panel": "math",
+      "arm": "ar_window",
+      "batches": {
+        "1": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "2": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "4": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "8": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "16": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        }
+      }
+    },
+    {
+      "ctx": 1024,
+      "panel": "math",
+      "arm": "dspark_full",
+      "batches": {
+        "1": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "2": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "4": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "8": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "16": {
+          "status": "failed_attempt_present",
+          "metrics": {
+            "full_request_tps": "缺测/无效",
+            "ttft_p50_s": "缺测/无效",
+            "tpot_p50_s": "缺测/无效",
+            "relative_to_nospec": "缺测/不匹配"
+          }
+        }
+      }
+    },
+    {
+      "ctx": 1024,
+      "panel": "math",
+      "arm": "dspark_ring",
+      "batches": {
+        "1": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "2": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "4": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "8": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "16": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        }
+      }
+    },
+    {
+      "ctx": 1024,
+      "panel": "general",
+      "arm": "nospec",
+      "batches": {
+        "1": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "2": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "4": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "8": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "16": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        }
+      }
+    },
+    {
+      "ctx": 1024,
+      "panel": "general",
+      "arm": "ar_full",
+      "batches": {
+        "1": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "2": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "4": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "8": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "16": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        }
+      }
+    },
+    {
+      "ctx": 1024,
+      "panel": "general",
+      "arm": "ar_window",
+      "batches": {
+        "1": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "2": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "4": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "8": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "16": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        }
+      }
+    },
+    {
+      "ctx": 1024,
+      "panel": "general",
+      "arm": "dspark_full",
+      "batches": {
+        "1": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "2": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "4": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "8": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "16": {
+          "status": "failed_attempt_present",
+          "metrics": {
+            "full_request_tps": "缺测/无效",
+            "ttft_p50_s": "缺测/无效",
+            "tpot_p50_s": "缺测/无效",
+            "relative_to_nospec": "缺测/不匹配"
+          }
+        }
+      }
+    },
+    {
+      "ctx": 1024,
+      "panel": "general",
+      "arm": "dspark_ring",
+      "batches": {
+        "1": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "2": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "4": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "8": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "16": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        }
+      }
+    },
+    {
+      "ctx": 4096,
+      "panel": "code",
+      "arm": "nospec",
+      "batches": {
+        "1": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "2": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "4": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "8": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "16": {
+          "status": "failed_attempt_present",
+          "metrics": {
+            "full_request_tps": "缺测/无效",
+            "ttft_p50_s": "缺测/无效",
+            "tpot_p50_s": "缺测/无效"
+          }
+        }
+      }
+    },
+    {
+      "ctx": 4096,
+      "panel": "code",
+      "arm": "ar_full",
+      "batches": {
+        "1": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "2": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "4": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "8": {
+          "status": "failed_attempt_present",
+          "metrics": {
+            "full_request_tps": "缺测/无效",
+            "ttft_p50_s": "缺测/无效",
+            "tpot_p50_s": "缺测/无效"
+          }
+        },
+        "16": {
+          "status": "failed_attempt_present",
+          "metrics": {
+            "full_request_tps": "缺测/无效",
+            "ttft_p50_s": "缺测/无效",
+            "tpot_p50_s": "缺测/无效"
+          }
+        }
+      }
+    },
+    {
+      "ctx": 4096,
+      "panel": "code",
+      "arm": "ar_window",
+      "batches": {
+        "1": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "2": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "4": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "8": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "16": {
+          "status": "failed_attempt_present",
+          "metrics": {
+            "full_request_tps": "缺测/无效",
+            "ttft_p50_s": "缺测/无效",
+            "tpot_p50_s": "缺测/无效"
+          }
+        }
+      }
+    },
+    {
+      "ctx": 4096,
+      "panel": "code",
+      "arm": "dspark_full",
+      "batches": {
+        "1": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "2": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "4": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "8": {
+          "status": "missing",
+          "metrics": {
+            "full_request_tps": "缺测/无效",
+            "ttft_p50_s": "缺测/无效",
+            "tpot_p50_s": "缺测/无效",
+            "relative_to_nospec": "缺测/不匹配"
+          }
+        },
+        "16": {
+          "status": "failed_attempt_present",
+          "metrics": {
+            "full_request_tps": "缺测/无效",
+            "ttft_p50_s": "缺测/无效",
+            "tpot_p50_s": "缺测/无效",
+            "relative_to_nospec": "缺测/不匹配"
+          }
+        }
+      }
+    },
+    {
+      "ctx": 4096,
+      "panel": "code",
+      "arm": "dspark_ring",
+      "batches": {
+        "1": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "2": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "4": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "8": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "16": {
+          "status": "failed_attempt_present",
+          "metrics": {
+            "full_request_tps": "缺测/无效",
+            "ttft_p50_s": "缺测/无效",
+            "tpot_p50_s": "缺测/无效",
+            "relative_to_nospec": "缺测/不匹配"
+          }
+        }
+      }
+    },
+    {
+      "ctx": 4096,
+      "panel": "math",
+      "arm": "nospec",
+      "batches": {
+        "1": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "2": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "4": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "8": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "16": {
+          "status": "failed_attempt_present",
+          "metrics": {
+            "full_request_tps": "缺测/无效",
+            "ttft_p50_s": "缺测/无效",
+            "tpot_p50_s": "缺测/无效"
+          }
+        }
+      }
+    },
+    {
+      "ctx": 4096,
+      "panel": "math",
+      "arm": "ar_full",
+      "batches": {
+        "1": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "2": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "4": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "8": {
+          "status": "failed_attempt_present",
+          "metrics": {
+            "full_request_tps": "缺测/无效",
+            "ttft_p50_s": "缺测/无效",
+            "tpot_p50_s": "缺测/无效"
+          }
+        },
+        "16": {
+          "status": "failed_attempt_present",
+          "metrics": {
+            "full_request_tps": "缺测/无效",
+            "ttft_p50_s": "缺测/无效",
+            "tpot_p50_s": "缺测/无效"
+          }
+        }
+      }
+    },
+    {
+      "ctx": 4096,
+      "panel": "math",
+      "arm": "ar_window",
+      "batches": {
+        "1": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "2": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "4": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "8": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "16": {
+          "status": "failed_attempt_present",
+          "metrics": {
+            "full_request_tps": "缺测/无效",
+            "ttft_p50_s": "缺测/无效",
+            "tpot_p50_s": "缺测/无效"
+          }
+        }
+      }
+    },
+    {
+      "ctx": 4096,
+      "panel": "math",
+      "arm": "dspark_full",
+      "batches": {
+        "1": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "2": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "4": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "8": {
+          "status": "missing",
+          "metrics": {
+            "full_request_tps": "缺测/无效",
+            "ttft_p50_s": "缺测/无效",
+            "tpot_p50_s": "缺测/无效",
+            "relative_to_nospec": "缺测/不匹配"
+          }
+        },
+        "16": {
+          "status": "failed_attempt_present",
+          "metrics": {
+            "full_request_tps": "缺测/无效",
+            "ttft_p50_s": "缺测/无效",
+            "tpot_p50_s": "缺测/无效",
+            "relative_to_nospec": "缺测/不匹配"
+          }
+        }
+      }
+    },
+    {
+      "ctx": 4096,
+      "panel": "math",
+      "arm": "dspark_ring",
+      "batches": {
+        "1": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "2": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "4": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "8": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "16": {
+          "status": "failed_attempt_present",
+          "metrics": {
+            "full_request_tps": "缺测/无效",
+            "ttft_p50_s": "缺测/无效",
+            "tpot_p50_s": "缺测/无效",
+            "relative_to_nospec": "缺测/不匹配"
+          }
+        }
+      }
+    },
+    {
+      "ctx": 4096,
+      "panel": "general",
+      "arm": "nospec",
+      "batches": {
+        "1": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "2": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "4": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "8": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "16": {
+          "status": "failed_attempt_present",
+          "metrics": {
+            "full_request_tps": "缺测/无效",
+            "ttft_p50_s": "缺测/无效",
+            "tpot_p50_s": "缺测/无效"
+          }
+        }
+      }
+    },
+    {
+      "ctx": 4096,
+      "panel": "general",
+      "arm": "ar_full",
+      "batches": {
+        "1": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "2": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "4": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "8": {
+          "status": "failed_attempt_present",
+          "metrics": {
+            "full_request_tps": "缺测/无效",
+            "ttft_p50_s": "缺测/无效",
+            "tpot_p50_s": "缺测/无效"
+          }
+        },
+        "16": {
+          "status": "failed_attempt_present",
+          "metrics": {
+            "full_request_tps": "缺测/无效",
+            "ttft_p50_s": "缺测/无效",
+            "tpot_p50_s": "缺测/无效"
+          }
+        }
+      }
+    },
+    {
+      "ctx": 4096,
+      "panel": "general",
+      "arm": "ar_window",
+      "batches": {
+        "1": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "2": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "4": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "8": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘"
+          }
+        },
+        "16": {
+          "status": "failed_attempt_present",
+          "metrics": {
+            "full_request_tps": "缺测/无效",
+            "ttft_p50_s": "缺测/无效",
+            "tpot_p50_s": "缺测/无效"
+          }
+        }
+      }
+    },
+    {
+      "ctx": 4096,
+      "panel": "general",
+      "arm": "dspark_full",
+      "batches": {
+        "1": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "2": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "4": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "8": {
+          "status": "missing",
+          "metrics": {
+            "full_request_tps": "缺测/无效",
+            "ttft_p50_s": "缺测/无效",
+            "tpot_p50_s": "缺测/无效",
+            "relative_to_nospec": "缺测/不匹配"
+          }
+        },
+        "16": {
+          "status": "failed_attempt_present",
+          "metrics": {
+            "full_request_tps": "缺测/无效",
+            "ttft_p50_s": "缺测/无效",
+            "tpot_p50_s": "缺测/无效",
+            "relative_to_nospec": "缺测/不匹配"
+          }
+        }
+      }
+    },
+    {
+      "ctx": 4096,
+      "panel": "general",
+      "arm": "dspark_ring",
+      "batches": {
+        "1": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "2": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "4": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "8": {
+          "status": "已审/3次",
+          "metrics": {
+            "full_request_tps": "已绘",
+            "ttft_p50_s": "已绘",
+            "tpot_p50_s": "已绘",
+            "relative_to_nospec": "已绘"
+          }
+        },
+        "16": {
+          "status": "failed_attempt_present",
+          "metrics": {
+            "full_request_tps": "缺测/无效",
+            "ttft_p50_s": "缺测/无效",
+            "tpot_p50_s": "缺测/无效",
+            "relative_to_nospec": "缺测/不匹配"
+          }
+        }
+      }
+    }
+  ]
+}

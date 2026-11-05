@@ -1,0 +1,436 @@
+no_spec budget=32768 lengths=[4360, 4360, 4360, 4360, 4360, 4360, 4360] target_rows=30520 expected_rows=32768
+Fdspark_w0 budget=32768 lengths=[4360, 4360, 4360, 4360, 4360, 4360, 4360] target_rows=30520 expected_rows=32768
+Fdspark_window budget=32768 lengths=[4360, 4360, 4360, 4360, 4360, 4360, 4360] target_rows=30520 expected_rows=32768
+Fno_spec budget=31 lengths=[10, 10, 10] target_rows=30 expected_rows=31
+Fdspark_w0 budget=31 lengths=[10, 10, 10] target_rows=30 expected_rows=31
+Fdspark_window budget=31 lengths=[10, 10, 10] target_rows=30 expected_rows=31
+F............
+================================== FAILURES ===================================
+______ test_warmup_covers_reachable_rows[32768-4360-8-expected0-no_spec] ______
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000018A24A8D6E0>
+mode = 'no_spec', budget = 32768, max_len = 4360, max_seqs = 8
+expected = [4360, 4360, 4360, 4360, 4360, 4360, ...]
+
+    @pytest.mark.parametrize("mode", ["no_spec", "dspark_w0", "dspark_window"])
+    @pytest.mark.parametrize("budget,max_len,max_seqs,expected", CASES)
+    def test_warmup_covers_reachable_rows(monkeypatch, mode, budget, max_len, max_seqs, expected):
+        tensor = torch.tensor
+        def cpu_tensor(*args, **kwargs):
+            kwargs.pop("pin_memory", None)
+            return tensor(*args, **kwargs)
+        monkeypatch.setattr(torch, "tensor", cpu_tensor)
+        monkeypatch.setattr(torch.Tensor, "cuda", lambda self, *args, **kwargs: self)
+        monkeypatch.setattr(torch.cuda, "empty_cache", lambda: None)
+        monkeypatch.setattr(torch.cuda, "reset_peak_memory_stats", lambda: None)
+        monkeypatch.setattr(runner_module, "_mem_snap", lambda *args: None)
+    
+        observed = {}
+        class Target:
+            def __call__(self, ids, positions, layers=None):
+                observed["target_rows"] = ids.numel()
+                observed["positions"] = positions.tolist()
+                observed["feature_rows"] = ids.numel() if layers is not None else None
+                hidden = torch.zeros(ids.numel(), 1).expand(-1, 16)
+                if layers is None:
+                    return hidden
+                return hidden, torch.zeros(ids.numel(), 1).expand(-1, 32)
+    
+            def compute_logits(self, hidden):
+                return hidden
+    
+        class Proposer:
+            def reset_watermark(self, tokens):
+                pass
+    
+        r = ModelRunner.__new__(ModelRunner)
+        r.config = SimpleNamespace(max_num_batched_tokens=budget, max_model_len=max_len,
+                                   max_num_seqs=max_seqs,
+                                   dspark_window_tokens=8 if mode == "dspark_window" else 0)
+        r.block_size = 4
+        r.rank, r.enforce_eager, r.draft_model = 0, True, None
+        r.dspark_model = None if mode == "no_spec" else make_draft()
+        r.dspark_target_layers = (0, 1)
+        r.spec_proposer = None if mode == "no_spec" else Proposer()
+        r.model = Target()
+        r.prepare_sample = lambda seqs: torch.ones(len(seqs))
+        r.sampler = lambda logits, temperatures: torch.zeros(len(temperatures), dtype=torch.long)
+        real_prepare = r.prepare_prefill
+        def prepare(seqs, advance_draft=True):
+            observed["seqs"] = [(len(s), s.num_scheduled_tokens, list(s.block_table), s.dspark_owner)
+                                for s in seqs]
+            ids, positions = real_prepare(seqs, advance_draft)
+            observed["prepared_rows"] = ids.numel()
+            return ids, positions
+        r.prepare_prefill = prepare
+    
+        r.warmup_model()
+        if budget in (32768, 31):
+            lengths = [item[0] for item in observed["seqs"]]
+            print(f"{mode} budget={budget} lengths={lengths} "
+                  f"target_rows={observed['target_rows']} expected_rows={sum(expected)}")
+>       assert observed["seqs"] == [(n, n, [], None) for n in expected]
+E       assert [(4360, 4360,...], None), ...] == [(4360, 4360,...], None), ...]
+E         
+E         Right contains one more item: (2248, 2248, [], None)
+E         Use -v to get more diff
+
+tests\test_warmup_rows.py:88: AssertionError
+_____ test_warmup_covers_reachable_rows[32768-4360-8-expected0-dspark_w0] _____
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000018A2058CFC0>
+mode = 'dspark_w0', budget = 32768, max_len = 4360, max_seqs = 8
+expected = [4360, 4360, 4360, 4360, 4360, 4360, ...]
+
+    @pytest.mark.parametrize("mode", ["no_spec", "dspark_w0", "dspark_window"])
+    @pytest.mark.parametrize("budget,max_len,max_seqs,expected", CASES)
+    def test_warmup_covers_reachable_rows(monkeypatch, mode, budget, max_len, max_seqs, expected):
+        tensor = torch.tensor
+        def cpu_tensor(*args, **kwargs):
+            kwargs.pop("pin_memory", None)
+            return tensor(*args, **kwargs)
+        monkeypatch.setattr(torch, "tensor", cpu_tensor)
+        monkeypatch.setattr(torch.Tensor, "cuda", lambda self, *args, **kwargs: self)
+        monkeypatch.setattr(torch.cuda, "empty_cache", lambda: None)
+        monkeypatch.setattr(torch.cuda, "reset_peak_memory_stats", lambda: None)
+        monkeypatch.setattr(runner_module, "_mem_snap", lambda *args: None)
+    
+        observed = {}
+        class Target:
+            def __call__(self, ids, positions, layers=None):
+                observed["target_rows"] = ids.numel()
+                observed["positions"] = positions.tolist()
+                observed["feature_rows"] = ids.numel() if layers is not None else None
+                hidden = torch.zeros(ids.numel(), 1).expand(-1, 16)
+                if layers is None:
+                    return hidden
+                return hidden, torch.zeros(ids.numel(), 1).expand(-1, 32)
+    
+            def compute_logits(self, hidden):
+                return hidden
+    
+        class Proposer:
+            def reset_watermark(self, tokens):
+                pass
+    
+        r = ModelRunner.__new__(ModelRunner)
+        r.config = SimpleNamespace(max_num_batched_tokens=budget, max_model_len=max_len,
+                                   max_num_seqs=max_seqs,
+                                   dspark_window_tokens=8 if mode == "dspark_window" else 0)
+        r.block_size = 4
+        r.rank, r.enforce_eager, r.draft_model = 0, True, None
+        r.dspark_model = None if mode == "no_spec" else make_draft()
+        r.dspark_target_layers = (0, 1)
+        r.spec_proposer = None if mode == "no_spec" else Proposer()
+        r.model = Target()
+        r.prepare_sample = lambda seqs: torch.ones(len(seqs))
+        r.sampler = lambda logits, temperatures: torch.zeros(len(temperatures), dtype=torch.long)
+        real_prepare = r.prepare_prefill
+        def prepare(seqs, advance_draft=True):
+            observed["seqs"] = [(len(s), s.num_scheduled_tokens, list(s.block_table), s.dspark_owner)
+                                for s in seqs]
+            ids, positions = real_prepare(seqs, advance_draft)
+            observed["prepared_rows"] = ids.numel()
+            return ids, positions
+        r.prepare_prefill = prepare
+    
+        r.warmup_model()
+        if budget in (32768, 31):
+            lengths = [item[0] for item in observed["seqs"]]
+            print(f"{mode} budget={budget} lengths={lengths} "
+                  f"target_rows={observed['target_rows']} expected_rows={sum(expected)}")
+>       assert observed["seqs"] == [(n, n, [], None) for n in expected]
+E       assert [(4360, 4360,...], None), ...] == [(4360, 4360,...], None), ...]
+E         
+E         Right contains one more item: (2248, 2248, [], None)
+E         Use -v to get more diff
+
+tests\test_warmup_rows.py:88: AssertionError
+___ test_warmup_covers_reachable_rows[32768-4360-8-expected0-dspark_window] ___
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000018A24ABAD50>
+mode = 'dspark_window', budget = 32768, max_len = 4360, max_seqs = 8
+expected = [4360, 4360, 4360, 4360, 4360, 4360, ...]
+
+    @pytest.mark.parametrize("mode", ["no_spec", "dspark_w0", "dspark_window"])
+    @pytest.mark.parametrize("budget,max_len,max_seqs,expected", CASES)
+    def test_warmup_covers_reachable_rows(monkeypatch, mode, budget, max_len, max_seqs, expected):
+        tensor = torch.tensor
+        def cpu_tensor(*args, **kwargs):
+            kwargs.pop("pin_memory", None)
+            return tensor(*args, **kwargs)
+        monkeypatch.setattr(torch, "tensor", cpu_tensor)
+        monkeypatch.setattr(torch.Tensor, "cuda", lambda self, *args, **kwargs: self)
+        monkeypatch.setattr(torch.cuda, "empty_cache", lambda: None)
+        monkeypatch.setattr(torch.cuda, "reset_peak_memory_stats", lambda: None)
+        monkeypatch.setattr(runner_module, "_mem_snap", lambda *args: None)
+    
+        observed = {}
+        class Target:
+            def __call__(self, ids, positions, layers=None):
+                observed["target_rows"] = ids.numel()
+                observed["positions"] = positions.tolist()
+                observed["feature_rows"] = ids.numel() if layers is not None else None
+                hidden = torch.zeros(ids.numel(), 1).expand(-1, 16)
+                if layers is None:
+                    return hidden
+                return hidden, torch.zeros(ids.numel(), 1).expand(-1, 32)
+    
+            def compute_logits(self, hidden):
+                return hidden
+    
+        class Proposer:
+            def reset_watermark(self, tokens):
+                pass
+    
+        r = ModelRunner.__new__(ModelRunner)
+        r.config = SimpleNamespace(max_num_batched_tokens=budget, max_model_len=max_len,
+                                   max_num_seqs=max_seqs,
+                                   dspark_window_tokens=8 if mode == "dspark_window" else 0)
+        r.block_size = 4
+        r.rank, r.enforce_eager, r.draft_model = 0, True, None
+        r.dspark_model = None if mode == "no_spec" else make_draft()
+        r.dspark_target_layers = (0, 1)
+        r.spec_proposer = None if mode == "no_spec" else Proposer()
+        r.model = Target()
+        r.prepare_sample = lambda seqs: torch.ones(len(seqs))
+        r.sampler = lambda logits, temperatures: torch.zeros(len(temperatures), dtype=torch.long)
+        real_prepare = r.prepare_prefill
+        def prepare(seqs, advance_draft=True):
+            observed["seqs"] = [(len(s), s.num_scheduled_tokens, list(s.block_table), s.dspark_owner)
+                                for s in seqs]
+            ids, positions = real_prepare(seqs, advance_draft)
+            observed["prepared_rows"] = ids.numel()
+            return ids, positions
+        r.prepare_prefill = prepare
+    
+        r.warmup_model()
+        if budget in (32768, 31):
+            lengths = [item[0] for item in observed["seqs"]]
+            print(f"{mode} budget={budget} lengths={lengths} "
+                  f"target_rows={observed['target_rows']} expected_rows={sum(expected)}")
+>       assert observed["seqs"] == [(n, n, [], None) for n in expected]
+E       assert [(4360, 4360,...], None), ...] == [(4360, 4360,...], None), ...]
+E         
+E         Right contains one more item: (2248, 2248, [], None)
+E         Use -v to get more diff
+
+tests\test_warmup_rows.py:88: AssertionError
+________ test_warmup_covers_reachable_rows[31-10-8-expected1-no_spec] _________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000018A24AD18C0>
+mode = 'no_spec', budget = 31, max_len = 10, max_seqs = 8
+expected = [10, 10, 10, 1]
+
+    @pytest.mark.parametrize("mode", ["no_spec", "dspark_w0", "dspark_window"])
+    @pytest.mark.parametrize("budget,max_len,max_seqs,expected", CASES)
+    def test_warmup_covers_reachable_rows(monkeypatch, mode, budget, max_len, max_seqs, expected):
+        tensor = torch.tensor
+        def cpu_tensor(*args, **kwargs):
+            kwargs.pop("pin_memory", None)
+            return tensor(*args, **kwargs)
+        monkeypatch.setattr(torch, "tensor", cpu_tensor)
+        monkeypatch.setattr(torch.Tensor, "cuda", lambda self, *args, **kwargs: self)
+        monkeypatch.setattr(torch.cuda, "empty_cache", lambda: None)
+        monkeypatch.setattr(torch.cuda, "reset_peak_memory_stats", lambda: None)
+        monkeypatch.setattr(runner_module, "_mem_snap", lambda *args: None)
+    
+        observed = {}
+        class Target:
+            def __call__(self, ids, positions, layers=None):
+                observed["target_rows"] = ids.numel()
+                observed["positions"] = positions.tolist()
+                observed["feature_rows"] = ids.numel() if layers is not None else None
+                hidden = torch.zeros(ids.numel(), 1).expand(-1, 16)
+                if layers is None:
+                    return hidden
+                return hidden, torch.zeros(ids.numel(), 1).expand(-1, 32)
+    
+            def compute_logits(self, hidden):
+                return hidden
+    
+        class Proposer:
+            def reset_watermark(self, tokens):
+                pass
+    
+        r = ModelRunner.__new__(ModelRunner)
+        r.config = SimpleNamespace(max_num_batched_tokens=budget, max_model_len=max_len,
+                                   max_num_seqs=max_seqs,
+                                   dspark_window_tokens=8 if mode == "dspark_window" else 0)
+        r.block_size = 4
+        r.rank, r.enforce_eager, r.draft_model = 0, True, None
+        r.dspark_model = None if mode == "no_spec" else make_draft()
+        r.dspark_target_layers = (0, 1)
+        r.spec_proposer = None if mode == "no_spec" else Proposer()
+        r.model = Target()
+        r.prepare_sample = lambda seqs: torch.ones(len(seqs))
+        r.sampler = lambda logits, temperatures: torch.zeros(len(temperatures), dtype=torch.long)
+        real_prepare = r.prepare_prefill
+        def prepare(seqs, advance_draft=True):
+            observed["seqs"] = [(len(s), s.num_scheduled_tokens, list(s.block_table), s.dspark_owner)
+                                for s in seqs]
+            ids, positions = real_prepare(seqs, advance_draft)
+            observed["prepared_rows"] = ids.numel()
+            return ids, positions
+        r.prepare_prefill = prepare
+    
+        r.warmup_model()
+        if budget in (32768, 31):
+            lengths = [item[0] for item in observed["seqs"]]
+            print(f"{mode} budget={budget} lengths={lengths} "
+                  f"target_rows={observed['target_rows']} expected_rows={sum(expected)}")
+>       assert observed["seqs"] == [(n, n, [], None) for n in expected]
+E       assert [(10, 10, [],...10, [], None)] == [(10, 10, [],... 1, [], None)]
+E         
+E         Right contains one more item: (1, 1, [], None)
+E         Use -v to get more diff
+
+tests\test_warmup_rows.py:88: AssertionError
+_______ test_warmup_covers_reachable_rows[31-10-8-expected1-dspark_w0] ________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000018A24AD1E10>
+mode = 'dspark_w0', budget = 31, max_len = 10, max_seqs = 8
+expected = [10, 10, 10, 1]
+
+    @pytest.mark.parametrize("mode", ["no_spec", "dspark_w0", "dspark_window"])
+    @pytest.mark.parametrize("budget,max_len,max_seqs,expected", CASES)
+    def test_warmup_covers_reachable_rows(monkeypatch, mode, budget, max_len, max_seqs, expected):
+        tensor = torch.tensor
+        def cpu_tensor(*args, **kwargs):
+            kwargs.pop("pin_memory", None)
+            return tensor(*args, **kwargs)
+        monkeypatch.setattr(torch, "tensor", cpu_tensor)
+        monkeypatch.setattr(torch.Tensor, "cuda", lambda self, *args, **kwargs: self)
+        monkeypatch.setattr(torch.cuda, "empty_cache", lambda: None)
+        monkeypatch.setattr(torch.cuda, "reset_peak_memory_stats", lambda: None)
+        monkeypatch.setattr(runner_module, "_mem_snap", lambda *args: None)
+    
+        observed = {}
+        class Target:
+            def __call__(self, ids, positions, layers=None):
+                observed["target_rows"] = ids.numel()
+                observed["positions"] = positions.tolist()
+                observed["feature_rows"] = ids.numel() if layers is not None else None
+                hidden = torch.zeros(ids.numel(), 1).expand(-1, 16)
+                if layers is None:
+                    return hidden
+                return hidden, torch.zeros(ids.numel(), 1).expand(-1, 32)
+    
+            def compute_logits(self, hidden):
+                return hidden
+    
+        class Proposer:
+            def reset_watermark(self, tokens):
+                pass
+    
+        r = ModelRunner.__new__(ModelRunner)
+        r.config = SimpleNamespace(max_num_batched_tokens=budget, max_model_len=max_len,
+                                   max_num_seqs=max_seqs,
+                                   dspark_window_tokens=8 if mode == "dspark_window" else 0)
+        r.block_size = 4
+        r.rank, r.enforce_eager, r.draft_model = 0, True, None
+        r.dspark_model = None if mode == "no_spec" else make_draft()
+        r.dspark_target_layers = (0, 1)
+        r.spec_proposer = None if mode == "no_spec" else Proposer()
+        r.model = Target()
+        r.prepare_sample = lambda seqs: torch.ones(len(seqs))
+        r.sampler = lambda logits, temperatures: torch.zeros(len(temperatures), dtype=torch.long)
+        real_prepare = r.prepare_prefill
+        def prepare(seqs, advance_draft=True):
+            observed["seqs"] = [(len(s), s.num_scheduled_tokens, list(s.block_table), s.dspark_owner)
+                                for s in seqs]
+            ids, positions = real_prepare(seqs, advance_draft)
+            observed["prepared_rows"] = ids.numel()
+            return ids, positions
+        r.prepare_prefill = prepare
+    
+        r.warmup_model()
+        if budget in (32768, 31):
+            lengths = [item[0] for item in observed["seqs"]]
+            print(f"{mode} budget={budget} lengths={lengths} "
+                  f"target_rows={observed['target_rows']} expected_rows={sum(expected)}")
+>       assert observed["seqs"] == [(n, n, [], None) for n in expected]
+E       assert [(10, 10, [],...10, [], None)] == [(10, 10, [],... 1, [], None)]
+E         
+E         Right contains one more item: (1, 1, [], None)
+E         Use -v to get more diff
+
+tests\test_warmup_rows.py:88: AssertionError
+_____ test_warmup_covers_reachable_rows[31-10-8-expected1-dspark_window] ______
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000018A24AD5C50>
+mode = 'dspark_window', budget = 31, max_len = 10, max_seqs = 8
+expected = [10, 10, 10, 1]
+
+    @pytest.mark.parametrize("mode", ["no_spec", "dspark_w0", "dspark_window"])
+    @pytest.mark.parametrize("budget,max_len,max_seqs,expected", CASES)
+    def test_warmup_covers_reachable_rows(monkeypatch, mode, budget, max_len, max_seqs, expected):
+        tensor = torch.tensor
+        def cpu_tensor(*args, **kwargs):
+            kwargs.pop("pin_memory", None)
+            return tensor(*args, **kwargs)
+        monkeypatch.setattr(torch, "tensor", cpu_tensor)
+        monkeypatch.setattr(torch.Tensor, "cuda", lambda self, *args, **kwargs: self)
+        monkeypatch.setattr(torch.cuda, "empty_cache", lambda: None)
+        monkeypatch.setattr(torch.cuda, "reset_peak_memory_stats", lambda: None)
+        monkeypatch.setattr(runner_module, "_mem_snap", lambda *args: None)
+    
+        observed = {}
+        class Target:
+            def __call__(self, ids, positions, layers=None):
+                observed["target_rows"] = ids.numel()
+                observed["positions"] = positions.tolist()
+                observed["feature_rows"] = ids.numel() if layers is not None else None
+                hidden = torch.zeros(ids.numel(), 1).expand(-1, 16)
+                if layers is None:
+                    return hidden
+                return hidden, torch.zeros(ids.numel(), 1).expand(-1, 32)
+    
+            def compute_logits(self, hidden):
+                return hidden
+    
+        class Proposer:
+            def reset_watermark(self, tokens):
+                pass
+    
+        r = ModelRunner.__new__(ModelRunner)
+        r.config = SimpleNamespace(max_num_batched_tokens=budget, max_model_len=max_len,
+                                   max_num_seqs=max_seqs,
+                                   dspark_window_tokens=8 if mode == "dspark_window" else 0)
+        r.block_size = 4
+        r.rank, r.enforce_eager, r.draft_model = 0, True, None
+        r.dspark_model = None if mode == "no_spec" else make_draft()
+        r.dspark_target_layers = (0, 1)
+        r.spec_proposer = None if mode == "no_spec" else Proposer()
+        r.model = Target()
+        r.prepare_sample = lambda seqs: torch.ones(len(seqs))
+        r.sampler = lambda logits, temperatures: torch.zeros(len(temperatures), dtype=torch.long)
+        real_prepare = r.prepare_prefill
+        def prepare(seqs, advance_draft=True):
+            observed["seqs"] = [(len(s), s.num_scheduled_tokens, list(s.block_table), s.dspark_owner)
+                                for s in seqs]
+            ids, positions = real_prepare(seqs, advance_draft)
+            observed["prepared_rows"] = ids.numel()
+            return ids, positions
+        r.prepare_prefill = prepare
+    
+        r.warmup_model()
+        if budget in (32768, 31):
+            lengths = [item[0] for item in observed["seqs"]]
+            print(f"{mode} budget={budget} lengths={lengths} "
+                  f"target_rows={observed['target_rows']} expected_rows={sum(expected)}")
+>       assert observed["seqs"] == [(n, n, [], None) for n in expected]
+E       assert [(10, 10, [],...10, [], None)] == [(10, 10, [],... 1, [], None)]
+E         
+E         Right contains one more item: (1, 1, [], None)
+E         Use -v to get more diff
+
+tests\test_warmup_rows.py:88: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_warmup_rows.py::test_warmup_covers_reachable_rows[32768-4360-8-expected0-no_spec]
+FAILED tests/test_warmup_rows.py::test_warmup_covers_reachable_rows[32768-4360-8-expected0-dspark_w0]
+FAILED tests/test_warmup_rows.py::test_warmup_covers_reachable_rows[32768-4360-8-expected0-dspark_window]
+FAILED tests/test_warmup_rows.py::test_warmup_covers_reachable_rows[31-10-8-expected1-no_spec]
+FAILED tests/test_warmup_rows.py::test_warmup_covers_reachable_rows[31-10-8-expected1-dspark_w0]
+FAILED tests/test_warmup_rows.py::test_warmup_covers_reachable_rows[31-10-8-expected1-dspark_window]
+6 failed, 12 passed in 1.52s

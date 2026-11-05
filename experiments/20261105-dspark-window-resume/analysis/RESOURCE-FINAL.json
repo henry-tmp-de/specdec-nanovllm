@@ -1,0 +1,18 @@
+{
+  "checked_utc": "2026-11-05T10:03:02.064958+00:00",
+  "source_commit": "4a4a64b29192e57b3e27eb24d6a8a3069dfbd18f",
+  "parents": {
+    "FORMAL-LAUNCH-01.json": "gone",
+    "CAPACITY-LAUNCH-01.json": "gone"
+  },
+  "all_recorded_owned_identities_exited": true,
+  "recorded_stage_count": 89,
+  "recorded_unique_owned_process_identities": 2927,
+  "gpu_seconds": 4172.784809537232,
+  "smoke_seconds": 362.3887213654816,
+  "gpu_stage_wall_accounting_note": "Includes model load, capture, failed attempts and cleanup; not kernel-busy time. CPU-only prep did not hold a GPU.",
+  "gpu_snapshot": "0, GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91, 15 MiB, 0 %",
+  "target_gpu_compute_absent": true,
+  "remaining_gpu_seconds_limit": 10227.215190462768,
+  "no_more_gpu_work_scheduled": true
+}

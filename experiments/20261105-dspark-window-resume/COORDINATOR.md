@@ -87,3 +87,14 @@
 - 报告脚本 `report_results.py` 及15项fixture经Sol审；之后小修合法填充汇总/Interim状态经定向审。只读适配已成功区分nospec/AR/DS full W0的N/A scratch与ring实际scratch。按来源/预算分别报告，不能用旧failure污染新commit同名cell，也不跨不同模型连接曲线。正式benchmark结束后先拉raw/manifest/全账、root复算、Sol独立证据审核，才写简历数字。
 - **容量阶段还没开始**：已有CPU生成16K manifest，planned DS full/ring B4/ctx16384/output256、同0.85、prefill预算4096、W512，无量化/训练。需正式阶段终态、root/独立审核及现场空闲检查后单独执行，不与正式并行，不自动加PD/ZOS/MoE/量化/多卡。
 - 全局review偏好已按用户新要求记入 `C:/Users/85935/.codex/memories/extensions/ad_hoc/notes/20261105-review-sol-medium.md`：今后全部review使用GPT-6.1 Sol Medium，禁止Astra。实现仍Terra Max，GPU/root负责。
+
+### 最终终态：2026-11-05 18:03 北京以后，不再运行GPU
+
+- 用户最新澄清：实际只使用DSpark滑窗。最终推荐 `dspark_ring/W512`；全历史草稿仅实验对照，不再继续优化其OOM配置。target仍完整历史。
+- 正式全部50job已终态：42成功、7资源失败、1known-blocked；378run、126三重复完整cell，21资源失败cell与3known未执行cell；成功1,782请求/456,192输出。无数值/未知错误混入资源继续规则。
+- source4a容量2job终态：full/16K/B4/0.85/prefill4096在Graph预热申请1.02GiB OOM；ring512同条件4请求全部完成1024输出，firstdecodeB4、无抢占/prefix。DSpark KV具名41963520B、scratch655360B，target299块；full目标263块，DS-KV `(263*256+1)*20480=1378897920B`为分配记录复算非成功run峰值；缓存部分净减96.9092%、target槽67328→76544(+13.6882%)，不可称总显存或最大并发同比。
+- Sol Medium独立审核378主run/186匹配对照、两容量记录/最终ledger、v3图及文档；主要负点保留：general 1K/B16为普通Graph的0.745807x；4K/B16五方案均容量未通过；1K少数window/W0也会回退。
+- 最终账 `evidence/final-all-01/FINAL-RELEASE.json`：89stage全部闭合，4172.784809537秒，smoke362.388721秒，2,927自有进程身份无live；formal与capacity父进程gone。GPU0最终15MiB/0%/无compute，**没有后续GPU或监控任务**。预算未用完不意味着继续实验。
+- 完整归档本地 `D:/tools/codex-runs/dspark-window-resume-20261105/final-evidence-01.tar.gz`、远端同根 `final-evidence-01.tar.gz`，7,650,203B，SHA256 `8c36fa1686c884e46b3740ab407f79ea6729e047155c636ddae7ee6c1fe32c75`。完整raw/token IDs/logs/data与大型中间JSON不Git；公开小统计、报告、图和复现脚本分别保留。
+- 用户读入口 `FINAL_REPORT.md`、`RESUME-DATA.md`、`USAGE-SWA.md`、`METHODS.md`；最终主分析 `analysis/formal-final-02/REPORT.md`，容量 `analysis/capacity-final-01/REPORT.md`，v3图在 `analysis/formal-final-01/plots-4a085-v3`。报告自动Interim指成功覆盖未满，不指任务仍运行。
+- 新独立代码/统计保留实验分支，main不自动合并。不得用旧1.39/132.5/PPL/量化/混批/kernel数字改名迁到DSpark；不追加PD/ZOS/MoE/量化/多卡任务。
