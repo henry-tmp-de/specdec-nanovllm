@@ -245,21 +245,27 @@ def formal_rows(result):
 
 
 def show(value):
-    return "—" if value is None else f"{value:.4g}" if type(value) in (float, int) else str(value)
+    return "—" if value is None else f"{value:.4g}" if type(value) is float else str(value)
 
 
 def formal_markdown(result):
     lines = ["# DSpark W8A16 完整请求：CPU 原始记录汇总", "",
              "只复算请求与轮次记录；guard、实际图命中、计划和模型数值须独立审核，以下配对为暂定。",
              "三次范围是 min–max，不是置信区间。吞吐包含完整请求，解码跨度包含轮间主机间隔。",
-             "加载时间包含初始图与 PTQ；host PTQ 是其中一部分，不能相加。缺失用 —。", "",
+             "加载时间包含初始图与 PTQ；host PTQ 是其中一部分，不能相加。同一 guard 的加载记录会在不同 panel 行重复，不是新增样本。",
+             "显存预算相同不代表 target KV 块数相同；各来源/GPU/输入哈希详见 CSV 和 JSON。缺失用 —。", "",
              f"记录组 {len(result['groups'])}，无效 {len(result['invalid'])}，失败 {len(result['failures'])}，解析错误 {len(result['parse_errors'])}。", "",
-             "| B | ctx | panel | preset | 3次有效 | 吞吐 median [min,max] token/s |",
-             "|---:|---:|---|---|---|---|"]
+             "| B | ctx | panel | preset | 显存预算 | 3次有效 | 吞吐 median [min,max] token/s | host PTQ 秒 | 加载+初始图 秒 | target KV 块 | 候选层字节 |",
+             "|---:|---:|---|---|---:|---|---|---:|---:|---:|---:|"]
     for group in result["groups"]:
         c, st = group["configuration"], group["summary"]["full_request_tps"]
         summary = "—" if st is None else f"{show(st['median'])} [{show(st['min'])}, {show(st['max'])}]"
-        lines.append(f"| {c.get('requested_batch')} | {c.get('ctx')} | {c.get('panel')} | {c.get('dspark_quant_preset')} | {group['three_repeats_valid']} | {summary} |")
+        def per_run(field):
+            values = [entry.get(field) for entry in group["runs"]]
+            if not values:
+                return "—"
+            return show(values[0]) if all(v == values[0] for v in values) else ", ".join(show(v) for v in values)
+        lines.append(f"| {c.get('requested_batch')} | {c.get('ctx')} | {c.get('panel')} | {c.get('dspark_quant_preset')} | {show(c.get('gpu_memory_utilization'))} | {group['three_repeats_valid']} | {summary} | {per_run('quantize_host_wall_s')} | {per_run('load_initial_graph_s')} | {per_run('target_kv_blocks')} | {per_run('candidate_total_bytes')} |")
     lines += ["", "| B | ctx | panel | preset 对 none | 匹配重复 | 吞吐比 median [min,max] | 状态 |",
               "|---:|---:|---|---|---:|---|---|"]
     for pair in result["pairs"]:

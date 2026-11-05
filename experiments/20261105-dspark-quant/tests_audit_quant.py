@@ -26,7 +26,9 @@ def run(preset="none", repeat=0, wall=10.0, input_hash="a" * 64):
             "target_provenance": {"path": "target"}, "draft_provenance": {"path": "draft"},
             "guard_id": f"{preset}-guard", "diagnostic_instrumented": False,
             "input_metadata": [{"actual_input_sha256": input_hash}],
-            "dspark_quant_preset": preset, "dspark_quant": {"preset": preset, "candidate_total_bytes": 100},
+            "dspark_quant_preset": preset, "dspark_quant": {"preset": preset, "candidate_total_bytes": 100,
+                                                              "quantize_host_wall_s": 6.5},
+            "target_kv_blocks": 20, "load_initial_graph_s": 8.0,
             "wall_s": wall, "delivered_tokens": 4, "preemptions": 0, "prefix_cached_tokens": 0,
             "requests": [{"seq_id": 1, "arrival_s": 0.1, "finish_s": 4.0,
                           "deliveries": [{"at_s": 1.0, "count": 1}, {"at_s": 3.0, "count": 2},
@@ -109,4 +111,5 @@ def test_cli_reads_glob_and_writes_formal_reports(tmp_path):
     report = json.loads((output / "formal-summary.json").read_text(encoding="utf-8"))
     assert len(report["groups"]) == 2 and report["pairs"][0]["summary"]["median"] == 2.0
     assert (output / "formal-runs.csv").is_file() and (output / "formal-pairs.csv").is_file()
-    assert "不是置信区间" in (output / "formal-report.md").read_text(encoding="utf-8")
+    markdown = (output / "formal-report.md").read_text(encoding="utf-8")
+    assert "不是置信区间" in markdown and "| 6.5 | 8 | 20 | 100 |" in markdown
