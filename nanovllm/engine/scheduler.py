@@ -285,11 +285,19 @@ class Scheduler:
             # 候选的 KV 写入后靠 slot 覆写回收（见 model_runner.prepare_verify）
             need = 1 + (self.spec_k if spec_on else 0)
             while not self.block_manager.can_append(seq, need):
-                if self.running:
-                    self.preempt(self.running.pop())
+                if not _round_seqs:
+                    # Preserve the existing tail-victim policy for non-mixed steps.
+                    victim = self.running.pop() if self.running else None
                 else:
+                    # A completed prefill may already be in running, but its
+                    # blocks are still needed by this step's prefill forward.
+                    victim = next((s for s in reversed(self.running) if s not in _round_seqs), None)
+                    if victim is not None:
+                        self.running.remove(victim)
+                if victim is None:
                     self.preempt(seq)
                     break
+                self.preempt(victim)
             else:
                 seq.num_scheduled_tokens = need
                 seq.is_prefill = False

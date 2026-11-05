@@ -1,0 +1,90 @@
+[
+  {
+    "other_decode": true,
+    "plan_type": "MixedBatchPlan",
+    "prefill_scheduled": 4,
+    "prefill_status": "RUNNING",
+    "prefill_original_table": [
+      2,
+      3
+    ],
+    "prefill_current_table": [
+      2,
+      3
+    ],
+    "prefill_in_running": true,
+    "prefill_in_waiting": false,
+    "input_ids": [
+      204,
+      205,
+      206,
+      207
+    ],
+    "positions": [
+      4,
+      5,
+      6,
+      7
+    ],
+    "slots": [
+      12,
+      13,
+      14,
+      15
+    ],
+    "expected_slots": [
+      12,
+      13,
+      14,
+      15
+    ],
+    "decode_scheduled": true,
+    "decode_status": "RUNNING",
+    "victim_status": "WAITING"
+  },
+  {
+    "other_decode": false,
+    "plan_type": "tuple",
+    "prefill_scheduled": 4,
+    "prefill_status": "RUNNING",
+    "prefill_original_table": [
+      1,
+      2
+    ],
+    "prefill_current_table": [
+      1,
+      2
+    ],
+    "prefill_in_running": true,
+    "prefill_in_waiting": false,
+    "input_ids": [
+      204,
+      205,
+      206,
+      207
+    ],
+    "positions": [
+      4,
+      5,
+      6,
+      7
+    ],
+    "slots": [
+      8,
+      9,
+      10,
+      11
+    ],
+    "expected_slots": [
+      8,
+      9,
+      10,
+      11
+    ],
+    "decode_scheduled": false,
+    "decode_status": "WAITING",
+    "victim_status": null
+  }
+]
+default tail victim: {'decode_scheduled': 5, 'tail_victim': 6, 'tail_status': 'WAITING'}
+PASS: protected prefill blocks; eligible victim and current decode preemption

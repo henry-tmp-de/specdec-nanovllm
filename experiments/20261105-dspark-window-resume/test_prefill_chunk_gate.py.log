@@ -1,0 +1,36 @@
+======================================================================
+§1 不变量：一轮里同一条序列不许被调度两次（真 bug 的护栏）
+======================================================================
+  [PASS] chunk=0: 一轮内无重复序列（scheduled=1）
+  [PASS] chunk=0: 一轮内进 token 数 ≤ chunk（进 20）   chunk=0 tokens=20
+  [PASS] chunk=4: 一轮内无重复序列（scheduled=1）
+  [PASS] chunk=4: 一轮内进 token 数 ≤ chunk（进 4）   chunk=4 tokens=4
+  [PASS] chunk=8: 一轮内无重复序列（scheduled=1）
+  [PASS] chunk=8: 一轮内进 token 数 ≤ chunk（进 8）   chunk=8 tokens=8
+  [PASS] chunk=8/len=20：拼不完 => 仍留在 waiting 队首
+  [PASS] chunk=8/len=20：置 _prefill_chunk_pending=True
+  [PASS] 下一轮让路给 decode（is_prefill=False）
+  [PASS] 让路轮里 pending 标记被清掉
+
+======================================================================
+§2 P12 门控：没有解码请求可让路时不切块
+======================================================================
+  [PASS] running 空：不分块（一次进满 20 个 token）   tokens=20
+  [PASS] running 空：序列被一次拼完、移出 waiting
+  [PASS] running 空：不置 pending
+  [PASS] running 非空：分块（一轮只进 chunk=8 个 token）   tokens=8
+  [PASS] （准备）pending=True
+  [PASS] running 变空后：剩余 12 个 token 一次拼完（不再分块）   tokens=12
+
+======================================================================
+§3 Scheduler 把「此刻的解码批大小」写进 config（供跳过 draft prefill 判白跑）
+======================================================================
+  [PASS] prefill 开始时写入 _sched_running_decode_b = 本轮解码批大小   got=3
+  [PASS] 没有解码请求时写 0
+
+======================================================================
+§4 默认路径（chunk=0）行为不变
+======================================================================
+  [PASS] chunk=0：两条短序列一轮里一起 prefill（老行为）   n=2 tokens=40
+
+✓ 全部通过

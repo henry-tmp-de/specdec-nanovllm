@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "D:\学习\specdec-dspark-window\experiments\20261105-dspark-window-resume\cpu_mixed_preemption_repro.py", line 122, in <module>
+    results = [scenario(True), scenario(False)]
+               ~~~~~~~~^^^^^^
+  File "D:\学习\specdec-dspark-window\experiments\20261105-dspark-window-resume\cpu_mixed_preemption_repro.py", line 78, in scenario
+    assert prefill_seqs == [pre] and pre.status == SequenceStatus.RUNNING, result
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {'other_decode': True, 'plan_type': 'MixedBatchPlan', 'prefill_scheduled': 4, 'prefill_status': 'WAITING', 'prefill_original_table': [2, 3], 'prefill_current_table': [], 'prefill_in_running': False, 'prefill_in_waiting': True, 'input_ids': [200, 201, 202, 203], 'positions': [0, 1, 2, 3], 'slots': [], 'expected_slots': [12, 13, 14, 15], 'decode_scheduled': True, 'decode_status': 'RUNNING', 'victim_status': 'RUNNING'}
