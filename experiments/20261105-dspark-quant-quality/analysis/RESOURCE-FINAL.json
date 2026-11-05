@@ -1,0 +1,30 @@
+{
+  "created_utc": "2026-11-05T12:27:31.776816+00:00",
+  "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+  "stages": 10,
+  "all_stages_ok": true,
+  "total_gpu_stage_wall_s": 626.4584939591587,
+  "smoke_s": 97.71811323985457,
+  "limit_s": 1200,
+  "observed_owned_identity_count": 274,
+  "owned_alive": [],
+  "controller_identities_gone": true,
+  "gpu_after": {
+    "index": 0,
+    "uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+    "name": "NVIDIA GeForce RTX 3090",
+    "used_mib": 15,
+    "total_mib": 24576,
+    "util_pct": 0,
+    "compute_processes": []
+  },
+  "quality_full_cases": 96,
+  "quality_trajectories": 24,
+  "quality_variants": 15,
+  "quality_positions_per_variant": 672,
+  "native_runs": 72,
+  "native_requests": 324,
+  "native_delivered_tokens": 41472,
+  "no_more_gpu_work_scheduled": true,
+  "cost_definition": "sum guarded wallclock including loading, preparation and cleanup; not kernel busy time"
+}

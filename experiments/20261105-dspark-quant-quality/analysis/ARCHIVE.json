@@ -1,0 +1,20 @@
+{
+  "file": "/home/ziru/nano-vllm/dspark-quant-quality-20261105/final-evidence-01.tar.gz",
+  "bytes": 1219167,
+  "sha256": "c1e5c045c3b47e3e7620c9b66bdc8c89c70c5bdbd6896b7a4bc916998af58a72",
+  "members": [
+    "results",
+    "logs",
+    "data",
+    "CODE-GATE.json",
+    "FINAL-RELEASE.json",
+    "FULL-GATE.json",
+    "FULL-LAUNCH-01.json",
+    "NATIVE-GATE.json",
+    "NATIVE-LAUNCH-01.json",
+    "NATIVE-STATUS.json",
+    "SMOKE-LAUNCH-01.json",
+    "operator-native-01.py"
+  ],
+  "contains_model_weights": false
+}
