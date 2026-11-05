@@ -504,9 +504,13 @@ class ModelRunner:
         context_lens = []
         for seq in seqs:
             input_ids.append(seq.last_token)
-            positions.append(len(seq) - 1)
+            position = len(seq) - 1
+            positions.append(position)
             context_lens.append(len(seq))
-            slot_mapping.append(seq.block_table[-1] * self.block_size + seq.last_block_num_tokens  - 1)
+            # Speculative verification can reserve blocks beyond this position.
+            # Map the actual absolute position, not the last reserved block.
+            slot_mapping.append(seq.block_table[position // self.block_size] * self.block_size
+                                + position % self.block_size)
         input_ids = torch.tensor(input_ids, dtype=torch.int64, pin_memory=True).cuda(non_blocking=True)
         positions = torch.tensor(positions, dtype=torch.int64, pin_memory=True).cuda(non_blocking=True)
         slot_mapping = torch.tensor(slot_mapping, dtype=torch.int32, pin_memory=True).cuda(non_blocking=True)

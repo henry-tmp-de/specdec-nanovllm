@@ -5,19 +5,20 @@ ModelRunner.prepare_decode are exercised. Fake tensors only carry lists;
 model/proposer/sampling are stubs, so no model, CUDA API, or GPU is used.
 This checks scheduler/slot mapping, not numerical inference correctness.
 
-Expected on the current base: control passes and the final invariant assert
-fails for the reachable rejected-prefix cases. Evidence is saved before assert.
+On the original base the final invariant failed for the rejected-prefix cases.
+Pass --output to keep new evidence separate from the historical JSON record.
 """
 from __future__ import annotations
 
 import json
+import argparse
 import sys
 import types
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-OUTPUT = Path(__file__).with_name("cpu-decode-slot-repro.json")
+DEFAULT_OUTPUT = ROOT / "experiments" / "20261105-dspark-window-resume" / "cpu-decode-slot-repro.json"
 
 
 class FakeTensor:
@@ -165,12 +166,21 @@ def speculative_rejection(accepted):
     return result
 
 
-records = {"base_commit": "cefb5a2ab2f57ad2f709fd38493ac544d6b78989",
-           "scope": "CPU-only metadata; model, sampling, CUDA and GPU not run",
-           "control": control(),
-           "accepted_0": speculative_rejection(0),
-           "accepted_2": speculative_rejection(2)}
-OUTPUT.write_text(json.dumps(records, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-print(json.dumps(records, indent=2, ensure_ascii=False))
-failures = [name for name in ("accepted_0", "accepted_2") if not records[name]["matching"]]
-assert not failures, f"prepare_decode slot != logical-position slot: {failures}; evidence={OUTPUT}"
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    output = parser.parse_args().output
+    records = {"historical_repro_base": "cefb5a2ab2f57ad2f709fd38493ac544d6b78989",
+               "scope": "CPU-only metadata; model, sampling, CUDA and GPU not run",
+               "control": control(),
+               "accepted_0": speculative_rejection(0),
+               "accepted_2": speculative_rejection(2)}
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(records, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(json.dumps(records, indent=2, ensure_ascii=False))
+    failures = [name for name in ("accepted_0", "accepted_2") if not records[name]["matching"]]
+    assert not failures, f"prepare_decode slot != logical-position slot: {failures}; evidence={output}"
+
+
+if __name__ == "__main__":
+    main()
