@@ -1,0 +1,26 @@
+CPU only; synthetic fixtures and read-only parsing of existing real diagnostic raw. No GPU or network.
+
+Command: D:\Anaconda\python.exe -B tests_report_results.py -v
+test_capacity_failure_and_old_diagnostics_are_preserved (__main__.ReportChecks.test_capacity_failure_and_old_diagnostics_are_preserved) ... ok
+test_capacity_success_is_paired_separately_with_actual_pool_sizes (__main__.ReportChecks.test_capacity_success_is_paired_separately_with_actual_pool_sizes) ... ok
+test_curve_does_not_join_different_draft_models (__main__.ReportChecks.test_curve_does_not_join_different_draft_models) ... ok
+test_decode_span_includes_inter_round_gap_and_prefix_is_contiguous (__main__.ReportChecks.test_decode_span_includes_inter_round_gap_and_prefix_is_contiguous) ... ok
+test_full_plan_budget_consistency_and_legacy_070 (__main__.ReportChecks.test_full_plan_budget_consistency_and_legacy_070) ... ok
+test_global_budget_or_unfinished_guard_blocks_comparisons (__main__.ReportChecks.test_global_budget_or_unfinished_guard_blocks_comparisons) ... ok
+test_matched_three_repeats_and_output_hash_differences (__main__.ReportChecks.test_matched_three_repeats_and_output_hash_differences) ... ok
+test_missing_curve_points_break_segments_and_never_become_zero (__main__.ReportChecks.test_missing_curve_points_break_segments_and_never_become_zero) ... ok
+test_missing_draft_or_reused_guard_identity_invalidates_run (__main__.ReportChecks.test_missing_draft_or_reused_guard_identity_invalidates_run) ... ok
+test_missing_runtime_counter_or_scratch_is_not_treated_as_zero (__main__.ReportChecks.test_missing_runtime_counter_or_scratch_is_not_treated_as_zero) ... ok
+test_old_070_and_new_085_plans_and_sources_never_mix (__main__.ReportChecks.test_old_070_and_new_085_plans_and_sources_never_mix) ... ok
+test_single_repeat_pilot_keeps_observation_without_confidence_claim (__main__.ReportChecks.test_single_repeat_pilot_keeps_observation_without_confidence_claim) ... ok
+test_unmatched_and_failed_attempts_never_become_comparable (__main__.ReportChecks.test_unmatched_and_failed_attempts_never_become_comparable) ... ok
+test_warmup_identity_mismatch_blocks_the_run (__main__.ReportChecks.test_warmup_identity_mismatch_blocks_the_run) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 0.034s
+
+OK
+
+Exit code: 0
+
+Existing raw check: B11 padded KL in Markdown; both UUID failure records retained; no primary performance claim.
