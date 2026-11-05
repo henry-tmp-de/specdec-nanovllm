@@ -70,6 +70,9 @@ def build_from_local(tokenizer_dir, dataset_dir, wiki_path, ctx, batch):
     prior = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(prior)
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_dir, local_files_only=True, use_fast=True)
+    # Some Transformers tokenizers rebuild their vocabulary on __len__;
+    # calling it once per token makes the 4K manifest prohibitively slow.
+    vocab_size = len(tokenizer)
     wiki = prior.load_wiki(tokenizer, wiki_path, ctx, batch)
     if len(wiki) < (batch + 1) * ctx:
         raise ValueError("local WikiText does not contain enough token IDs for distinct slices")
@@ -84,7 +87,7 @@ def build_from_local(tokenizer_dir, dataset_dir, wiki_path, ctx, batch):
         prompts, meta = prior.build_inputs(tokenizer, dataset_dir, wiki_path, ctx, batch, panel, wiki)
         result["panels"][panel] = []
         for i, (ids, item) in enumerate(zip(prompts, meta)):
-            if any(type(x) is not int or not 0 <= x < len(tokenizer) for x in ids):
+            if any(type(x) is not int or not 0 <= x < vocab_size for x in ids):
                 raise ValueError(f"invalid token ID in {panel} row {i}")
             item.update(wiki_fraction=item["wiki_tokens"] / ctx,
                         wiki_slice_start=i * ctx, wiki_slice_end=i * ctx + item["wiki_tokens"],
