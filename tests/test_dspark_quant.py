@@ -60,11 +60,14 @@ def tiny(model_mod):
 def requested(preset):
     ffn = ("mlp.gate_proj", "mlp.up_proj", "mlp.down_proj")
     attn = ("self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj", "self_attn.o_proj")
-    suffixes = {"none": (), "ffn": ffn, "attention": attn, "all": ffn + attn}[preset]
+    suffixes = {"none": (), "ffn": ffn, "attention": attn, "all": ffn + attn,
+                "q_o": ("self_attn.q_proj", "self_attn.o_proj"), "down": ("mlp.down_proj",),
+                "q_o_down": ("self_attn.q_proj", "self_attn.o_proj", "mlp.down_proj")}[preset]
     return {f"layers.{i}.{suffix}" for i in range(5) for suffix in suffixes}
 
 
-@pytest.mark.parametrize("preset,count", [("none", 0), ("ffn", 15), ("attention", 20), ("all", 35)])
+@pytest.mark.parametrize("preset,count", [("none", 0), ("ffn", 15), ("attention", 20), ("all", 35),
+                                          ("q_o", 10), ("down", 5), ("q_o_down", 15)])
 def test_precise_selection_bytes_and_protected_tensors(modules, preset, count):
     quant, dsq, model_mod, _ = modules
     model = tiny(model_mod)
@@ -204,6 +207,9 @@ def test_config_default_and_invalid_presets(tmp_path):
             mod.Config(str(tmp_path), spec_method="dspark", spec_k=6, dspark_quant_preset="ffn")
         c = mod.Config(str(tmp_path), spec_method="dspark", spec_k=7, dspark_quant_preset="all")
         assert c.draft_quant_weights is None
+        for preset in ("q_o", "down", "q_o_down"):
+            c = mod.Config(str(tmp_path), spec_method="dspark", spec_k=7, dspark_quant_preset=preset)
+            assert c.dspark_quant_preset == preset and c.draft_quant_weights is None
 
 
 def test_pilot_guard_uses_actual_smaller_limits(modules):
@@ -215,7 +221,7 @@ def test_pilot_guard_uses_actual_smaller_limits(modules):
         assert guard.SMOKE_LIMIT_S == 600
 
 
-@pytest.mark.parametrize("preset", ["none", "ffn", "attention", "all"])
+@pytest.mark.parametrize("preset", ["none", "ffn", "attention", "all", "q_o", "down", "q_o_down"])
 def test_live_inventory_includes_quant_buffers_and_excluded_parameters(modules, preset):
     _, dsq, model_mod, _ = modules
     model = tiny(model_mod)

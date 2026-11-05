@@ -49,7 +49,7 @@ class Config:
     dspark_window_tokens: int = 0
     dspark_window_storage: str = "full_cache"  # full_cache | ring
     # Experimental DSpark-only online PTQ; does not enable AR draft quantization.
-    dspark_quant_preset: str = "none"  # none | ffn | attention | all
+    dspark_quant_preset: str = "none"  # none | ffn | attention | all | q_o | down | q_o_down
     # Disable lookup and registration for matched cache-policy comparisons.
     enable_prefix_cache: bool = True
     #   True  = 同一候选位置把 B 条请求一起前向（k 次批量前向）
@@ -207,7 +207,7 @@ class Config:
     #     那是「每条请求要算几个」真的变了，不是 batch 维度的问题，继续退回 eager。
 
     def __post_init__(self):
-        if self.dspark_quant_preset not in ("none", "ffn", "attention", "all"):
+        if self.dspark_quant_preset not in ("none", "ffn", "attention", "all", "q_o", "down", "q_o_down"):
             raise ValueError("invalid dspark_quant_preset")
         if self.dspark_quant_preset != "none" and (self.spec_method != "dspark" or self.spec_k != 7):
             raise ValueError("DSpark quantization requires spec_method=dspark and spec_k=7")

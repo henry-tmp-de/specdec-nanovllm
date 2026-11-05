@@ -12,7 +12,7 @@ from torch import nn
 
 from nanovllm.layers.quant import int8_linear, quantize_weight
 
-PRESETS = ("none", "ffn", "attention", "all")
+PRESETS = ("none", "ffn", "attention", "all", "q_o", "down", "q_o_down")
 FFN = ("mlp.gate_proj", "mlp.up_proj", "mlp.down_proj")
 ATTENTION = ("self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj", "self_attn.o_proj")
 NUM_LAYERS = 5
@@ -42,8 +42,10 @@ class DSparkInt8Linear(nn.Module):
 def expected_names(preset):
     if preset not in PRESETS:
         raise ValueError(f"invalid DSpark quantization preset: {preset!r}")
-    suffixes = (() if preset == "none" else FFN if preset == "ffn" else
-                ATTENTION if preset == "attention" else FFN + ATTENTION)
+    suffixes = {"none": (), "ffn": FFN, "attention": ATTENTION, "all": FFN + ATTENTION,
+                "q_o": ("self_attn.q_proj", "self_attn.o_proj"),
+                "down": ("mlp.down_proj",),
+                "q_o_down": ("self_attn.q_proj", "self_attn.o_proj", "mlp.down_proj")}[preset]
     return tuple(f"layers.{i}.{suffix}" for i in range(NUM_LAYERS) for suffix in suffixes)
 
 

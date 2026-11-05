@@ -1,0 +1,26 @@
+[
+  {
+    "name": "quality_contracts",
+    "command": [
+      "D:\\Anaconda\\python.exe",
+      "-B",
+      "-c",
+      "import numpy, pytest; raise SystemExit(pytest.main(['-q'] + ['experiments/20261105-dspark-quant-quality/tests_quality_eval.py', 'experiments/20261105-dspark-quant-quality/tests_quality_data.py', 'experiments/20261105-dspark-quant-quality/tests_quality_metrics.py', 'experiments/20261105-dspark-quant-quality/tests_bench_selected.py']))"
+    ],
+    "exit_code": 0,
+    "seconds": 6.374,
+    "log": "cpu-evidence-selected/quality_contracts.log"
+  },
+  {
+    "name": "existing_dspark_contracts",
+    "command": [
+      "D:\\Anaconda\\python.exe",
+      "-B",
+      "-c",
+      "import numpy, pytest; raise SystemExit(pytest.main(['-q'] + ['tests/test_dspark_quant.py', 'tests/test_dspark_contract.py', 'tests/test_dspark_window_config.py', 'tests/test_dspark_window_runner.py', 'tests/test_dspark_window.py', 'tests/test_dspark_pad.py']))"
+    ],
+    "exit_code": 0,
+    "seconds": 6.823,
+    "log": "cpu-evidence-selected/existing_dspark_contracts.log"
+  }
+]
