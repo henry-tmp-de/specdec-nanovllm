@@ -214,6 +214,12 @@ def audit(rows, min_repeats, mode="diagnostic", plan=None, ledger=None, manifest
                 errors.append("fixed-batch primary comparison requires the common 0.70 GPU budget")
             if row.get("graph_mode") != "graph":
                 errors.append("fixed-batch primary comparison requires graph-on")
+            expected_buckets = list(range(1, row.get("requested_batch", 0) + 1))
+            expected_policy = {"name": "exact_all", "target_decode_padding": False,
+                               "target_verify_padding": False, "draft_padding": False,
+                               "buckets": expected_buckets}
+            if row.get("graph_policy") != expected_policy:
+                errors.append("primary comparison requires exact graphs for all active batch sizes")
             arm = row.get("arm")
             expected_k = 0 if arm == "nospec" else 6 if arm in ("ar_full", "ar_window") else 7 if arm in ("dspark_full", "dspark_window_full", "dspark_ring") else None
             if expected_k is None or row.get("spec_k") != expected_k:
@@ -232,13 +238,18 @@ def audit(rows, min_repeats, mode="diagnostic", plan=None, ledger=None, manifest
                 errors.append("target decode graph telemetry unavailable")
             elif row.get("arm") == "nospec" and not (row["target_decode_graph"].get("exact", 0) + row["target_decode_graph"].get("padded", 0)):
                 errors.append("no-spec target decode graph was not observed")
+            if row.get("target_decode_graph", {}).get("padded", 0) or row.get("target_decode_graph", {}).get("fallbacks", {}):
+                errors.append("target decode padded or fell back during exact-all run")
             if row.get("spec_k", 0) > 0:
-                if row.get("graph_delta", {}).get("verify_hits", 0) <= 0:
-                    errors.append("target verify graph was not observed")
-                if row.get("arm", "").startswith("dspark_") and row.get("graph_delta", {}).get("graph_hits", 0) <= 0:
-                    errors.append("DSpark draft graph was not observed")
+                if row.get("graph_delta", {}).get("verify_exact_hits", 0) <= 0 or row.get("graph_delta", {}).get("verify_padded_hits", 0):
+                    errors.append("target verify exact graph was not observed or used padding")
+                if row.get("arm", "").startswith("dspark_") and (row.get("graph_delta", {}).get("graph_exact_hits", 0) <= 0
+                                                                  or row.get("graph_delta", {}).get("graph_padded_hits", 0)):
+                    errors.append("DSpark draft exact graph was not observed or used padding")
                 if row.get("arm", "").startswith("ar_") and row.get("graph_delta", {}).get("n_graphed", 0) <= 0:
                     errors.append("AR draft graph was not observed")
+                if row.get("arm", "").startswith("ar_") and row.get("graph_delta", {}).get("n_padded", 0):
+                    errors.append("AR draft used padding during exact-all run")
             guard = ledger_records.get(row.get("guard_id"))
             start = ledger_starts.get(row.get("guard_id"))
             child = ledger_children.get(row.get("guard_id"))
@@ -260,7 +271,7 @@ def audit(rows, min_repeats, mode="diagnostic", plan=None, ledger=None, manifest
                 try:
                     batch, ctx, out, window = (int(row[k]) for k in ("requested_batch", "ctx", "output_tokens", "window"))
                     block = int(row["kv_block_size"])
-                    allowed = [b for b in (1, 2, 4, 8, 16) if b <= row["max_num_seqs"]]
+                    allowed = list(range(1, row["max_num_seqs"] + 1))
                     batches = {next(b for b in allowed if b >= actual) for actual in range(1, batch + 1)}
                     contexts = {max(block, math.ceil((min(c, window) if window else c) / block) * block)
                                 for c in range(ctx, ctx + out + 1)}
@@ -273,12 +284,12 @@ def audit(rows, min_repeats, mode="diagnostic", plan=None, ledger=None, manifest
                     errors.append("DSpark prewarm coverage metadata malformed")
             if len(warm) == 1:
                 record = warm[0]
-                required_batch_buckets = {b for b in (1, 2, 4, 8, 16) if b <= row.get("max_num_seqs", 0)}
-                if not required_batch_buckets <= set(record.get("target_decode_graph_buckets", [])):
+                required_batch_buckets = set(range(1, row.get("max_num_seqs", 0) + 1))
+                if required_batch_buckets != set(record.get("target_decode_graph_buckets", [])):
                     errors.append("target decode graph prewarm missing batch buckets")
-                if row.get("spec_k", 0) and not {(b, row["spec_k"]) for b in required_batch_buckets} <= {tuple(x) for x in record.get("target_verify_graph_shapes", [])}:
+                if row.get("spec_k", 0) and {(b, row["spec_k"]) for b in required_batch_buckets} != {tuple(x) for x in record.get("target_verify_graph_shapes", [])}:
                     errors.append("target verify graph prewarm missing batch buckets")
-                if row.get("arm", "").startswith("ar_") and not required_batch_buckets <= set(record.get("ar_draft_graph_buckets", [])):
+                if row.get("arm", "").startswith("ar_") and required_batch_buckets != set(record.get("ar_draft_graph_buckets", [])):
                     errors.append("AR draft graph prewarm missing batch buckets")
                 warm_delta = record.get("warmup_graph_delta", {})
                 if warm_delta.get("graph_runtime_captures", 0) or warm_delta.get("head_runtime_captures", 0):

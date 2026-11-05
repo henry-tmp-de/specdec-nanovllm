@@ -51,10 +51,12 @@ def options_for(arm, batch, ctx, output_tokens, window, target, ar_model, dspark
     if not math.isfinite(gpu_memory_utilization) or not 0 < gpu_memory_utilization <= 1:
         raise ValueError("gpu_memory_utilization must be finite and in (0, 1]")
     # Same model-length and block-table capacity for every arm.
+    exact_buckets = tuple(range(1, batch + 1))
     options = dict(max_num_seqs=batch, max_model_len=ctx + output_tokens + 8,
                    max_num_batched_tokens=batched_tokens, gpu_memory_utilization=gpu_memory_utilization,
                    tensor_parallel_size=1, enforce_eager=False, spec_cuda_graph=True,
-                   spec_graph_bs=BUCKETS, spec_graph_pad=True, spec_overlap_mixed=False,
+                   spec_graph_bs=exact_buckets, decode_graph_bs=exact_buckets,
+                   spec_graph_pad=False, dspark_graph_pad=False, spec_overlap_mixed=False,
                    enable_prefix_cache=False)
     if arm.startswith("ar_"):
         options.update(spec_method="draft", spec_k=k, draft_model=ar_model)
@@ -63,7 +65,7 @@ def options_for(arm, batch, ctx, output_tokens, window, target, ar_model, dspark
                            spec_draft_win_align=True, spec_draft_win_realign=True)
     elif arm.startswith("dspark_"):
         options.update(spec_method="dspark", spec_k=k, draft_model=dspark_model,
-                       dspark_split_graph=True, dspark_graph_pad=True,
+                       dspark_split_graph=True,
                        dspark_window_tokens=window,
                        dspark_window_storage="ring" if arm == "dspark_ring" else "full_cache")
     return options
@@ -98,6 +100,11 @@ def snapshot(runner):
             "verify_padded_hits": runner.verify_graph_padded,
             "verify_exact_hits": runner.verify_graph_hits - runner.verify_graph_padded,
             "verify_fallbacks": dict(runner.verify_graph_fallbacks)}
+    for key in ("decode_graph_hits", "decode_graph_exact_hits", "decode_graph_padded_hits",
+                "decode_graph_bucket_histogram", "decode_graph_fallbacks"):
+        if hasattr(runner, key):
+            value = getattr(runner, key)
+            data[key] = value.copy() if isinstance(value, dict) else value
     for key in ("graph_hits", "graph_exact_hits", "graph_padded_hits", "graph_captures",
                 "graph_runtime_captures", "graph_runtime_capture_s", "graph_runtime_shapes",
                 "graph_fallbacks", "active_batch_histogram", "context_bucket_histogram",
@@ -190,36 +197,6 @@ def run_once(llm, prompts, output_tokens, seed, deadline, capture_state, diagnos
     event_rows = {"draft": [], "verify": [], "commit": []}
     current_round = [None]
     restore = []
-    target_graph = {"exact": 0, "padded": 0, "fallback": 0, "batch_to_bucket": {}}
-    target_batch = [None]
-    original_graphs = runner.graphs
-    class ObservedGraph:
-        def __init__(self, graph, bucket):
-            self.graph, self.bucket = graph, bucket
-        def replay(self):
-            batch = target_batch[0]
-            if batch is None:
-                raise RuntimeError("target decode graph replay has no real batch identity")
-            kind = "exact" if batch == self.bucket else "padded"
-            target_graph[kind] += 1
-            key = f"{batch}->{self.bucket}"
-            target_graph["batch_to_bucket"][key] = target_graph["batch_to_bucket"].get(key, 0) + 1
-            return self.graph.replay()
-    runner.graphs = {bucket: ObservedGraph(graph, bucket) for bucket, graph in original_graphs.items()}
-    restore.append((runner, "graphs", original_graphs))
-    original_run_model = runner.run_model
-    def tracked_run_model(ids, positions, is_prefill):
-        if not is_prefill:
-            target_batch[0] = int(ids.shape[0])
-            if runner.enforce_eager or ids.shape[0] > 512:
-                target_graph["fallback"] += 1
-        try:
-            return original_run_model(ids, positions, is_prefill)
-        finally:
-            if not is_prefill:
-                target_batch[0] = None
-    runner.run_model = tracked_run_model
-    restore.append((runner, "run_model", original_run_model))
     def install(obj, name, category):
         if obj is None or not hasattr(obj, name):
             return
@@ -366,12 +343,17 @@ def run_once(llm, prompts, output_tokens, seed, deadline, capture_state, diagnos
                     key = category + "_gpu_event_ms"
                     rounds[index][key] = rounds[index].get(key, 0.0) + start.elapsed_time(end)
         window_after = dict(getattr(runner, "dspark_window_stats", {}))
+        graph_delta = delta(graph_before, snapshot(runner))
+        target_graph = {"exact": graph_delta.get("decode_graph_exact_hits", 0),
+                        "padded": graph_delta.get("decode_graph_padded_hits", 0),
+                        "fallbacks": graph_delta.get("decode_graph_fallbacks", {}),
+                        "bucket_histogram": graph_delta.get("decode_graph_bucket_histogram", {})}
         return {"wall_s": wall, "requests": requests, "rounds": rounds,
                 "delivered_tokens": sum(len(x) for x in completed.values()),
                 "preemptions": len(preemptions), "prefix_cached_tokens": prefix_cached,
                 "prefix_lookup_count": scheduler.block_manager.prefix_lookup_count,
                 "prefix_hit_blocks": scheduler.block_manager.prefix_hit_blocks,
-                "graph_delta": delta(graph_before, snapshot(runner)),
+                "graph_delta": graph_delta,
                 "target_decode_graph": target_graph,
                 "gpu_event_ms": ({name: sum(x.elapsed_time(y) for _, x, y in values)
                                   for name, values in event_rows.items()} if diagnostic_cost else None),
@@ -449,12 +431,13 @@ def main():
              "seed": a.seed, "temperature": 1.0, "ignore_eos": True, "spec_k": k,
              "max_num_batched_tokens": batched, "max_model_len": options["max_model_len"],
              "gpu_memory_utilization": options["gpu_memory_utilization"], "graph_mode": "graph",
-             "graph_policy": {"target_verify_padding": True, "draft_padding": True,
-                              "buckets": list(BUCKETS)},
+             "graph_policy": {"name": "exact_all", "target_decode_padding": False,
+                              "target_verify_padding": False, "draft_padding": False,
+                              "buckets": list(range(1, a.batch + 1))},
              "prefix_lookup": False, "mixed_overlap": False,
              "diagnostic_instrumented": a.diagnostic_cost,
              "instrumentation": ("diagnostic CUDA events and per-round window geometry" if a.diagnostic_cost else
-                                 "request delivery hook, CPU round bookkeeping, target graph replay counter"),
+                                 "request delivery hook, CPU round bookkeeping, native graph counters"),
              "guard_id": os.environ.get("DS_GUARD_ID"),
              "gpu_uuid": os.environ.get("DS_GPU_UUID")}
     llm = None
@@ -500,6 +483,10 @@ def main():
         for key, expected in options.items():
             if getattr(runner.config, key) != expected:
                 raise RuntimeError(f"engine config mismatch for {key}")
+        for key in ("decode_graph_hits", "decode_graph_exact_hits", "decode_graph_padded_hits",
+                    "decode_graph_bucket_histogram", "decode_graph_fallbacks"):
+            if not hasattr(runner, key):
+                raise RuntimeError(f"engine missing native target decode graph counter {key}")
         torch.cuda.synchronize()
         ident["load_initial_graph_s"] = time.perf_counter() - init_start
         ident["target_kv_blocks"] = runner.config.num_kvcache_blocks
@@ -512,7 +499,7 @@ def main():
         warm_start = time.perf_counter()
         if a.arm.startswith("dspark_"):
             expected_shapes = prewarm_shapes(a.batch, a.batch, a.ctx, a.output_tokens,
-                                             a.window, runner.block_size, BUCKETS)
+                                             a.window, runner.block_size, tuple(range(1, a.batch + 1)))
             prop.prewarm(expected_shapes, range(1, a.batch + 1))
         torch.cuda.synchronize()
         prewarm_s = time.perf_counter() - warm_start

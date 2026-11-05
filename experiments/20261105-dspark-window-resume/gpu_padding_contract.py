@@ -1,9 +1,8 @@
-"""B3/11/15 padded verify, ragged fallback and ring-owner GPU contract.
+"""B3/11/15 verify, ragged fallback and ring-owner GPU contract.
 
-One real model process per B, intentionally forced acceptance.  It probes
-identical inputs through eager, exact and padded target verify, restores no
-synthetic data: padded is run last, so ring scratch committed by the real
-engine is the padded replay's data.  This diagnostic is not a throughput run.
+One real model process per B, intentionally forced acceptance. The historical
+bucket_padded mode preserves its original test; exact_all tests same-input
+eager/exact with restored query-slot/scratch preimages. This is not throughput.
 """
 from __future__ import annotations
 
@@ -24,6 +23,21 @@ from bench_smoke import prewarm_shapes, read_manifest, snapshot
 from gpu_identity import verify_visible_gpu
 
 
+def contract_graph_settings(batch, policy):
+    if batch not in (3, 11, 15) or policy not in ("bucket_padded", "exact_all"):
+        raise ValueError("invalid contract batch or graph policy")
+    if policy == "exact_all":
+        # Reserve one additional unused ring owner as a guard block; measured
+        # real B and target/draft speculative graph shapes remain 1..batch.
+        return {"max_seqs": batch + 1, "graph_batch": batch,
+                "production": tuple(range(1, batch + 1)),
+                "capture": tuple(range(1, batch + 1)), "padding": False}
+    graph_batch = 4 if batch == 3 else 16
+    production = (1, 2, 4, 8, 16)
+    return {"max_seqs": graph_batch, "graph_batch": graph_batch, "production": production,
+            "capture": tuple(sorted(set(production + (batch,)))), "padding": True}
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--target", required=True)
@@ -31,6 +45,7 @@ def main():
     ap.add_argument("--manifest", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--batch", required=True, type=int, choices=(3, 11, 15))
+    ap.add_argument("--graph-policy", choices=("bucket_padded", "exact_all"), default="bucket_padded")
     ap.add_argument("--ctx", type=int, default=252)
     ap.add_argument("--window", type=int, default=256)
     ap.add_argument("--output-tokens", type=int, default=32)
@@ -47,7 +62,8 @@ def main():
         handle.flush()
     identity = {"guard_id": os.environ.get("DS_GUARD_ID"), "gpu_uuid": os.environ.get("DS_GPU_UUID"),
                 "batch": a.batch, "ctx": a.ctx, "window": a.window, "output_tokens": a.output_tokens,
-                "seed": a.seed, "forced_acceptance": True, "diagnostic_instrumented": True,
+                "seed": a.seed, "graph_policy": a.graph_policy,
+                "forced_acceptance": True, "diagnostic_instrumented": True,
                 "q_and_target_kl_threshold": 0.02, "kv_relative_rms_threshold": 0.05}
     llm = None
     restore_verify = None
@@ -57,23 +73,36 @@ def main():
         import torch
         verify_visible_gpu(torch, os.environ["DS_GPU_UUID"])
         from nanovllm import LLM, SamplingParams
+        from nanovllm.config import Config
+        from dataclasses import fields
         import nanovllm.spec_decode.verify as verifier
         restore_verify = verifier.verify_batch
-        real_b, graph_b = a.batch, (4 if a.batch == 3 else 16)
-        production_buckets = (1, 2, 4, 8, 16)
-        exact_buckets = tuple(sorted(set(production_buckets + (real_b,))))
+        real_b = a.batch
+        settings = contract_graph_settings(real_b, a.graph_policy)
+        graph_b, max_seqs = settings["graph_batch"], settings["max_seqs"]
+        production_buckets, exact_buckets = settings["production"], settings["capture"]
+        options = {}
+        if a.graph_policy == "exact_all":
+            if "decode_graph_bs" not in {field.name for field in fields(Config)}:
+                raise RuntimeError("engine missing decode_graph_bs")
+            options["decode_graph_bs"] = tuple(range(1, max_seqs + 1))
+        identity.update(max_num_seqs=max_seqs, spec_graph_buckets=production_buckets,
+                        guard_extra_sequences=max_seqs - real_b,
+                        decode_graph_buckets=options.get("decode_graph_bs"))
         max_len = a.ctx + a.output_tokens + 7
-        llm = LLM(a.target, max_num_seqs=graph_b, max_model_len=max_len,
+        llm = LLM(a.target, max_num_seqs=max_seqs, max_model_len=max_len,
                   max_num_batched_tokens=max(a.ctx * real_b, max_len), gpu_memory_utilization=0.70,
                   tensor_parallel_size=1, enforce_eager=False, spec_cuda_graph=True,
                   spec_method="dspark", spec_k=7, draft_model=a.draft,
-                  spec_graph_bs=exact_buckets, spec_graph_pad=True, dspark_split_graph=True,
-                  dspark_graph_pad=True, dspark_window_tokens=a.window,
-                  dspark_window_storage="ring", enable_prefix_cache=False, spec_overlap_mixed=False)
+                  spec_graph_bs=exact_buckets, spec_graph_pad=settings["padding"], dspark_split_graph=True,
+                  dspark_graph_pad=settings["padding"], dspark_window_tokens=a.window,
+                  dspark_window_storage="ring", enable_prefix_cache=False, spec_overlap_mixed=False, **options)
         runner, scheduler = llm.model_runner, llm.scheduler
         prop, model = runner.spec_proposer, runner.dspark_model
         if runner.config.max_model_len < max_len:
             raise RuntimeError("model max position capacity is insufficient")
+        if options and runner.config.decode_graph_bs != options["decode_graph_bs"]:
+            raise RuntimeError("engine did not retain exact decode graph buckets")
         standard_verify = {k: v for k, v in runner.verify_graphs.items() if k[0] in production_buckets}
         exact_verify = runner.verify_graphs[(real_b, 7)]
         runner.verify_graphs = standard_verify
@@ -86,7 +115,7 @@ def main():
         model.cache[:, :, ring_guard_slots].fill_(0.25)
         target_guard = runner.kv_cache[:, :, target_guard_block].clone()
         ring_guard = model.cache[:, :, ring_guard_slots].clone()
-        shapes = prewarm_shapes(real_b, graph_b, a.ctx, a.output_tokens, a.window,
+        shapes = prewarm_shapes(real_b, max_seqs, a.ctx, a.output_tokens, a.window,
                                 runner.block_size, production_buckets)
         shapes.append((real_b, max(runner.block_size, ((a.ctx + runner.block_size - 1) // runner.block_size) * runner.block_size)))
         prop.prewarm(sorted(set(shapes)), range(1, real_b + 1))
@@ -122,6 +151,22 @@ def main():
             if observations["draft_probe"] is None:
                 if len(seqs) != real_b:
                     raise AssertionError("first proposal did not reach requested batch")
+                if a.graph_policy == "exact_all":
+                    chains, q_actual = original_propose(seqs)
+                    q_actual = q_actual.detach().clone()
+                    exact_base = prop.graphs[(real_b, bucket)][2][:real_b].detach().clone()
+                    eager_base = model.base_logits(anchors, lengths, tables, bucket)
+                    fixed = fixed_chains(seqs)
+                    q_exact = fixed_q(exact_base, anchors, fixed)
+                    q_eager = fixed_q(eager_base, anchors, fixed)
+                    actual_reconstruction = fixed_q(exact_base, anchors, chains)
+                    observations["draft_probe"] = {
+                        "batch": real_b, "exact_bucket": real_b, "context_bucket": bucket,
+                        "q_eager_exact_kl": max_kl(q_eager, q_exact),
+                        "actual_own_chain_kl": max_kl(actual_reconstruction, q_actual),
+                        "actual_own_chain_max_abs": float((q_actual.float() - actual_reconstruction.float()).abs().max())}
+                    write({"type": "draft_probe", **identity, **observations["draft_probe"]})
+                    return fixed, q_exact
                 state = torch.cuda.get_rng_state()
                 runner.config.spec_graph_bs = exact_buckets
                 _, q_exact_actual = original_propose(seqs)
@@ -130,6 +175,7 @@ def main():
                 torch.cuda.set_rng_state(state)
                 runner.config.spec_graph_bs = production_buckets
                 chains, q_actual = original_propose(seqs)
+                q_actual = q_actual.detach().clone()
                 padded_base = prop.graphs[(graph_b, bucket)][2][:real_b].detach().clone()
                 padded_rng = torch.cuda.get_rng_state()
                 eager_base = model.base_logits(anchors, lengths, tables, bucket)
@@ -174,6 +220,49 @@ def main():
                 raise AssertionError("invalid real verify slots")
             blocks, offsets = torch.div(mapping, runner.block_size, rounding_mode="floor"), mapping % runner.block_size
             prior_graphs = runner.verify_graphs
+            if a.graph_policy == "exact_all":
+                expected_pos, expected_slots = [], []
+                owned_blocks = [block for seq in current["seqs"] for block in seq.block_table]
+                if len(set(owned_blocks)) != len(owned_blocks):
+                    raise AssertionError("target owners share or duplicate physical blocks")
+                for seq in current["seqs"]:
+                    for pos in range(len(seq) - 1, len(seq) + len(seq.draft_tokens)):
+                        if pos // runner.block_size >= len(seq.block_table):
+                            raise AssertionError("target block table does not cover verify query")
+                        expected_pos.append(pos)
+                        expected_slots.append(seq.block_table[pos // runner.block_size] * runner.block_size + pos % runner.block_size)
+                if positions.tolist() != expected_pos or mapping.tolist() != expected_slots or len(set(expected_slots)) != len(expected_slots):
+                    raise AssertionError("target verify query slots do not match real owners")
+                target_pre = runner.kv_cache[:, :, blocks, offsets].detach().clone()
+                scratch_pre = model.scratch[:, :, :ids.numel()].detach().clone()
+                try:
+                    runner.verify_graphs = {}
+                    eager = original_forward(ids, positions).detach().clone()
+                    tgt_e = runner.kv_cache[:, :, blocks, offsets].detach().clone()
+                    scratch_e = model.scratch[:, :, :ids.numel()].detach().clone()
+                    runner.kv_cache[:, :, blocks, offsets] = target_pre
+                    model.scratch[:, :, :ids.numel()].copy_(scratch_pre)
+                    restored_target = runner.kv_cache[:, :, blocks, offsets].detach().clone()
+                    restored_scratch = model.scratch[:, :, :ids.numel()].detach().clone()
+                    for before, after in ((target_pre, restored_target), (scratch_pre, restored_scratch)):
+                        if not torch.equal(before.contiguous().view(torch.uint8), after.contiguous().view(torch.uint8)):
+                            raise AssertionError("query/scratch preimage restore was not bitwise identical")
+                    runner.verify_graphs = standard_verify
+                    exact_before = runner.verify_graph_hits - runner.verify_graph_padded
+                    exact = original_forward(ids, positions).detach().clone()
+                    if runner.verify_graph_hits - runner.verify_graph_padded != exact_before + 1:
+                        raise AssertionError("exact target verify graph did not replay")
+                    tgt_x = runner.kv_cache[:, :, blocks, offsets].detach().clone()
+                    scratch_x = model.scratch[:, :, :ids.numel()].detach().clone()
+                finally:
+                    runner.verify_graphs = prior_graphs
+                observations["target_probe"] = {"query_rows": int(ids.numel()),
+                    "eager_exact_kl": max_kl(eager, exact),
+                    "target_kv_eager_exact_rms": rms(tgt_e, tgt_x),
+                    "scratch_eager_exact_rms": rms(scratch_e, scratch_x),
+                    "same_query_preimage_restored": True}
+                write({"type": "target_probe", **identity, **observations["target_probe"]})
+                return exact
             try:
                 # Run on the same input, order eager -> exact -> padded so the
                 # scratch and target KV used by subsequent commit are padded.
@@ -294,8 +383,10 @@ def main():
         after = snapshot(runner)
         draft, target = observations["draft_probe"], observations["target_probe"]
         graph_counts = {"draft_hits": after["graph_hits"] - before["graph_hits"],
+                        "draft_exact": after["graph_exact_hits"] - before["graph_exact_hits"],
                         "draft_padded": after["graph_padded_hits"] - before["graph_padded_hits"],
                         "target_hits": after["verify_hits"] - before["verify_hits"],
+                        "target_exact": after["verify_exact_hits"] - before["verify_exact_hits"],
                         "target_padded": after["verify_padded_hits"] - before["verify_padded_hits"],
                         "ragged_fallback": after["verify_fallbacks"].get("ragged_draft_len", 0) - before["verify_fallbacks"].get("ragged_draft_len", 0),
                         "draft_runtime_captures": after["graph_runtime_captures"] - before["graph_runtime_captures"],
@@ -306,16 +397,25 @@ def main():
                         "prefix_lookup_count": scheduler.block_manager.prefix_lookup_count,
                         "prefix_hit_blocks": scheduler.block_manager.prefix_hit_blocks}
         failures = []
-        if not draft or any(draft[k] >= 0.02 for k in ("q_eager_exact_kl", "q_eager_padded_kl", "q_exact_padded_kl")):
+        q_keys = ("q_eager_exact_kl",) if a.graph_policy == "exact_all" else ("q_eager_exact_kl", "q_eager_padded_kl", "q_exact_padded_kl")
+        target_keys = ("eager_exact_kl",) if a.graph_policy == "exact_all" else ("eager_exact_kl", "eager_padded_kl")
+        kv_keys = (("target_kv_eager_exact_rms", "scratch_eager_exact_rms") if a.graph_policy == "exact_all" else
+                   ("target_kv_eager_exact_rms", "target_kv_eager_padded_rms", "scratch_eager_exact_rms", "scratch_eager_padded_rms"))
+        if not draft or any(not math.isfinite(draft[k]) or draft[k] >= 0.02 for k in q_keys):
             failures.append("draft q KL")
-        if not draft or draft["actual_own_chain_kl"] >= 0.02 or not draft["exact_padded_rng_equal"]:
+        if (not draft or not math.isfinite(draft["actual_own_chain_kl"]) or draft["actual_own_chain_kl"] >= 0.02
+                or (a.graph_policy == "bucket_padded" and not draft["exact_padded_rng_equal"])):
             failures.append("draft real-chain q or padded RNG")
-        if not target or any(target[k] >= 0.02 for k in ("eager_exact_kl", "eager_padded_kl")):
+        if not target or any(not math.isfinite(target[k]) or target[k] >= 0.02 for k in target_keys):
             failures.append("target verify KL")
-        if not target or any(target[k] >= 0.05 for k in ("target_kv_eager_exact_rms", "target_kv_eager_padded_rms", "scratch_eager_exact_rms", "scratch_eager_padded_rms")):
+        if not target or any(not math.isfinite(target[k]) or target[k] >= 0.05 for k in kv_keys):
             failures.append("target or projected scratch KV RMS")
-        if not all(graph_counts[k] > 0 for k in ("draft_hits", "draft_padded", "target_hits", "target_padded", "ragged_fallback")):
+        required_paths = (("draft_exact", "target_exact", "ragged_fallback") if a.graph_policy == "exact_all" else
+                          ("draft_hits", "draft_padded", "target_hits", "target_padded", "ragged_fallback"))
+        if not all(graph_counts[k] > 0 for k in required_paths):
             failures.append("required graph or ragged path not observed")
+        if a.graph_policy == "exact_all" and (graph_counts["draft_padded"] or graph_counts["target_padded"]):
+            failures.append("padding occurred during exact-all contract")
         if graph_counts["draft_runtime_captures"] or graph_counts["head_runtime_captures"]:
             failures.append("runtime graph capture")
         if not observations["ragged"] or not all(x["query_rows"] == x["expected_rows"] == x["output_rows"] for x in observations["ragged"]):
@@ -323,15 +423,16 @@ def main():
         if (not any(x["ragged"] and x["real_ragged_fallback"] for x in observations["owner_survival"])
                 or not all(item["unchanged"] and (not item["continues"] or item["commit_matches_own_scratch"])
                            for x in observations["owner_survival"] for item in x["owners"])):
-            failures.append("padded/ragged owner surviving KV")
+            failures.append("graph/ragged owner surviving KV")
         if not all(guard_checks[k] for k in ("target_guard_unchanged", "ring_guard_unchanged", "sentinel_zero")) or guard_checks["prefix_lookup_count"] or guard_checks["prefix_hit_blocks"]:
             failures.append("guards or disabled prefix")
         if not {0, 3, 7}.issubset({x["accepted"] for x in observations["forced"]}):
             failures.append("forced acceptance coverage")
-        write({"type": "padding_contract", **identity, "pass": not failures, "failures": failures,
+        write({"type": "exact_owner_contract" if a.graph_policy == "exact_all" else "padding_contract",
+               **identity, "pass": not failures, "failures": failures,
                "observations": observations, "graph_counts": graph_counts, "guard_checks": guard_checks,
                "window_stats": dict(runner.dspark_window_stats), "prewarm_shapes": shapes})
-        print(f"补桶与 ragged 合同 B={real_b}：{'通过' if not failures else '失败'}", flush=True)
+        print(f"{a.graph_policy} / ragged 合同 B={real_b}：{'通过' if not failures else '失败'}", flush=True)
         if failures:
             raise RuntimeError("contract failures: " + ", ".join(failures))
     except BaseException as exc:

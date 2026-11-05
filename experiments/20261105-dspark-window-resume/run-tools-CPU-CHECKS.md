@@ -46,6 +46,8 @@ cd "$RUN_ROOT"
 
 固定对拍的阈值在运行前规定：相同前驱 q / target logits 的最大 KL < 0.02、KV 相对 RMS < 0.05，参考旧 [GPU-CHECKS.md](../20261101-dspark-verify-opt/GPU-CHECKS.md)。最大 logit 绝对误差只作为诊断值报告。目标 KV 在固定对拍中抽查若干绝对位置，不宣称所有位置逐项对拍。多 owner 合同验证真实 verify scratch 对应各 owner 的独立环槽，以及应保留的旧槽没有被覆盖。
 
+`bench_smoke.py --graph exact` 使用 target decode、draft 与 verify 的 1..实际 B 精确图，B11/15 默认分别只预留 11/15 条序列。它在首轮 verify 与一次强制普通 decode 中，对相同输入执行 eager→恢复并逐字节检查 query KV/scratch 初态→exact 对拍，最后使用 exact 结果继续真实 T=1 采样。该额外前向只是诊断，不可作为吞吐结果。`gpu_padding_contract.py --graph-policy exact_all` 单列多 owner 0/3/7、ragged 和 ring commit 检查；为检测 guard 专门额外预留一条序列，并在 raw 中记录。原 `bucket_padded` 模式及其既有失败记录独立保留，不把 exact_all 的结果描述为补桶通过。
+
 构造 4K 固定长度 workload，先在服务器 CPU 执行，使用本地 tokenizer、DeepSpec 任务与不重叠 Wiki 片段，不请求 GPU：
 
 ```bash

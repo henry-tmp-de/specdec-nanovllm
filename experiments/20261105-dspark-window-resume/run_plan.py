@@ -54,6 +54,7 @@ def build(phase, window, panels, repeats):
              for j in jobs for panel in j["panels"]]
     full = phase == "formal" and tuple(panels) == PANELS and repeats >= 3
     return {"phase": phase, "execution": "plan only; no command is launched", "window_tokens": window,
+            "graph_policy": "exact_all: target decode, draft, and target verify capture every real batch size",
             "matrix_scope": "full minimum fixed-batch matrix" if full else "pilot or explicit subset",
             "model_lifecycle": "one process per arm/B/ctx; prewarm once, rotate panel order across repeats",
             "ordering_note": "arm order rotates between B/ctx groups, repeats remain within each arm process",

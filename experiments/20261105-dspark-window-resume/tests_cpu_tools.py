@@ -19,6 +19,7 @@ def module(name):
 audit = module("audit_results")
 workload = module("run_workload")
 smoke = module("bench_smoke")
+contract = module("gpu_padding_contract")
 
 
 def sample_run():
@@ -118,11 +119,13 @@ class CPUChecks(unittest.TestCase):
             row.update(**cell, phase="formal", repeat=repeat, seed=3, temperature=1.0, gpu_uuid="GPU-OK",
                        engine_commit="commit", engine_dirty=False, gpu_memory_utilization=0.70,
                        max_num_seqs=1, max_model_len=264, max_num_batched_tokens=264,
-                       prefix_lookup=False, graph_policy={"padding": True}, mixed_overlap=False,
+                       prefix_lookup=False, graph_policy={"name": "exact_all", "target_decode_padding": False,
+                           "target_verify_padding": False, "draft_padding": False, "buckets": [1]}, mixed_overlap=False,
                        target_config_sha256="target", draft_config_sha256="draft", guard_id=ident,
                        target_provenance={"path": "target", "weight_files": [{"name": "w", "bytes": 10}]},
                        draft_provenance={"path": "draft", "weight_files": [{"name": "w", "bytes": 10}]},
-                       diagnostic_instrumented=False, spec_k=7, graph_delta={"verify_hits": 1, "graph_hits": 1}, prefix_lookup_count=0,
+                       diagnostic_instrumented=False, spec_k=7,
+                       graph_delta={"verify_hits": 1, "verify_exact_hits": 1, "graph_hits": 1, "graph_exact_hits": 1}, prefix_lookup_count=0,
                        target_decode_graph={"exact": 0, "padded": 0, "fallback": 0},
                        prefix_hit_blocks=0, input_metadata=[{**source_meta, "actual_input_sha256": h,
                                                              "wiki_fraction": 249 / 252}], kv_block_size=256)
@@ -147,6 +150,16 @@ class CPUChecks(unittest.TestCase):
         unfinished = audit.audit(rows, 3, "formal", {"cells": [cell]}, ledger[:-1], manifest)
         self.assertFalse(unfinished["pass"])
         self.assertTrue(unfinished["ledger_errors"])
+        rows[-1][2]["target_decode_graph"]["padded"] = 1
+        padded = audit.audit(rows, 3, "formal", {"cells": [cell]}, ledger, manifest)
+        self.assertFalse(padded["pass"])
+        self.assertEqual(padded["invalid_runs"], 1)
+        rows[-1][2]["target_decode_graph"]["padded"] = 0
+        rows[-1][2]["graph_delta"]["verify_padded_hits"] = 1
+        padded_verify = audit.audit(rows, 3, "formal", {"cells": [cell]}, ledger, manifest)
+        self.assertFalse(padded_verify["pass"])
+        self.assertEqual(padded_verify["invalid_runs"], 1)
+        rows[-1][2]["graph_delta"]["verify_padded_hits"] = 0
         rows[-1][2]["target_provenance"] = {"path": "different", "weight_files": [{"name": "w", "bytes": 10}]}
         changed_target = audit.audit(rows, 3, "formal", {"cells": [cell]}, ledger, manifest)
         self.assertFalse(changed_target["pass"])
@@ -164,6 +177,21 @@ class CPUChecks(unittest.TestCase):
         self.assertEqual(ring_shapes, [(1, 256), (2, 256), (4, 256)])
         with self.assertRaises(ValueError):
             smoke.prewarm_shapes(3, 3, 252, 32, 0, 256, (1, 2, 4))
+        exact = smoke.prewarm_shapes(3, 4, 252, 32, 256, 256, (1, 2, 3))
+        self.assertEqual(exact, [(1, 256), (2, 256), (3, 256)])
+        self.assertEqual(smoke.target_decode_bucket(3), 4)
+        self.assertEqual(smoke.target_decode_bucket(11), 16)
+        self.assertEqual(smoke.target_decode_bucket(15), 16)
+
+    def test_exact_owner_contract_reserves_guard_and_uses_no_padding(self):
+        for batch in (3, 11, 15):
+            settings = contract.contract_graph_settings(batch, "exact_all")
+            self.assertEqual(settings["max_seqs"], batch + 1)
+            self.assertEqual(settings["production"], tuple(range(1, batch + 1)))
+            self.assertFalse(settings["padding"])
+            old = contract.contract_graph_settings(batch, "bucket_padded")
+            self.assertTrue(old["padding"])
+            self.assertEqual(old["graph_batch"], 4 if batch == 3 else 16)
 
     def test_old_manifest_synthetic_mode_is_auditable(self):
         source_file = HERE.parent / "20261101-dspark-integration/evidence/workload-manifest.json"

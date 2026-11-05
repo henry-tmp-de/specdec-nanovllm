@@ -27,6 +27,11 @@ def token_hash(ids):
     return hashlib.sha256(",".join(str(i) for i in ids).encode()).hexdigest()
 
 
+def target_decode_bucket(batch):
+    """Ordinary target decode uses the engine's existing padded graph buckets."""
+    return next(b for b in (1, 2, 4, 8, 16) if b >= batch)
+
+
 def prewarm_shapes(batch, max_seqs, ctx, output_tokens, window, block_size, graph_buckets):
     allowed = sorted({b for b in graph_buckets if b <= max_seqs})
     if not allowed or allowed[-1] < batch:
@@ -66,6 +71,11 @@ def snapshot(runner):
               "verify_padded_hits": runner.verify_graph_padded,
               "verify_exact_hits": runner.verify_graph_hits - runner.verify_graph_padded,
               "verify_fallbacks": dict(runner.verify_graph_fallbacks)}
+    for name in ("decode_graph_hits", "decode_graph_exact_hits", "decode_graph_padded_hits",
+                 "decode_graph_bucket_histogram", "decode_graph_fallbacks"):
+        if hasattr(runner, name):
+            v = getattr(runner, name)
+            result[name] = v.copy() if isinstance(v, (dict, list)) else v
     for name in ("graph_hits", "graph_exact_hits", "graph_padded_hits", "graph_captures",
                  "graph_runtime_captures", "graph_runtime_capture_s", "graph_runtime_shapes",
                  "graph_fallbacks", "active_batch_histogram", "head_graph_hits",
@@ -129,7 +139,7 @@ def main():
     p.add_argument("--out", required=True, help="exclusive new JSONL")
     p.add_argument("--panel", choices=("code", "math", "general"), default="code")
     p.add_argument("--batch", type=int, required=True)
-    p.add_argument("--max-seqs", type=int, help="默认 batch；补桶 B=3/11/15 需设为 4/16/16")
+    p.add_argument("--max-seqs", type=int, help="默认 batch；旧补桶 B=3/11/15 需设为 4/16/16")
     p.add_argument("--ctx", type=int, default=252)
     p.add_argument("--output-tokens", type=int, default=32)
     p.add_argument("--mode", choices=("w0", "full_cache", "ring"), required=True)
@@ -143,6 +153,8 @@ def main():
         p.error("batch/ctx/output 长度或 max-seqs 无效")
     if a.fixed_anchor is not None and a.fixed_anchor < 0:
         p.error("fixed-anchor 不能是负数")
+    if a.graph == "exact" and a.output_tokens < 10:
+        p.error("exact smoke 至少需10个输出，保证第一轮后仍有普通decode对拍机会")
     if (a.mode == "w0") != (a.window == 0):
         p.error("w0 必须 window=0，full_cache/ring 必须 window>0")
     if a.window and a.window % 256:
@@ -151,8 +163,11 @@ def main():
     if a.graph == "padded" and a.batch in buckets:
         p.error("padded smoke 必须使用未精确捕获的 batch，例如 3、11、15")
     if a.graph == "exact":
-        buckets = tuple(sorted(set(buckets + (a.batch,))))
+        # All possible real tail sizes get exact speculative graphs.
+        buckets = tuple(range(1, a.batch + 1))
     if a.graph != "eager":
+        if a.graph == "padded" and a.max_seqs < target_decode_bucket(a.batch):
+            p.error("普通 target decode 桶需要足够 max-seqs；B3 用 4、B11/15 用 16")
         prewarm_shapes(a.batch, a.max_seqs, a.ctx, a.output_tokens, a.window, 256, buckets)
     inputs = read_manifest(a.manifest, a.panel, a.batch, a.ctx)
     output_path = Path(a.out)
@@ -165,6 +180,10 @@ def main():
 
     ident = {"type": "run", "arm": "dspark", "mode": a.mode, "window": a.window,
              "graph_mode": a.graph, "requested_batch": a.batch, "max_num_seqs": a.max_seqs,
+             "spec_graph_buckets": buckets,
+             "decode_graph_buckets": tuple(range(1, a.max_seqs + 1)) if a.graph == "exact" else None,
+             "ordinary_target_decode_bucket": (a.batch if a.graph == "exact" else
+                                                target_decode_bucket(a.batch) if a.graph == "padded" else None),
              "ctx": a.ctx, "output_tokens": a.output_tokens, "panel": a.panel, "repeat": 0,
              "seed": a.seed, "temperature": 1.0, "ignore_eos": True, "spec_k": 7,
              "prefix_lookup": False, "mixed_overlap": False, "diagnostic_instrumented": True,
@@ -181,6 +200,8 @@ def main():
         from nanovllm.config import Config
         from nanovllm.engine.token_hook import TokenDeliveryHook
         required = {"dspark_window_tokens", "dspark_window_storage", "enable_prefix_cache"}
+        if a.graph == "exact":
+            required.add("decode_graph_bs")
         missing = required - {f.name for f in fields(Config)}
         if missing:
             raise RuntimeError(f"engine missing window config fields: {sorted(missing)}")
@@ -195,6 +216,8 @@ def main():
                        dspark_window_tokens=a.window,
                        dspark_window_storage="ring" if a.mode == "ring" else "full_cache",
                        enable_prefix_cache=False, spec_overlap_mixed=False)
+        if a.graph == "exact":
+            options["decode_graph_bs"] = tuple(range(1, a.max_seqs + 1))
         started = time.perf_counter()
         llm = LLM(a.target, **options)
         runner, scheduler = llm.model_runner, llm.scheduler
@@ -261,6 +284,120 @@ def main():
             return chains, preserved_logits
         prop.propose_batch = checked_propose
 
+        # Diagnostic comparisons restore identical query-slot/scratch preimages
+        # before each path. Confirmed prefix slots are never changed here.
+        numeric = {"target_verify": None, "target_decode": None}
+        active_seqs = [None]
+        if a.graph == "exact":
+            for name in ("decode_graph_hits", "decode_graph_exact_hits", "decode_graph_padded_hits"):
+                if not hasattr(runner, name):
+                    raise RuntimeError(f"engine missing target decode graph counter {name}")
+            from nanovllm.utils.context import get_context
+            def check_query_mapping(slots, positions, verifying):
+                expected_positions, expected_slots = [], []
+                owned_blocks = [block for seq in active_seqs[0] for block in seq.block_table]
+                if len(set(owned_blocks)) != len(owned_blocks):
+                    raise AssertionError("target block tables contain shared or duplicate blocks")
+                for seq in active_seqs[0]:
+                    count = 1 + len(seq.draft_tokens) if verifying else 1
+                    for pos in range(len(seq) - 1, len(seq) - 1 + count):
+                        if pos // runner.block_size >= len(seq.block_table):
+                            raise AssertionError("target block table does not cover query")
+                        expected_positions.append(pos)
+                        expected_slots.append(seq.block_table[pos // runner.block_size] * runner.block_size + pos % runner.block_size)
+                if slots.tolist() != expected_slots or positions.tolist() != expected_positions:
+                    raise AssertionError("target query positions or physical slots differ from sequence block tables")
+            def read_query_state(slots):
+                slots = slots.long()
+                if slots.ndim != 1 or bool((slots < 0).any()) or torch.unique(slots).numel() != slots.numel():
+                    raise RuntimeError("invalid or duplicate real target query slots")
+                blocks = torch.div(slots, runner.block_size, rounding_mode="floor")
+                offsets = slots % runner.block_size
+                target = runner.kv_cache[:, :, blocks, offsets].detach().clone()
+                if a.mode == "ring":
+                    draft = model.scratch[:, :, :slots.numel()].detach().clone()
+                else:
+                    draft = model.cache.index_select(2, slots).detach().clone()
+                return slots, blocks, offsets, target, draft
+            def restore_query_state(state):
+                slots, blocks, offsets, target, draft = state
+                runner.kv_cache[:, :, blocks, offsets] = target
+                if a.mode == "ring":
+                    model.scratch[:, :, :slots.numel()].copy_(draft)
+                else:
+                    model.cache.index_copy_(2, slots, draft)
+                restored = read_query_state(slots)
+                for before, after in ((target, restored[3]), (draft, restored[4])):
+                    if not torch.equal(before.contiguous().view(torch.uint8), after.contiguous().view(torch.uint8)):
+                        raise AssertionError("target query or DSpark scratch preimage was not restored bitwise")
+            def compare(ref_logits, actual_logits, ref_state, actual_state):
+                if ref_logits.shape != actual_logits.shape:
+                    raise RuntimeError("target numerical outputs differ in shape")
+                kls = []
+                for start in range(0, ref_logits.shape[0], 16):
+                    p = torch.log_softmax(ref_logits[start:start + 16].float(), -1)
+                    q = torch.log_softmax(actual_logits[start:start + 16].float(), -1)
+                    kls.append((p.exp() * (p - q)).sum(-1))
+                def rms(x, y):
+                    x, y = x.float(), y.float()
+                    return float((x - y).square().mean().sqrt() / x.square().mean().sqrt().clamp_min(1e-12))
+                return {"rows": ref_logits.shape[0], "target_logit_max_kl": float(torch.cat(kls).max()),
+                        "target_kv_relative_rms": rms(ref_state[3], actual_state[3]),
+                        "dspark_kv_or_scratch_relative_rms": rms(ref_state[4], actual_state[4]),
+                        "same_query_preimage_restored": True}
+            original_verify = runner.run_verify_forward
+            @torch.inference_mode()
+            def checked_verify(ids, positions):
+                if numeric["target_verify"] is not None:
+                    return original_verify(ids, positions)
+                slots = runner._verify_extra["slot_mapping"]
+                check_query_mapping(slots, positions, verifying=True)
+                preimage = read_query_state(slots)
+                previous_graphs = runner.verify_graphs
+                try:
+                    runner.verify_graphs = {}
+                    ref = original_verify(ids, positions).detach().clone()
+                    ref_state = read_query_state(slots)
+                    restore_query_state(preimage)
+                finally:
+                    runner.verify_graphs = previous_graphs
+                before_exact = runner.verify_graph_hits - runner.verify_graph_padded
+                actual = original_verify(ids, positions).detach().clone()
+                if runner.verify_graph_hits - runner.verify_graph_padded != before_exact + 1:
+                    raise AssertionError("target verify exact graph was not actually replayed")
+                actual_state = read_query_state(slots)
+                numeric["target_verify"] = compare(ref, actual, ref_state, actual_state)
+                write({"type": "target_verify_probe", **{k: v for k, v in ident.items() if k != "type"},
+                       **numeric["target_verify"]})
+                return actual
+            runner.run_verify_forward = checked_verify
+            original_run_model = runner.run_model
+            @torch.inference_mode()
+            def checked_run_model(ids, positions, is_prefill):
+                if is_prefill or numeric["target_decode"] is not None:
+                    return original_run_model(ids, positions, is_prefill)
+                slots = get_context().slot_mapping
+                check_query_mapping(slots, positions, verifying=False)
+                preimage = read_query_state(slots)
+                old_eager = runner.enforce_eager
+                try:
+                    runner.enforce_eager = True
+                    ref = original_run_model(ids, positions, False).detach().clone()
+                    ref_state = read_query_state(slots)
+                    restore_query_state(preimage)
+                finally:
+                    runner.enforce_eager = old_eager
+                before_exact = runner.decode_graph_exact_hits
+                actual = original_run_model(ids, positions, False).detach().clone()
+                if runner.decode_graph_exact_hits != before_exact + 1:
+                    raise AssertionError("target decode exact graph was not actually replayed")
+                actual_state = read_query_state(slots)
+                numeric["target_decode"] = compare(ref, actual, ref_state, actual_state)
+                write({"type": "target_decode_probe", **{k: v for k, v in ident.items() if k != "type"},
+                       **numeric["target_decode"]})
+                return actual
+            runner.run_model = checked_run_model
+
         events = {"draft": [], "verify": [], "commit": []}
         current_round = [None]
         def install_event(obj, name, category):
@@ -296,6 +433,8 @@ def main():
         for prompt, _ in inputs:
             llm.add_request(prompt, SamplingParams(temperature=1.0, max_tokens=a.output_tokens, ignore_eos=True))
         rounds, done, prefix_cached, seen_prefill = [], {}, 0, set()
+        decode_rounds = 0
+        forced_ordinary_decode = False
         deadline = float(os.environ.get("DS_RUN_DEADLINE_UNIX", "0"))
         while not llm.is_finished():
             if deadline and time.time() >= deadline:
@@ -313,8 +452,18 @@ def main():
                     prefix_cached += seq.num_cached_tokens
             if prefix_cached:
                 raise RuntimeError(f"disabled prefix lookup nevertheless reused {prefix_cached} tokens")
+            forced_this_round = False
+            if not is_prefill:
+                decode_rounds += 1
+                if a.graph == "exact" and decode_rounds == 2:
+                    # Same real batch and native T=1 target sampler; only the
+                    # scheduling choice is forced to cover ordinary decode.
+                    for seq in seqs:
+                        seq.num_scheduled_tokens = 1
+                    forced_this_round = forced_ordinary_decode = True
             before_counts = {s.seq_id: s.num_completion_tokens for s in seqs}
             anchors_before = {s.seq_id: len(s) - 1 for s in seqs}
+            active_seqs[0] = seqs
             output = runner.run(seqs, is_prefill)
             if is_prefill and a.fixed_anchor is not None:
                 # Only completed prefill rows produce a real token.
@@ -343,6 +492,7 @@ def main():
                     done[s.seq_id] = list(s.completion_token_ids)
             rounds.append({"start_s": t0 - started, "end_s": end - started,
                            "prefill": bool(is_prefill), "active_b": len(seqs),
+                           "forced_ordinary_decode": forced_this_round,
                            "delivered": delivered, "sequences": entries})
         torch.cuda.synchronize()
         wall = time.perf_counter() - started
@@ -363,11 +513,15 @@ def main():
                "delivered_tokens": sum(len(x) for x in done.values()),
                "preemptions": len(preemptions), "prefix_cached_tokens": prefix_cached,
                "graph_delta": graph_delta, "conditional_q_checks": checks,
+               "target_numeric_checks": numeric, "forced_ordinary_decode": forced_ordinary_decode,
+               "diagnostic_eager_fallbacks": ({"target_verify": 1, "target_decode": 1}
+                                              if a.graph == "exact" else {}),
                "gpu_event_ms": {k: sum(start.elapsed_time(end) for _, start, end in rows)
                                 for k, rows in events.items()},
                "commit_timing_note": ("event span for commit helper" if commit_instrumented
                                       else "not instrumented for W=0 or missing helper"),
                "draft_gpu_event_note": "includes one extra eager q diagnostic forward; not performance data",
+               "verify_gpu_event_note": "includes eager/exact target diagnostic comparison; not performance data",
                "memory_after_run": memory(runner), "max_model_len": runner.config.max_model_len,
                "window_stats": dict(getattr(runner, "dspark_window_stats", {})),
                "prefix_lookup_count": scheduler.block_manager.prefix_lookup_count,
@@ -384,6 +538,20 @@ def main():
         if a.graph == "exact" and (graph_delta.get("graph_exact_hits", 0) <= 0 or
                                    graph_delta.get("verify_exact_hits", 0) <= 0):
             raise RuntimeError("requested exact draft and verify graphs did not both replay")
+        if a.graph == "exact":
+            if not forced_ordinary_decode or not all(numeric.values()):
+                raise RuntimeError("target verify and forced ordinary decode numeric probes incomplete")
+            if any(graph_delta.get(k, 0) for k in
+                   ("graph_padded_hits", "verify_padded_hits", "decode_graph_padded_hits")):
+                raise RuntimeError("padding occurred during exact-all smoke")
+            if graph_delta.get("decode_graph_fallbacks", {}) != {"enforce_eager": 1}:
+                raise RuntimeError("unexpected target decode fallback outside the one eager probe")
+            for name, probe in numeric.items():
+                if (not math.isfinite(probe["target_logit_max_kl"]) or probe["target_logit_max_kl"] >= 0.02
+                        or not math.isfinite(probe["target_kv_relative_rms"]) or probe["target_kv_relative_rms"] >= 0.05
+                        or not math.isfinite(probe["dspark_kv_or_scratch_relative_rms"])
+                        or probe["dspark_kv_or_scratch_relative_rms"] >= 0.05):
+                    raise RuntimeError(f"target {name} exact vs eager numeric comparison failed")
         if a.graph == "padded" and graph_delta.get("graph_padded_hits", 0) <= 0:
             raise RuntimeError("requested padded draft graph did not replay")
         if a.graph == "padded" and graph_delta.get("verify_padded_hits", 0) <= 0:

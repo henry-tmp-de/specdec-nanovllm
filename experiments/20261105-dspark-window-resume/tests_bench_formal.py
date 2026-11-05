@@ -73,10 +73,15 @@ class FormalChecks(unittest.TestCase):
                 self.spec_proposer = self.draft_model = self.dspark_model = None
                 self.verify_graph_hits = self.verify_graph_padded = 0
                 self.verify_graph_fallbacks = {}
+                self.decode_graph_hits = self.decode_graph_exact_hits = self.decode_graph_padded_hits = 0
+                self.decode_graph_bucket_histogram, self.decode_graph_fallbacks = {}, {}
                 self.config = types.SimpleNamespace(dspark_window_tokens=0)
                 self.dspark_window_stats = {}
             def run_model(self, ids, positions, is_prefill):
                 self.graphs[1].replay()
+                self.decode_graph_hits += 1
+                self.decode_graph_exact_hits += 1
+                self.decode_graph_bucket_histogram[1] = self.decode_graph_bucket_histogram.get(1, 0) + 1
             def run(self, seqs, prefill):
                 if not prefill:
                     self.run_model(types.SimpleNamespace(shape=(len(seqs),)), None, False)
@@ -121,7 +126,10 @@ class FormalChecks(unittest.TestCase):
             self.assertEqual(cfg["max_model_len"], 4096 + 256 + 8)
             self.assertEqual(cfg["max_num_seqs"], 8)
             self.assertEqual(cfg["gpu_memory_utilization"], 0.70)
-            self.assertTrue(cfg["spec_graph_pad"])
+            self.assertFalse(cfg["spec_graph_pad"])
+            self.assertFalse(cfg["dspark_graph_pad"])
+            self.assertEqual(cfg["spec_graph_bs"], tuple(range(1, 9)))
+            self.assertEqual(cfg["decode_graph_bs"], tuple(range(1, 9)))
             self.assertFalse(cfg["enable_prefix_cache"])
             self.assertFalse(cfg["spec_overlap_mixed"])
             self.assertEqual(cfg.get("spec_k", 0), 0 if arm == "nospec" else 6 if arm.startswith("ar_") else 7)
@@ -129,6 +137,7 @@ class FormalChecks(unittest.TestCase):
         self.assertTrue(ar["spec_draft_win_align"] and ar["spec_draft_win_realign"])
         ring = bench.options_for("dspark_ring", 8, 4096, 256, 1024, "target", "ar", "ds", 32768)
         self.assertEqual(ring["dspark_window_storage"], "ring")
+        self.assertFalse(ring["dspark_graph_pad"])
 
     def test_invalid_or_implicit_capacity_changes_fail(self):
         with self.assertRaises(ValueError):
