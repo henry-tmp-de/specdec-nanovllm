@@ -1,0 +1,3850 @@
+{
+  "scope": "layer0 linear micro with synthetic inputs; not full-model speedup",
+  "ratio_definition": "per-round BF16 event time / INT8 event time, then median and min-max",
+  "three_repeat_range_is_confidence_interval": false,
+  "measurements": [
+    {
+      "source": "D:\\学习\\specdec-dspark-quant\\experiments\\20261105-dspark-quant\\evidence\\final-01\\results\\micro-01.jsonl",
+      "line": 1,
+      "record": {
+        "type": "micro",
+        "guard_id": "f87d2cb0-ac24-4cd5-974b-a7ceab54352b",
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "cuda_visible_devices": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "deadline_unix": 1793876530.3780227,
+        "engine_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+        "engine_dirty": false,
+        "device_name": "NVIDIA GeForce RTX 3090",
+        "torch_version": "2.10.0+cu128",
+        "torch_cuda_version": "12.8",
+        "draft_path": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b",
+        "seed": 20261105,
+        "input_distribution": "synthetic torch.randn BF16 on CPU",
+        "warmup_calls_per_operator": 10,
+        "timing_rounds": 3,
+        "replays_per_round": 100,
+        "relative_rms_limit": 0.01,
+        "graph_rtol": 0.016,
+        "graph_atol": 1e-05,
+        "draft_config_sha256": "494e5665481ff8216c4e857a531c401f72b7fb795434a8201f45252c0ad7568a",
+        "weight_name": "layers.0.mlp.gate_proj.weight",
+        "weight_file": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b/model.safetensors",
+        "shape_nk": [
+          9728,
+          2560
+        ],
+        "checkpoint_dtype": "torch.bfloat16",
+        "checkpoint_tensor_sha256": "399e7bcbe913868a21c5bca9e54ca244ffcb39a45529bc800924aef1fb4a91c6",
+        "bf16_weight_sha256": "399e7bcbe913868a21c5bca9e54ca244ffcb39a45529bc800924aef1fb4a91c6",
+        "int8_weight_sha256": "e046a2191be157e2c3e1c34bd17cb0b84c14fc29e9cc36242ec5d03e8e0a1e0a",
+        "bf16_scale_sha256": "d13b3adc4ad51bcec2699fcc70a17d47c6c1a86bd39368ded79a04873d2926ea",
+        "bf16_weight_bytes": 49807360,
+        "int8_weight_bytes": 24903680,
+        "scale_bytes": 19456,
+        "scale_dtype": "torch.bfloat16",
+        "batch": 1,
+        "rows": 7,
+        "mode": "eager",
+        "input_sha256": "bec148aa266bd945e54f01b6cbff830d9103a4da9e63a2f79df48e3496c5d586",
+        "split_k_from_kernel_policy": 4,
+        "correctness_pass": true,
+        "quant_reference": {
+          "finite": true,
+          "relative_rms": 0.001660542816778877,
+          "max_abs": 0.031121253967285156,
+          "max_abs_over_reference_rms": 0.013459678245098501,
+          "reference_rms": 2.3121840953826904
+        },
+        "original_bf16_diagnostic": {
+          "finite": true,
+          "relative_rms": 0.00899952554611446,
+          "max_abs": 0.1015625,
+          "max_abs_over_reference_rms": 0.043878480062404544,
+          "reference_rms": 2.314631223678589
+        },
+        "graph_vs_eager": {
+          "bf16": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.314631223678589,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          },
+          "int8": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.312192916870117,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          }
+        },
+        "reference_order": "float32(x) @ float32(q).T, then multiply float32(BF16 scale)",
+        "bf16_ms_per_call": [
+          0.07483776092529297,
+          0.0738099193572998,
+          0.07370751857757568
+        ],
+        "int8_ms_per_call": [
+          0.08100864410400391,
+          0.0795750379562378,
+          0.0777830410003662
+        ],
+        "bf16_median_ms": 0.0738099193572998,
+        "int8_median_ms": 0.0795750379562378,
+        "timing_round_order": [
+          [
+            "eager/bf16",
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8"
+          ],
+          [
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16"
+          ],
+          [
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16",
+            "eager/int8"
+          ]
+        ]
+      },
+      "timing_complete": true,
+      "paired_bf16_over_int8": {
+        "values": [
+          0.9238243863113129,
+          0.9275511674639915,
+          0.9476039716321796
+        ],
+        "median": 0.9275511674639915,
+        "min": 0.9238243863113129,
+        "max": 0.9476039716321796
+      }
+    },
+    {
+      "source": "D:\\学习\\specdec-dspark-quant\\experiments\\20261105-dspark-quant\\evidence\\final-01\\results\\micro-01.jsonl",
+      "line": 2,
+      "record": {
+        "type": "micro",
+        "guard_id": "f87d2cb0-ac24-4cd5-974b-a7ceab54352b",
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "cuda_visible_devices": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "deadline_unix": 1793876530.3780227,
+        "engine_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+        "engine_dirty": false,
+        "device_name": "NVIDIA GeForce RTX 3090",
+        "torch_version": "2.10.0+cu128",
+        "torch_cuda_version": "12.8",
+        "draft_path": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b",
+        "seed": 20261105,
+        "input_distribution": "synthetic torch.randn BF16 on CPU",
+        "warmup_calls_per_operator": 10,
+        "timing_rounds": 3,
+        "replays_per_round": 100,
+        "relative_rms_limit": 0.01,
+        "graph_rtol": 0.016,
+        "graph_atol": 1e-05,
+        "draft_config_sha256": "494e5665481ff8216c4e857a531c401f72b7fb795434a8201f45252c0ad7568a",
+        "weight_name": "layers.0.mlp.gate_proj.weight",
+        "weight_file": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b/model.safetensors",
+        "shape_nk": [
+          9728,
+          2560
+        ],
+        "checkpoint_dtype": "torch.bfloat16",
+        "checkpoint_tensor_sha256": "399e7bcbe913868a21c5bca9e54ca244ffcb39a45529bc800924aef1fb4a91c6",
+        "bf16_weight_sha256": "399e7bcbe913868a21c5bca9e54ca244ffcb39a45529bc800924aef1fb4a91c6",
+        "int8_weight_sha256": "e046a2191be157e2c3e1c34bd17cb0b84c14fc29e9cc36242ec5d03e8e0a1e0a",
+        "bf16_scale_sha256": "d13b3adc4ad51bcec2699fcc70a17d47c6c1a86bd39368ded79a04873d2926ea",
+        "bf16_weight_bytes": 49807360,
+        "int8_weight_bytes": 24903680,
+        "scale_bytes": 19456,
+        "scale_dtype": "torch.bfloat16",
+        "batch": 1,
+        "rows": 7,
+        "mode": "graph",
+        "input_sha256": "bec148aa266bd945e54f01b6cbff830d9103a4da9e63a2f79df48e3496c5d586",
+        "split_k_from_kernel_policy": 4,
+        "correctness_pass": true,
+        "quant_reference": {
+          "finite": true,
+          "relative_rms": 0.001660542816778877,
+          "max_abs": 0.031121253967285156,
+          "max_abs_over_reference_rms": 0.013459678245098501,
+          "reference_rms": 2.3121840953826904
+        },
+        "original_bf16_diagnostic": {
+          "finite": true,
+          "relative_rms": 0.00899952554611446,
+          "max_abs": 0.1015625,
+          "max_abs_over_reference_rms": 0.043878480062404544,
+          "reference_rms": 2.314631223678589
+        },
+        "graph_vs_eager": {
+          "bf16": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.314631223678589,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          },
+          "int8": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.312192916870117,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          }
+        },
+        "reference_order": "float32(x) @ float32(q).T, then multiply float32(BF16 scale)",
+        "bf16_ms_per_call": [
+          0.0726527976989746,
+          0.07258111953735352,
+          0.07251967906951905
+        ],
+        "int8_ms_per_call": [
+          0.05053440093994141,
+          0.0504422378540039,
+          0.05203968048095703
+        ],
+        "bf16_median_ms": 0.07258111953735352,
+        "int8_median_ms": 0.05053440093994141,
+        "timing_round_order": [
+          [
+            "eager/bf16",
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8"
+          ],
+          [
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16"
+          ],
+          [
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16",
+            "eager/int8"
+          ]
+        ]
+      },
+      "timing_complete": true,
+      "paired_bf16_over_int8": {
+        "values": [
+          1.4376898973299443,
+          1.4388957077484683,
+          1.3935458173317627
+        ],
+        "median": 1.4376898973299443,
+        "min": 1.3935458173317627,
+        "max": 1.4388957077484683
+      }
+    },
+    {
+      "source": "D:\\学习\\specdec-dspark-quant\\experiments\\20261105-dspark-quant\\evidence\\final-01\\results\\micro-01.jsonl",
+      "line": 3,
+      "record": {
+        "type": "micro",
+        "guard_id": "f87d2cb0-ac24-4cd5-974b-a7ceab54352b",
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "cuda_visible_devices": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "deadline_unix": 1793876530.3780227,
+        "engine_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+        "engine_dirty": false,
+        "device_name": "NVIDIA GeForce RTX 3090",
+        "torch_version": "2.10.0+cu128",
+        "torch_cuda_version": "12.8",
+        "draft_path": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b",
+        "seed": 20261105,
+        "input_distribution": "synthetic torch.randn BF16 on CPU",
+        "warmup_calls_per_operator": 10,
+        "timing_rounds": 3,
+        "replays_per_round": 100,
+        "relative_rms_limit": 0.01,
+        "graph_rtol": 0.016,
+        "graph_atol": 1e-05,
+        "draft_config_sha256": "494e5665481ff8216c4e857a531c401f72b7fb795434a8201f45252c0ad7568a",
+        "weight_name": "layers.0.mlp.gate_proj.weight",
+        "weight_file": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b/model.safetensors",
+        "shape_nk": [
+          9728,
+          2560
+        ],
+        "checkpoint_dtype": "torch.bfloat16",
+        "checkpoint_tensor_sha256": "399e7bcbe913868a21c5bca9e54ca244ffcb39a45529bc800924aef1fb4a91c6",
+        "bf16_weight_sha256": "399e7bcbe913868a21c5bca9e54ca244ffcb39a45529bc800924aef1fb4a91c6",
+        "int8_weight_sha256": "e046a2191be157e2c3e1c34bd17cb0b84c14fc29e9cc36242ec5d03e8e0a1e0a",
+        "bf16_scale_sha256": "d13b3adc4ad51bcec2699fcc70a17d47c6c1a86bd39368ded79a04873d2926ea",
+        "bf16_weight_bytes": 49807360,
+        "int8_weight_bytes": 24903680,
+        "scale_bytes": 19456,
+        "scale_dtype": "torch.bfloat16",
+        "batch": 8,
+        "rows": 56,
+        "mode": "eager",
+        "input_sha256": "803ca53b782e619dc655ae6a071da56166d4511dcd383acb4ce85906a3dcbd3e",
+        "split_k_from_kernel_policy": 4,
+        "correctness_pass": true,
+        "quant_reference": {
+          "finite": true,
+          "relative_rms": 0.001657144848080055,
+          "max_abs": 0.031238555908203125,
+          "max_abs_over_reference_rms": 0.013700530929034315,
+          "reference_rms": 2.2800981998443604
+        },
+        "original_bf16_diagnostic": {
+          "finite": true,
+          "relative_rms": 0.00906041558420938,
+          "max_abs": 0.125,
+          "max_abs_over_reference_rms": 0.05476664571217385,
+          "reference_rms": 2.2824110984802246
+        },
+        "graph_vs_eager": {
+          "bf16": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.2824110984802246,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          },
+          "int8": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.2800934314727783,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          }
+        },
+        "reference_order": "float32(x) @ float32(q).T, then multiply float32(BF16 scale)",
+        "bf16_ms_per_call": [
+          0.07212448120117188,
+          0.07217152118682861,
+          0.07203839778900147
+        ],
+        "int8_ms_per_call": [
+          0.132741117477417,
+          0.1325977611541748,
+          0.13262847900390626
+        ],
+        "bf16_median_ms": 0.07212448120117188,
+        "int8_median_ms": 0.13262847900390626,
+        "timing_round_order": [
+          [
+            "eager/bf16",
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8"
+          ],
+          [
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16"
+          ],
+          [
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16",
+            "eager/int8"
+          ]
+        ]
+      },
+      "timing_complete": true,
+      "paired_bf16_over_int8": {
+        "values": [
+          0.5433469490976848,
+          0.5442891385090051,
+          0.5431593450368962
+        ],
+        "median": 0.5433469490976848,
+        "min": 0.5431593450368962,
+        "max": 0.5442891385090051
+      }
+    },
+    {
+      "source": "D:\\学习\\specdec-dspark-quant\\experiments\\20261105-dspark-quant\\evidence\\final-01\\results\\micro-01.jsonl",
+      "line": 4,
+      "record": {
+        "type": "micro",
+        "guard_id": "f87d2cb0-ac24-4cd5-974b-a7ceab54352b",
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "cuda_visible_devices": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "deadline_unix": 1793876530.3780227,
+        "engine_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+        "engine_dirty": false,
+        "device_name": "NVIDIA GeForce RTX 3090",
+        "torch_version": "2.10.0+cu128",
+        "torch_cuda_version": "12.8",
+        "draft_path": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b",
+        "seed": 20261105,
+        "input_distribution": "synthetic torch.randn BF16 on CPU",
+        "warmup_calls_per_operator": 10,
+        "timing_rounds": 3,
+        "replays_per_round": 100,
+        "relative_rms_limit": 0.01,
+        "graph_rtol": 0.016,
+        "graph_atol": 1e-05,
+        "draft_config_sha256": "494e5665481ff8216c4e857a531c401f72b7fb795434a8201f45252c0ad7568a",
+        "weight_name": "layers.0.mlp.gate_proj.weight",
+        "weight_file": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b/model.safetensors",
+        "shape_nk": [
+          9728,
+          2560
+        ],
+        "checkpoint_dtype": "torch.bfloat16",
+        "checkpoint_tensor_sha256": "399e7bcbe913868a21c5bca9e54ca244ffcb39a45529bc800924aef1fb4a91c6",
+        "bf16_weight_sha256": "399e7bcbe913868a21c5bca9e54ca244ffcb39a45529bc800924aef1fb4a91c6",
+        "int8_weight_sha256": "e046a2191be157e2c3e1c34bd17cb0b84c14fc29e9cc36242ec5d03e8e0a1e0a",
+        "bf16_scale_sha256": "d13b3adc4ad51bcec2699fcc70a17d47c6c1a86bd39368ded79a04873d2926ea",
+        "bf16_weight_bytes": 49807360,
+        "int8_weight_bytes": 24903680,
+        "scale_bytes": 19456,
+        "scale_dtype": "torch.bfloat16",
+        "batch": 8,
+        "rows": 56,
+        "mode": "graph",
+        "input_sha256": "803ca53b782e619dc655ae6a071da56166d4511dcd383acb4ce85906a3dcbd3e",
+        "split_k_from_kernel_policy": 4,
+        "correctness_pass": true,
+        "quant_reference": {
+          "finite": true,
+          "relative_rms": 0.001657144848080055,
+          "max_abs": 0.031238555908203125,
+          "max_abs_over_reference_rms": 0.013700530929034315,
+          "reference_rms": 2.2800981998443604
+        },
+        "original_bf16_diagnostic": {
+          "finite": true,
+          "relative_rms": 0.00906041558420938,
+          "max_abs": 0.125,
+          "max_abs_over_reference_rms": 0.05476664571217385,
+          "reference_rms": 2.2824110984802246
+        },
+        "graph_vs_eager": {
+          "bf16": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.2824110984802246,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          },
+          "int8": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.2800934314727783,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          }
+        },
+        "reference_order": "float32(x) @ float32(q).T, then multiply float32(BF16 scale)",
+        "bf16_ms_per_call": [
+          0.07056384086608887,
+          0.07053311824798585,
+          0.07052192211151123
+        ],
+        "int8_ms_per_call": [
+          0.12951552391052246,
+          0.12957695960998536,
+          0.13248512268066406
+        ],
+        "bf16_median_ms": 0.07053311824798585,
+        "int8_median_ms": 0.12957695960998536,
+        "timing_round_order": [
+          [
+            "eager/bf16",
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8"
+          ],
+          [
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16"
+          ],
+          [
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16",
+            "eager/int8"
+          ]
+        ]
+      },
+      "timing_complete": true,
+      "paired_bf16_over_int8": {
+        "values": [
+          0.5448292122482464,
+          0.544333795609065,
+          0.5323006891988467
+        ],
+        "median": 0.544333795609065,
+        "min": 0.5323006891988467,
+        "max": 0.5448292122482464
+      }
+    },
+    {
+      "source": "D:\\学习\\specdec-dspark-quant\\experiments\\20261105-dspark-quant\\evidence\\final-01\\results\\micro-01.jsonl",
+      "line": 5,
+      "record": {
+        "type": "micro",
+        "guard_id": "f87d2cb0-ac24-4cd5-974b-a7ceab54352b",
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "cuda_visible_devices": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "deadline_unix": 1793876530.3780227,
+        "engine_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+        "engine_dirty": false,
+        "device_name": "NVIDIA GeForce RTX 3090",
+        "torch_version": "2.10.0+cu128",
+        "torch_cuda_version": "12.8",
+        "draft_path": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b",
+        "seed": 20261105,
+        "input_distribution": "synthetic torch.randn BF16 on CPU",
+        "warmup_calls_per_operator": 10,
+        "timing_rounds": 3,
+        "replays_per_round": 100,
+        "relative_rms_limit": 0.01,
+        "graph_rtol": 0.016,
+        "graph_atol": 1e-05,
+        "draft_config_sha256": "494e5665481ff8216c4e857a531c401f72b7fb795434a8201f45252c0ad7568a",
+        "weight_name": "layers.0.mlp.gate_proj.weight",
+        "weight_file": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b/model.safetensors",
+        "shape_nk": [
+          9728,
+          2560
+        ],
+        "checkpoint_dtype": "torch.bfloat16",
+        "checkpoint_tensor_sha256": "399e7bcbe913868a21c5bca9e54ca244ffcb39a45529bc800924aef1fb4a91c6",
+        "bf16_weight_sha256": "399e7bcbe913868a21c5bca9e54ca244ffcb39a45529bc800924aef1fb4a91c6",
+        "int8_weight_sha256": "e046a2191be157e2c3e1c34bd17cb0b84c14fc29e9cc36242ec5d03e8e0a1e0a",
+        "bf16_scale_sha256": "d13b3adc4ad51bcec2699fcc70a17d47c6c1a86bd39368ded79a04873d2926ea",
+        "bf16_weight_bytes": 49807360,
+        "int8_weight_bytes": 24903680,
+        "scale_bytes": 19456,
+        "scale_dtype": "torch.bfloat16",
+        "batch": 16,
+        "rows": 112,
+        "mode": "eager",
+        "input_sha256": "4856021f1058e8c10d5265e3c9f1f8b1f715a34c7004aaf989fc886eb5e40c34",
+        "split_k_from_kernel_policy": 1,
+        "correctness_pass": true,
+        "quant_reference": {
+          "finite": true,
+          "relative_rms": 0.0016597107742744748,
+          "max_abs": 0.058292388916015625,
+          "max_abs_over_reference_rms": 0.025441635517062616,
+          "reference_rms": 2.291220188140869
+        },
+        "original_bf16_diagnostic": {
+          "finite": true,
+          "relative_rms": 0.009025439443973613,
+          "max_abs": 0.125,
+          "max_abs_over_reference_rms": 0.05449932188734754,
+          "reference_rms": 2.2936065196990967
+        },
+        "graph_vs_eager": {
+          "bf16": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.2936065196990967,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          },
+          "int8": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.2912092208862305,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          }
+        },
+        "reference_order": "float32(x) @ float32(q).T, then multiply float32(BF16 scale)",
+        "bf16_ms_per_call": [
+          0.1274121570587158,
+          0.1273344039916992,
+          0.12723199844360353
+        ],
+        "int8_ms_per_call": [
+          0.2027622413635254,
+          0.20380672454833984,
+          0.2022707176208496
+        ],
+        "bf16_median_ms": 0.1273344039916992,
+        "int8_median_ms": 0.2027622413635254,
+        "timing_round_order": [
+          [
+            "eager/bf16",
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8"
+          ],
+          [
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16"
+          ],
+          [
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16",
+            "eager/int8"
+          ]
+        ]
+      },
+      "timing_complete": true,
+      "paired_bf16_over_int8": {
+        "values": [
+          0.6283820705566328,
+          0.6247801895344107,
+          0.6290183766594238
+        ],
+        "median": 0.6283820705566328,
+        "min": 0.6247801895344107,
+        "max": 0.6290183766594238
+      }
+    },
+    {
+      "source": "D:\\学习\\specdec-dspark-quant\\experiments\\20261105-dspark-quant\\evidence\\final-01\\results\\micro-01.jsonl",
+      "line": 6,
+      "record": {
+        "type": "micro",
+        "guard_id": "f87d2cb0-ac24-4cd5-974b-a7ceab54352b",
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "cuda_visible_devices": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "deadline_unix": 1793876530.3780227,
+        "engine_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+        "engine_dirty": false,
+        "device_name": "NVIDIA GeForce RTX 3090",
+        "torch_version": "2.10.0+cu128",
+        "torch_cuda_version": "12.8",
+        "draft_path": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b",
+        "seed": 20261105,
+        "input_distribution": "synthetic torch.randn BF16 on CPU",
+        "warmup_calls_per_operator": 10,
+        "timing_rounds": 3,
+        "replays_per_round": 100,
+        "relative_rms_limit": 0.01,
+        "graph_rtol": 0.016,
+        "graph_atol": 1e-05,
+        "draft_config_sha256": "494e5665481ff8216c4e857a531c401f72b7fb795434a8201f45252c0ad7568a",
+        "weight_name": "layers.0.mlp.gate_proj.weight",
+        "weight_file": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b/model.safetensors",
+        "shape_nk": [
+          9728,
+          2560
+        ],
+        "checkpoint_dtype": "torch.bfloat16",
+        "checkpoint_tensor_sha256": "399e7bcbe913868a21c5bca9e54ca244ffcb39a45529bc800924aef1fb4a91c6",
+        "bf16_weight_sha256": "399e7bcbe913868a21c5bca9e54ca244ffcb39a45529bc800924aef1fb4a91c6",
+        "int8_weight_sha256": "e046a2191be157e2c3e1c34bd17cb0b84c14fc29e9cc36242ec5d03e8e0a1e0a",
+        "bf16_scale_sha256": "d13b3adc4ad51bcec2699fcc70a17d47c6c1a86bd39368ded79a04873d2926ea",
+        "bf16_weight_bytes": 49807360,
+        "int8_weight_bytes": 24903680,
+        "scale_bytes": 19456,
+        "scale_dtype": "torch.bfloat16",
+        "batch": 16,
+        "rows": 112,
+        "mode": "graph",
+        "input_sha256": "4856021f1058e8c10d5265e3c9f1f8b1f715a34c7004aaf989fc886eb5e40c34",
+        "split_k_from_kernel_policy": 1,
+        "correctness_pass": true,
+        "quant_reference": {
+          "finite": true,
+          "relative_rms": 0.0016597107742744748,
+          "max_abs": 0.058292388916015625,
+          "max_abs_over_reference_rms": 0.025441635517062616,
+          "reference_rms": 2.291220188140869
+        },
+        "original_bf16_diagnostic": {
+          "finite": true,
+          "relative_rms": 0.009025439443973613,
+          "max_abs": 0.125,
+          "max_abs_over_reference_rms": 0.05449932188734754,
+          "reference_rms": 2.2936065196990967
+        },
+        "graph_vs_eager": {
+          "bf16": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.2936065196990967,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          },
+          "int8": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.2912092208862305,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          }
+        },
+        "reference_order": "float32(x) @ float32(q).T, then multiply float32(BF16 scale)",
+        "bf16_ms_per_call": [
+          0.1259622383117676,
+          0.12597248077392578,
+          0.12598272323608398
+        ],
+        "int8_ms_per_call": [
+          0.20198400497436522,
+          0.20200447082519532,
+          0.2025779151916504
+        ],
+        "bf16_median_ms": 0.12597248077392578,
+        "int8_median_ms": 0.20200447082519532,
+        "timing_round_order": [
+          [
+            "eager/bf16",
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8"
+          ],
+          [
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16"
+          ],
+          [
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16",
+            "eager/int8"
+          ]
+        ]
+      },
+      "timing_complete": true,
+      "paired_bf16_over_int8": {
+        "values": [
+          0.623624817855028,
+          0.6236123401592242,
+          0.6218976195746563
+        ],
+        "median": 0.6236123401592242,
+        "min": 0.6218976195746563,
+        "max": 0.623624817855028
+      }
+    },
+    {
+      "source": "D:\\学习\\specdec-dspark-quant\\experiments\\20261105-dspark-quant\\evidence\\final-01\\results\\micro-01.jsonl",
+      "line": 7,
+      "record": {
+        "type": "micro",
+        "guard_id": "f87d2cb0-ac24-4cd5-974b-a7ceab54352b",
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "cuda_visible_devices": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "deadline_unix": 1793876530.3780227,
+        "engine_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+        "engine_dirty": false,
+        "device_name": "NVIDIA GeForce RTX 3090",
+        "torch_version": "2.10.0+cu128",
+        "torch_cuda_version": "12.8",
+        "draft_path": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b",
+        "seed": 20261105,
+        "input_distribution": "synthetic torch.randn BF16 on CPU",
+        "warmup_calls_per_operator": 10,
+        "timing_rounds": 3,
+        "replays_per_round": 100,
+        "relative_rms_limit": 0.01,
+        "graph_rtol": 0.016,
+        "graph_atol": 1e-05,
+        "draft_config_sha256": "494e5665481ff8216c4e857a531c401f72b7fb795434a8201f45252c0ad7568a",
+        "weight_name": "layers.0.mlp.down_proj.weight",
+        "weight_file": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b/model.safetensors",
+        "shape_nk": [
+          2560,
+          9728
+        ],
+        "checkpoint_dtype": "torch.bfloat16",
+        "checkpoint_tensor_sha256": "6e7640b846ae1743be560bb88b00297e147cb9f2ccea9e89f0c4eef4e333597f",
+        "bf16_weight_sha256": "6e7640b846ae1743be560bb88b00297e147cb9f2ccea9e89f0c4eef4e333597f",
+        "int8_weight_sha256": "71bd7559d4a0588dffe296eba214212eb7cb081c4e6888c8d052ee0c96ed05eb",
+        "bf16_scale_sha256": "f5347575c1d5dc7e333fbad58f62d4ce2a491760c518cf6844b7c1354173332f",
+        "bf16_weight_bytes": 49807360,
+        "int8_weight_bytes": 24903680,
+        "scale_bytes": 5120,
+        "scale_dtype": "torch.bfloat16",
+        "batch": 1,
+        "rows": 7,
+        "mode": "eager",
+        "input_sha256": "7ffaa39bb22613a4bf95e0c815f0ebf24ed02f162df28ac28d27ab83b7ddb6a4",
+        "split_k_from_kernel_policy": 4,
+        "correctness_pass": true,
+        "quant_reference": {
+          "finite": true,
+          "relative_rms": 0.0016789531599299334,
+          "max_abs": 0.07175827026367188,
+          "max_abs_over_reference_rms": 0.015709469598708486,
+          "reference_rms": 4.567835330963135
+        },
+        "original_bf16_diagnostic": {
+          "finite": true,
+          "relative_rms": 0.010052583664846801,
+          "max_abs": 0.5,
+          "max_abs_over_reference_rms": 0.10947132367181028,
+          "reference_rms": 4.567406177520752
+        },
+        "graph_vs_eager": {
+          "bf16": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 4.567406177520752,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          },
+          "int8": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 4.56784725189209,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          }
+        },
+        "reference_order": "float32(x) @ float32(q).T, then multiply float32(BF16 scale)",
+        "bf16_ms_per_call": [
+          0.08894463539123536,
+          0.08868864059448242,
+          0.09021439552307128
+        ],
+        "int8_ms_per_call": [
+          0.11043840408325195,
+          0.0961241626739502,
+          0.0931942367553711
+        ],
+        "bf16_median_ms": 0.08894463539123536,
+        "int8_median_ms": 0.0961241626739502,
+        "timing_round_order": [
+          [
+            "eager/bf16",
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8"
+          ],
+          [
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16"
+          ],
+          [
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16",
+            "eager/int8"
+          ]
+        ]
+      },
+      "timing_complete": true,
+      "paired_bf16_over_int8": {
+        "values": [
+          0.8053777680831578,
+          0.9226466907733822,
+          0.9680254773680725
+        ],
+        "median": 0.9226466907733822,
+        "min": 0.8053777680831578,
+        "max": 0.9680254773680725
+      }
+    },
+    {
+      "source": "D:\\学习\\specdec-dspark-quant\\experiments\\20261105-dspark-quant\\evidence\\final-01\\results\\micro-01.jsonl",
+      "line": 8,
+      "record": {
+        "type": "micro",
+        "guard_id": "f87d2cb0-ac24-4cd5-974b-a7ceab54352b",
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "cuda_visible_devices": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "deadline_unix": 1793876530.3780227,
+        "engine_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+        "engine_dirty": false,
+        "device_name": "NVIDIA GeForce RTX 3090",
+        "torch_version": "2.10.0+cu128",
+        "torch_cuda_version": "12.8",
+        "draft_path": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b",
+        "seed": 20261105,
+        "input_distribution": "synthetic torch.randn BF16 on CPU",
+        "warmup_calls_per_operator": 10,
+        "timing_rounds": 3,
+        "replays_per_round": 100,
+        "relative_rms_limit": 0.01,
+        "graph_rtol": 0.016,
+        "graph_atol": 1e-05,
+        "draft_config_sha256": "494e5665481ff8216c4e857a531c401f72b7fb795434a8201f45252c0ad7568a",
+        "weight_name": "layers.0.mlp.down_proj.weight",
+        "weight_file": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b/model.safetensors",
+        "shape_nk": [
+          2560,
+          9728
+        ],
+        "checkpoint_dtype": "torch.bfloat16",
+        "checkpoint_tensor_sha256": "6e7640b846ae1743be560bb88b00297e147cb9f2ccea9e89f0c4eef4e333597f",
+        "bf16_weight_sha256": "6e7640b846ae1743be560bb88b00297e147cb9f2ccea9e89f0c4eef4e333597f",
+        "int8_weight_sha256": "71bd7559d4a0588dffe296eba214212eb7cb081c4e6888c8d052ee0c96ed05eb",
+        "bf16_scale_sha256": "f5347575c1d5dc7e333fbad58f62d4ce2a491760c518cf6844b7c1354173332f",
+        "bf16_weight_bytes": 49807360,
+        "int8_weight_bytes": 24903680,
+        "scale_bytes": 5120,
+        "scale_dtype": "torch.bfloat16",
+        "batch": 1,
+        "rows": 7,
+        "mode": "graph",
+        "input_sha256": "7ffaa39bb22613a4bf95e0c815f0ebf24ed02f162df28ac28d27ab83b7ddb6a4",
+        "split_k_from_kernel_policy": 4,
+        "correctness_pass": true,
+        "quant_reference": {
+          "finite": true,
+          "relative_rms": 0.0016789531599299334,
+          "max_abs": 0.07175827026367188,
+          "max_abs_over_reference_rms": 0.015709469598708486,
+          "reference_rms": 4.567835330963135
+        },
+        "original_bf16_diagnostic": {
+          "finite": true,
+          "relative_rms": 0.010052583664846801,
+          "max_abs": 0.5,
+          "max_abs_over_reference_rms": 0.10947132367181028,
+          "reference_rms": 4.567406177520752
+        },
+        "graph_vs_eager": {
+          "bf16": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 4.567406177520752,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          },
+          "int8": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 4.56784725189209,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          }
+        },
+        "reference_order": "float32(x) @ float32(q).T, then multiply float32(BF16 scale)",
+        "bf16_ms_per_call": [
+          0.0875609588623047,
+          0.08747008323669433,
+          0.08744959831237793
+        ],
+        "int8_ms_per_call": [
+          0.04900864124298096,
+          0.04892640113830567,
+          0.050380802154541014
+        ],
+        "bf16_median_ms": 0.08747008323669433,
+        "int8_median_ms": 0.04900864124298096,
+        "timing_round_order": [
+          [
+            "eager/bf16",
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8"
+          ],
+          [
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16"
+          ],
+          [
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16",
+            "eager/int8"
+          ]
+        ]
+      },
+      "timing_complete": true,
+      "paired_bf16_over_int8": {
+        "values": [
+          1.7866432661983913,
+          1.787789030086905,
+          1.735772249995741
+        ],
+        "median": 1.7866432661983913,
+        "min": 1.735772249995741,
+        "max": 1.787789030086905
+      }
+    },
+    {
+      "source": "D:\\学习\\specdec-dspark-quant\\experiments\\20261105-dspark-quant\\evidence\\final-01\\results\\micro-01.jsonl",
+      "line": 9,
+      "record": {
+        "type": "micro",
+        "guard_id": "f87d2cb0-ac24-4cd5-974b-a7ceab54352b",
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "cuda_visible_devices": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "deadline_unix": 1793876530.3780227,
+        "engine_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+        "engine_dirty": false,
+        "device_name": "NVIDIA GeForce RTX 3090",
+        "torch_version": "2.10.0+cu128",
+        "torch_cuda_version": "12.8",
+        "draft_path": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b",
+        "seed": 20261105,
+        "input_distribution": "synthetic torch.randn BF16 on CPU",
+        "warmup_calls_per_operator": 10,
+        "timing_rounds": 3,
+        "replays_per_round": 100,
+        "relative_rms_limit": 0.01,
+        "graph_rtol": 0.016,
+        "graph_atol": 1e-05,
+        "draft_config_sha256": "494e5665481ff8216c4e857a531c401f72b7fb795434a8201f45252c0ad7568a",
+        "weight_name": "layers.0.mlp.down_proj.weight",
+        "weight_file": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b/model.safetensors",
+        "shape_nk": [
+          2560,
+          9728
+        ],
+        "checkpoint_dtype": "torch.bfloat16",
+        "checkpoint_tensor_sha256": "6e7640b846ae1743be560bb88b00297e147cb9f2ccea9e89f0c4eef4e333597f",
+        "bf16_weight_sha256": "6e7640b846ae1743be560bb88b00297e147cb9f2ccea9e89f0c4eef4e333597f",
+        "int8_weight_sha256": "71bd7559d4a0588dffe296eba214212eb7cb081c4e6888c8d052ee0c96ed05eb",
+        "bf16_scale_sha256": "f5347575c1d5dc7e333fbad58f62d4ce2a491760c518cf6844b7c1354173332f",
+        "bf16_weight_bytes": 49807360,
+        "int8_weight_bytes": 24903680,
+        "scale_bytes": 5120,
+        "scale_dtype": "torch.bfloat16",
+        "batch": 8,
+        "rows": 56,
+        "mode": "eager",
+        "input_sha256": "8b3974cc6ecbd69ee9a3fc227287400527b09754ac2df34436d3eba8e4226715",
+        "split_k_from_kernel_policy": 4,
+        "correctness_pass": true,
+        "quant_reference": {
+          "finite": true,
+          "relative_rms": 0.0016620754118201752,
+          "max_abs": 0.1188507080078125,
+          "max_abs_over_reference_rms": 0.025936426992040237,
+          "reference_rms": 4.582385540008545
+        },
+        "original_bf16_diagnostic": {
+          "finite": true,
+          "relative_rms": 0.009841355232525465,
+          "max_abs": 0.75,
+          "max_abs_over_reference_rms": 0.16368926946436824,
+          "reference_rms": 4.581851959228516
+        },
+        "graph_vs_eager": {
+          "bf16": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 4.581851959228516,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          },
+          "int8": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 4.582339763641357,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          }
+        },
+        "reference_order": "float32(x) @ float32(q).T, then multiply float32(BF16 scale)",
+        "bf16_ms_per_call": [
+          0.12013728141784669,
+          0.12213248252868653,
+          0.12006400108337402
+        ],
+        "int8_ms_per_call": [
+          0.10463232040405274,
+          0.10063872337341309,
+          0.10078207969665527
+        ],
+        "bf16_median_ms": 0.12013728141784669,
+        "int8_median_ms": 0.10078207969665527,
+        "timing_round_order": [
+          [
+            "eager/bf16",
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8"
+          ],
+          [
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16"
+          ],
+          [
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16",
+            "eager/int8"
+          ]
+        ]
+      },
+      "timing_complete": true,
+      "paired_bf16_over_int8": {
+        "values": [
+          1.1481851970205699,
+          1.2135734480208211,
+          1.1913229161846586
+        ],
+        "median": 1.1913229161846586,
+        "min": 1.1481851970205699,
+        "max": 1.2135734480208211
+      }
+    },
+    {
+      "source": "D:\\学习\\specdec-dspark-quant\\experiments\\20261105-dspark-quant\\evidence\\final-01\\results\\micro-01.jsonl",
+      "line": 10,
+      "record": {
+        "type": "micro",
+        "guard_id": "f87d2cb0-ac24-4cd5-974b-a7ceab54352b",
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "cuda_visible_devices": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "deadline_unix": 1793876530.3780227,
+        "engine_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+        "engine_dirty": false,
+        "device_name": "NVIDIA GeForce RTX 3090",
+        "torch_version": "2.10.0+cu128",
+        "torch_cuda_version": "12.8",
+        "draft_path": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b",
+        "seed": 20261105,
+        "input_distribution": "synthetic torch.randn BF16 on CPU",
+        "warmup_calls_per_operator": 10,
+        "timing_rounds": 3,
+        "replays_per_round": 100,
+        "relative_rms_limit": 0.01,
+        "graph_rtol": 0.016,
+        "graph_atol": 1e-05,
+        "draft_config_sha256": "494e5665481ff8216c4e857a531c401f72b7fb795434a8201f45252c0ad7568a",
+        "weight_name": "layers.0.mlp.down_proj.weight",
+        "weight_file": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b/model.safetensors",
+        "shape_nk": [
+          2560,
+          9728
+        ],
+        "checkpoint_dtype": "torch.bfloat16",
+        "checkpoint_tensor_sha256": "6e7640b846ae1743be560bb88b00297e147cb9f2ccea9e89f0c4eef4e333597f",
+        "bf16_weight_sha256": "6e7640b846ae1743be560bb88b00297e147cb9f2ccea9e89f0c4eef4e333597f",
+        "int8_weight_sha256": "71bd7559d4a0588dffe296eba214212eb7cb081c4e6888c8d052ee0c96ed05eb",
+        "bf16_scale_sha256": "f5347575c1d5dc7e333fbad58f62d4ce2a491760c518cf6844b7c1354173332f",
+        "bf16_weight_bytes": 49807360,
+        "int8_weight_bytes": 24903680,
+        "scale_bytes": 5120,
+        "scale_dtype": "torch.bfloat16",
+        "batch": 8,
+        "rows": 56,
+        "mode": "graph",
+        "input_sha256": "8b3974cc6ecbd69ee9a3fc227287400527b09754ac2df34436d3eba8e4226715",
+        "split_k_from_kernel_policy": 4,
+        "correctness_pass": true,
+        "quant_reference": {
+          "finite": true,
+          "relative_rms": 0.0016620754118201752,
+          "max_abs": 0.1188507080078125,
+          "max_abs_over_reference_rms": 0.025936426992040237,
+          "reference_rms": 4.582385540008545
+        },
+        "original_bf16_diagnostic": {
+          "finite": true,
+          "relative_rms": 0.009841355232525465,
+          "max_abs": 0.75,
+          "max_abs_over_reference_rms": 0.16368926946436824,
+          "reference_rms": 4.581851959228516
+        },
+        "graph_vs_eager": {
+          "bf16": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 4.581851959228516,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          },
+          "int8": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 4.582339763641357,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          }
+        },
+        "reference_order": "float32(x) @ float32(q).T, then multiply float32(BF16 scale)",
+        "bf16_ms_per_call": [
+          0.11921407699584961,
+          0.11909119606018066,
+          0.11914239883422852
+        ],
+        "int8_ms_per_call": [
+          0.09886719703674317,
+          0.09887743949890136,
+          0.09878527641296386
+        ],
+        "bf16_median_ms": 0.11914239883422852,
+        "int8_median_ms": 0.09886719703674317,
+        "timing_round_order": [
+          [
+            "eager/bf16",
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8"
+          ],
+          [
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16"
+          ],
+          [
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16",
+            "eager/int8"
+          ]
+        ]
+      },
+      "timing_complete": true,
+      "paired_bf16_over_int8": {
+        "values": [
+          1.205800109327917,
+          1.2044324434746705,
+          1.2060744592763333
+        ],
+        "median": 1.205800109327917,
+        "min": 1.2044324434746705,
+        "max": 1.2060744592763333
+      }
+    },
+    {
+      "source": "D:\\学习\\specdec-dspark-quant\\experiments\\20261105-dspark-quant\\evidence\\final-01\\results\\micro-01.jsonl",
+      "line": 11,
+      "record": {
+        "type": "micro",
+        "guard_id": "f87d2cb0-ac24-4cd5-974b-a7ceab54352b",
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "cuda_visible_devices": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "deadline_unix": 1793876530.3780227,
+        "engine_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+        "engine_dirty": false,
+        "device_name": "NVIDIA GeForce RTX 3090",
+        "torch_version": "2.10.0+cu128",
+        "torch_cuda_version": "12.8",
+        "draft_path": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b",
+        "seed": 20261105,
+        "input_distribution": "synthetic torch.randn BF16 on CPU",
+        "warmup_calls_per_operator": 10,
+        "timing_rounds": 3,
+        "replays_per_round": 100,
+        "relative_rms_limit": 0.01,
+        "graph_rtol": 0.016,
+        "graph_atol": 1e-05,
+        "draft_config_sha256": "494e5665481ff8216c4e857a531c401f72b7fb795434a8201f45252c0ad7568a",
+        "weight_name": "layers.0.mlp.down_proj.weight",
+        "weight_file": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b/model.safetensors",
+        "shape_nk": [
+          2560,
+          9728
+        ],
+        "checkpoint_dtype": "torch.bfloat16",
+        "checkpoint_tensor_sha256": "6e7640b846ae1743be560bb88b00297e147cb9f2ccea9e89f0c4eef4e333597f",
+        "bf16_weight_sha256": "6e7640b846ae1743be560bb88b00297e147cb9f2ccea9e89f0c4eef4e333597f",
+        "int8_weight_sha256": "71bd7559d4a0588dffe296eba214212eb7cb081c4e6888c8d052ee0c96ed05eb",
+        "bf16_scale_sha256": "f5347575c1d5dc7e333fbad58f62d4ce2a491760c518cf6844b7c1354173332f",
+        "bf16_weight_bytes": 49807360,
+        "int8_weight_bytes": 24903680,
+        "scale_bytes": 5120,
+        "scale_dtype": "torch.bfloat16",
+        "batch": 16,
+        "rows": 112,
+        "mode": "eager",
+        "input_sha256": "07409183d1a86b1e7606e8041611be0d64633977ca68100cc7fc986f929e7bf6",
+        "split_k_from_kernel_policy": 1,
+        "correctness_pass": true,
+        "quant_reference": {
+          "finite": true,
+          "relative_rms": 0.0016613023407619381,
+          "max_abs": 0.12385940551757812,
+          "max_abs_over_reference_rms": 0.027072471640827205,
+          "reference_rms": 4.5751051902771
+        },
+        "original_bf16_diagnostic": {
+          "finite": true,
+          "relative_rms": 0.009981338891333031,
+          "max_abs": 0.53125,
+          "max_abs_over_reference_rms": 0.11612144581889648,
+          "reference_rms": 4.574951648712158
+        },
+        "graph_vs_eager": {
+          "bf16": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 4.574951648712158,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          },
+          "int8": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 4.5750885009765625,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          }
+        },
+        "reference_order": "float32(x) @ float32(q).T, then multiply float32(BF16 scale)",
+        "bf16_ms_per_call": [
+          0.13136287689208984,
+          0.13361151695251464,
+          0.13127679824829103
+        ],
+        "int8_ms_per_call": [
+          0.16656383514404297,
+          0.16649215698242187,
+          0.1664409637451172
+        ],
+        "bf16_median_ms": 0.13136287689208984,
+        "int8_median_ms": 0.16649215698242187,
+        "timing_round_order": [
+          [
+            "eager/bf16",
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8"
+          ],
+          [
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16"
+          ],
+          [
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16",
+            "eager/int8"
+          ]
+        ]
+      },
+      "timing_complete": true,
+      "paired_bf16_over_int8": {
+        "values": [
+          0.788663858384915,
+          0.802509375661589,
+          0.7887288999919784
+        ],
+        "median": 0.7887288999919784,
+        "min": 0.788663858384915,
+        "max": 0.802509375661589
+      }
+    },
+    {
+      "source": "D:\\学习\\specdec-dspark-quant\\experiments\\20261105-dspark-quant\\evidence\\final-01\\results\\micro-01.jsonl",
+      "line": 12,
+      "record": {
+        "type": "micro",
+        "guard_id": "f87d2cb0-ac24-4cd5-974b-a7ceab54352b",
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "cuda_visible_devices": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "deadline_unix": 1793876530.3780227,
+        "engine_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+        "engine_dirty": false,
+        "device_name": "NVIDIA GeForce RTX 3090",
+        "torch_version": "2.10.0+cu128",
+        "torch_cuda_version": "12.8",
+        "draft_path": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b",
+        "seed": 20261105,
+        "input_distribution": "synthetic torch.randn BF16 on CPU",
+        "warmup_calls_per_operator": 10,
+        "timing_rounds": 3,
+        "replays_per_round": 100,
+        "relative_rms_limit": 0.01,
+        "graph_rtol": 0.016,
+        "graph_atol": 1e-05,
+        "draft_config_sha256": "494e5665481ff8216c4e857a531c401f72b7fb795434a8201f45252c0ad7568a",
+        "weight_name": "layers.0.mlp.down_proj.weight",
+        "weight_file": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b/model.safetensors",
+        "shape_nk": [
+          2560,
+          9728
+        ],
+        "checkpoint_dtype": "torch.bfloat16",
+        "checkpoint_tensor_sha256": "6e7640b846ae1743be560bb88b00297e147cb9f2ccea9e89f0c4eef4e333597f",
+        "bf16_weight_sha256": "6e7640b846ae1743be560bb88b00297e147cb9f2ccea9e89f0c4eef4e333597f",
+        "int8_weight_sha256": "71bd7559d4a0588dffe296eba214212eb7cb081c4e6888c8d052ee0c96ed05eb",
+        "bf16_scale_sha256": "f5347575c1d5dc7e333fbad58f62d4ce2a491760c518cf6844b7c1354173332f",
+        "bf16_weight_bytes": 49807360,
+        "int8_weight_bytes": 24903680,
+        "scale_bytes": 5120,
+        "scale_dtype": "torch.bfloat16",
+        "batch": 16,
+        "rows": 112,
+        "mode": "graph",
+        "input_sha256": "07409183d1a86b1e7606e8041611be0d64633977ca68100cc7fc986f929e7bf6",
+        "split_k_from_kernel_policy": 1,
+        "correctness_pass": true,
+        "quant_reference": {
+          "finite": true,
+          "relative_rms": 0.0016613023407619381,
+          "max_abs": 0.12385940551757812,
+          "max_abs_over_reference_rms": 0.027072471640827205,
+          "reference_rms": 4.5751051902771
+        },
+        "original_bf16_diagnostic": {
+          "finite": true,
+          "relative_rms": 0.009981338891333031,
+          "max_abs": 0.53125,
+          "max_abs_over_reference_rms": 0.11612144581889648,
+          "reference_rms": 4.574951648712158
+        },
+        "graph_vs_eager": {
+          "bf16": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 4.574951648712158,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          },
+          "int8": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 4.5750885009765625,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          }
+        },
+        "reference_order": "float32(x) @ float32(q).T, then multiply float32(BF16 scale)",
+        "bf16_ms_per_call": [
+          0.13025279998779296,
+          0.13212672233581543,
+          0.13173760414123536
+        ],
+        "int8_ms_per_call": [
+          0.16502784729003905,
+          0.16502784729003905,
+          0.16493568420410157
+        ],
+        "bf16_median_ms": 0.13173760414123536,
+        "int8_median_ms": 0.16502784729003905,
+        "timing_round_order": [
+          [
+            "eager/bf16",
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8"
+          ],
+          [
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16"
+          ],
+          [
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16",
+            "eager/int8"
+          ]
+        ]
+      },
+      "timing_complete": true,
+      "paired_bf16_over_int8": {
+        "values": [
+          0.7892777014710227,
+          0.8006328901788352,
+          0.7987210577076526
+        ],
+        "median": 0.7987210577076526,
+        "min": 0.7892777014710227,
+        "max": 0.8006328901788352
+      }
+    },
+    {
+      "source": "D:\\学习\\specdec-dspark-quant\\experiments\\20261105-dspark-quant\\evidence\\final-01\\results\\micro-01.jsonl",
+      "line": 13,
+      "record": {
+        "type": "micro",
+        "guard_id": "f87d2cb0-ac24-4cd5-974b-a7ceab54352b",
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "cuda_visible_devices": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "deadline_unix": 1793876530.3780227,
+        "engine_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+        "engine_dirty": false,
+        "device_name": "NVIDIA GeForce RTX 3090",
+        "torch_version": "2.10.0+cu128",
+        "torch_cuda_version": "12.8",
+        "draft_path": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b",
+        "seed": 20261105,
+        "input_distribution": "synthetic torch.randn BF16 on CPU",
+        "warmup_calls_per_operator": 10,
+        "timing_rounds": 3,
+        "replays_per_round": 100,
+        "relative_rms_limit": 0.01,
+        "graph_rtol": 0.016,
+        "graph_atol": 1e-05,
+        "draft_config_sha256": "494e5665481ff8216c4e857a531c401f72b7fb795434a8201f45252c0ad7568a",
+        "weight_name": "layers.0.self_attn.q_proj.weight",
+        "weight_file": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b/model.safetensors",
+        "shape_nk": [
+          4096,
+          2560
+        ],
+        "checkpoint_dtype": "torch.bfloat16",
+        "checkpoint_tensor_sha256": "085d67bcc6342ff6d648e7b62c2324a77f85ac1b04fe2674168d15ae8d25c4ce",
+        "bf16_weight_sha256": "085d67bcc6342ff6d648e7b62c2324a77f85ac1b04fe2674168d15ae8d25c4ce",
+        "int8_weight_sha256": "b3c58061c56dd4ebe7eb4fb9cb8cc09e46fe691c8f4194ab2429b0ba213139b9",
+        "bf16_scale_sha256": "85dc95e1ffc7f3c59373eafc5d3e4fe47002b665e143d8d80784a34fde7feffc",
+        "bf16_weight_bytes": 20971520,
+        "int8_weight_bytes": 10485760,
+        "scale_bytes": 8192,
+        "scale_dtype": "torch.bfloat16",
+        "batch": 1,
+        "rows": 7,
+        "mode": "eager",
+        "input_sha256": "bec148aa266bd945e54f01b6cbff830d9103a4da9e63a2f79df48e3496c5d586",
+        "split_k_from_kernel_policy": 4,
+        "correctness_pass": true,
+        "quant_reference": {
+          "finite": true,
+          "relative_rms": 0.0016594690987387429,
+          "max_abs": 0.0299072265625,
+          "max_abs_over_reference_rms": 0.012815053765198465,
+          "reference_rms": 2.3337574005126953
+        },
+        "original_bf16_diagnostic": {
+          "finite": true,
+          "relative_rms": 0.009560118161811156,
+          "max_abs": 0.125,
+          "max_abs_over_reference_rms": 0.05355731693663523,
+          "reference_rms": 2.3339481353759766
+        },
+        "graph_vs_eager": {
+          "bf16": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.3339481353759766,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          },
+          "int8": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.333688735961914,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          }
+        },
+        "reference_order": "float32(x) @ float32(q).T, then multiply float32(BF16 scale)",
+        "bf16_ms_per_call": [
+          0.038942079544067386,
+          0.03703808069229126,
+          0.036976640224456785
+        ],
+        "int8_ms_per_call": [
+          0.08178688049316406,
+          0.0766156816482544,
+          0.07771135807037353
+        ],
+        "bf16_median_ms": 0.03703808069229126,
+        "int8_median_ms": 0.07771135807037353,
+        "timing_round_order": [
+          [
+            "eager/bf16",
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8"
+          ],
+          [
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16"
+          ],
+          [
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16",
+            "eager/int8"
+          ]
+        ]
+      },
+      "timing_complete": true,
+      "paired_bf16_over_int8": {
+        "values": [
+          0.476140908043586,
+          0.48342688984135834,
+          0.47582028087801054
+        ],
+        "median": 0.476140908043586,
+        "min": 0.47582028087801054,
+        "max": 0.48342688984135834
+      }
+    },
+    {
+      "source": "D:\\学习\\specdec-dspark-quant\\experiments\\20261105-dspark-quant\\evidence\\final-01\\results\\micro-01.jsonl",
+      "line": 14,
+      "record": {
+        "type": "micro",
+        "guard_id": "f87d2cb0-ac24-4cd5-974b-a7ceab54352b",
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "cuda_visible_devices": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "deadline_unix": 1793876530.3780227,
+        "engine_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+        "engine_dirty": false,
+        "device_name": "NVIDIA GeForce RTX 3090",
+        "torch_version": "2.10.0+cu128",
+        "torch_cuda_version": "12.8",
+        "draft_path": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b",
+        "seed": 20261105,
+        "input_distribution": "synthetic torch.randn BF16 on CPU",
+        "warmup_calls_per_operator": 10,
+        "timing_rounds": 3,
+        "replays_per_round": 100,
+        "relative_rms_limit": 0.01,
+        "graph_rtol": 0.016,
+        "graph_atol": 1e-05,
+        "draft_config_sha256": "494e5665481ff8216c4e857a531c401f72b7fb795434a8201f45252c0ad7568a",
+        "weight_name": "layers.0.self_attn.q_proj.weight",
+        "weight_file": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b/model.safetensors",
+        "shape_nk": [
+          4096,
+          2560
+        ],
+        "checkpoint_dtype": "torch.bfloat16",
+        "checkpoint_tensor_sha256": "085d67bcc6342ff6d648e7b62c2324a77f85ac1b04fe2674168d15ae8d25c4ce",
+        "bf16_weight_sha256": "085d67bcc6342ff6d648e7b62c2324a77f85ac1b04fe2674168d15ae8d25c4ce",
+        "int8_weight_sha256": "b3c58061c56dd4ebe7eb4fb9cb8cc09e46fe691c8f4194ab2429b0ba213139b9",
+        "bf16_scale_sha256": "85dc95e1ffc7f3c59373eafc5d3e4fe47002b665e143d8d80784a34fde7feffc",
+        "bf16_weight_bytes": 20971520,
+        "int8_weight_bytes": 10485760,
+        "scale_bytes": 8192,
+        "scale_dtype": "torch.bfloat16",
+        "batch": 1,
+        "rows": 7,
+        "mode": "graph",
+        "input_sha256": "bec148aa266bd945e54f01b6cbff830d9103a4da9e63a2f79df48e3496c5d586",
+        "split_k_from_kernel_policy": 4,
+        "correctness_pass": true,
+        "quant_reference": {
+          "finite": true,
+          "relative_rms": 0.0016594690987387429,
+          "max_abs": 0.0299072265625,
+          "max_abs_over_reference_rms": 0.012815053765198465,
+          "reference_rms": 2.3337574005126953
+        },
+        "original_bf16_diagnostic": {
+          "finite": true,
+          "relative_rms": 0.009560118161811156,
+          "max_abs": 0.125,
+          "max_abs_over_reference_rms": 0.05355731693663523,
+          "reference_rms": 2.3339481353759766
+        },
+        "graph_vs_eager": {
+          "bf16": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.3339481353759766,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          },
+          "int8": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.333688735961914,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          }
+        },
+        "reference_order": "float32(x) @ float32(q).T, then multiply float32(BF16 scale)",
+        "bf16_ms_per_call": [
+          0.036085760593414305,
+          0.03614720106124878,
+          0.03611648082733154
+        ],
+        "int8_ms_per_call": [
+          0.020695040225982664,
+          0.020684800148010253,
+          0.020684800148010253
+        ],
+        "bf16_median_ms": 0.03611648082733154,
+        "int8_median_ms": 0.020684800148010253,
+        "timing_round_order": [
+          [
+            "eager/bf16",
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8"
+          ],
+          [
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16"
+          ],
+          [
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16",
+            "eager/int8"
+          ]
+        ]
+      },
+      "timing_complete": true,
+      "paired_bf16_over_int8": {
+        "values": [
+          1.7436912515931504,
+          1.7475247912765506,
+          1.7460396314636726
+        ],
+        "median": 1.7460396314636726,
+        "min": 1.7436912515931504,
+        "max": 1.7475247912765506
+      }
+    },
+    {
+      "source": "D:\\学习\\specdec-dspark-quant\\experiments\\20261105-dspark-quant\\evidence\\final-01\\results\\micro-01.jsonl",
+      "line": 15,
+      "record": {
+        "type": "micro",
+        "guard_id": "f87d2cb0-ac24-4cd5-974b-a7ceab54352b",
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "cuda_visible_devices": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "deadline_unix": 1793876530.3780227,
+        "engine_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+        "engine_dirty": false,
+        "device_name": "NVIDIA GeForce RTX 3090",
+        "torch_version": "2.10.0+cu128",
+        "torch_cuda_version": "12.8",
+        "draft_path": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b",
+        "seed": 20261105,
+        "input_distribution": "synthetic torch.randn BF16 on CPU",
+        "warmup_calls_per_operator": 10,
+        "timing_rounds": 3,
+        "replays_per_round": 100,
+        "relative_rms_limit": 0.01,
+        "graph_rtol": 0.016,
+        "graph_atol": 1e-05,
+        "draft_config_sha256": "494e5665481ff8216c4e857a531c401f72b7fb795434a8201f45252c0ad7568a",
+        "weight_name": "layers.0.self_attn.q_proj.weight",
+        "weight_file": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b/model.safetensors",
+        "shape_nk": [
+          4096,
+          2560
+        ],
+        "checkpoint_dtype": "torch.bfloat16",
+        "checkpoint_tensor_sha256": "085d67bcc6342ff6d648e7b62c2324a77f85ac1b04fe2674168d15ae8d25c4ce",
+        "bf16_weight_sha256": "085d67bcc6342ff6d648e7b62c2324a77f85ac1b04fe2674168d15ae8d25c4ce",
+        "int8_weight_sha256": "b3c58061c56dd4ebe7eb4fb9cb8cc09e46fe691c8f4194ab2429b0ba213139b9",
+        "bf16_scale_sha256": "85dc95e1ffc7f3c59373eafc5d3e4fe47002b665e143d8d80784a34fde7feffc",
+        "bf16_weight_bytes": 20971520,
+        "int8_weight_bytes": 10485760,
+        "scale_bytes": 8192,
+        "scale_dtype": "torch.bfloat16",
+        "batch": 8,
+        "rows": 56,
+        "mode": "eager",
+        "input_sha256": "803ca53b782e619dc655ae6a071da56166d4511dcd383acb4ce85906a3dcbd3e",
+        "split_k_from_kernel_policy": 4,
+        "correctness_pass": true,
+        "quant_reference": {
+          "finite": true,
+          "relative_rms": 0.0016636599421824129,
+          "max_abs": 0.031154632568359375,
+          "max_abs_over_reference_rms": 0.0131754627776439,
+          "reference_rms": 2.3645949363708496
+        },
+        "original_bf16_diagnostic": {
+          "finite": true,
+          "relative_rms": 0.009560550121098844,
+          "max_abs": 0.125,
+          "max_abs_over_reference_rms": 0.0528582361681005,
+          "reference_rms": 2.3648159503936768
+        },
+        "graph_vs_eager": {
+          "bf16": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.3648159503936768,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          },
+          "int8": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.3645927906036377,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          }
+        },
+        "reference_order": "float32(x) @ float32(q).T, then multiply float32(BF16 scale)",
+        "bf16_ms_per_call": [
+          0.06349408149719238,
+          0.06471680164337158,
+          0.06339583873748779
+        ],
+        "int8_ms_per_call": [
+          0.07953407764434814,
+          0.07895040035247802,
+          0.07792640209197998
+        ],
+        "bf16_median_ms": 0.06349408149719238,
+        "int8_median_ms": 0.07895040035247802,
+        "timing_round_order": [
+          [
+            "eager/bf16",
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8"
+          ],
+          [
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16"
+          ],
+          [
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16",
+            "eager/int8"
+          ]
+        ]
+      },
+      "timing_complete": true,
+      "paired_bf16_over_int8": {
+        "values": [
+          0.7983254898751492,
+          0.8197146734461153,
+          0.8135347845606791
+        ],
+        "median": 0.8135347845606791,
+        "min": 0.7983254898751492,
+        "max": 0.8197146734461153
+      }
+    },
+    {
+      "source": "D:\\学习\\specdec-dspark-quant\\experiments\\20261105-dspark-quant\\evidence\\final-01\\results\\micro-01.jsonl",
+      "line": 16,
+      "record": {
+        "type": "micro",
+        "guard_id": "f87d2cb0-ac24-4cd5-974b-a7ceab54352b",
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "cuda_visible_devices": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "deadline_unix": 1793876530.3780227,
+        "engine_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+        "engine_dirty": false,
+        "device_name": "NVIDIA GeForce RTX 3090",
+        "torch_version": "2.10.0+cu128",
+        "torch_cuda_version": "12.8",
+        "draft_path": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b",
+        "seed": 20261105,
+        "input_distribution": "synthetic torch.randn BF16 on CPU",
+        "warmup_calls_per_operator": 10,
+        "timing_rounds": 3,
+        "replays_per_round": 100,
+        "relative_rms_limit": 0.01,
+        "graph_rtol": 0.016,
+        "graph_atol": 1e-05,
+        "draft_config_sha256": "494e5665481ff8216c4e857a531c401f72b7fb795434a8201f45252c0ad7568a",
+        "weight_name": "layers.0.self_attn.q_proj.weight",
+        "weight_file": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b/model.safetensors",
+        "shape_nk": [
+          4096,
+          2560
+        ],
+        "checkpoint_dtype": "torch.bfloat16",
+        "checkpoint_tensor_sha256": "085d67bcc6342ff6d648e7b62c2324a77f85ac1b04fe2674168d15ae8d25c4ce",
+        "bf16_weight_sha256": "085d67bcc6342ff6d648e7b62c2324a77f85ac1b04fe2674168d15ae8d25c4ce",
+        "int8_weight_sha256": "b3c58061c56dd4ebe7eb4fb9cb8cc09e46fe691c8f4194ab2429b0ba213139b9",
+        "bf16_scale_sha256": "85dc95e1ffc7f3c59373eafc5d3e4fe47002b665e143d8d80784a34fde7feffc",
+        "bf16_weight_bytes": 20971520,
+        "int8_weight_bytes": 10485760,
+        "scale_bytes": 8192,
+        "scale_dtype": "torch.bfloat16",
+        "batch": 8,
+        "rows": 56,
+        "mode": "graph",
+        "input_sha256": "803ca53b782e619dc655ae6a071da56166d4511dcd383acb4ce85906a3dcbd3e",
+        "split_k_from_kernel_policy": 4,
+        "correctness_pass": true,
+        "quant_reference": {
+          "finite": true,
+          "relative_rms": 0.0016636599421824129,
+          "max_abs": 0.031154632568359375,
+          "max_abs_over_reference_rms": 0.0131754627776439,
+          "reference_rms": 2.3645949363708496
+        },
+        "original_bf16_diagnostic": {
+          "finite": true,
+          "relative_rms": 0.009560550121098844,
+          "max_abs": 0.125,
+          "max_abs_over_reference_rms": 0.0528582361681005,
+          "reference_rms": 2.3648159503936768
+        },
+        "graph_vs_eager": {
+          "bf16": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.3648159503936768,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          },
+          "int8": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.3645927906036377,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          }
+        },
+        "reference_order": "float32(x) @ float32(q).T, then multiply float32(BF16 scale)",
+        "bf16_ms_per_call": [
+          0.06184959888458252,
+          0.06180863857269287,
+          0.06178815841674805
+        ],
+        "int8_ms_per_call": [
+          0.04568031787872315,
+          0.04563968181610108,
+          0.04558847904205322
+        ],
+        "bf16_median_ms": 0.06180863857269287,
+        "int8_median_ms": 0.04563968181610108,
+        "timing_round_order": [
+          [
+            "eager/bf16",
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8"
+          ],
+          [
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16"
+          ],
+          [
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16",
+            "eager/int8"
+          ]
+        ]
+      },
+      "timing_complete": true,
+      "paired_bf16_over_int8": {
+        "values": [
+          1.3539660351923832,
+          1.3542740902914796,
+          1.3553459057002404
+        ],
+        "median": 1.3542740902914796,
+        "min": 1.3539660351923832,
+        "max": 1.3553459057002404
+      }
+    },
+    {
+      "source": "D:\\学习\\specdec-dspark-quant\\experiments\\20261105-dspark-quant\\evidence\\final-01\\results\\micro-01.jsonl",
+      "line": 17,
+      "record": {
+        "type": "micro",
+        "guard_id": "f87d2cb0-ac24-4cd5-974b-a7ceab54352b",
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "cuda_visible_devices": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "deadline_unix": 1793876530.3780227,
+        "engine_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+        "engine_dirty": false,
+        "device_name": "NVIDIA GeForce RTX 3090",
+        "torch_version": "2.10.0+cu128",
+        "torch_cuda_version": "12.8",
+        "draft_path": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b",
+        "seed": 20261105,
+        "input_distribution": "synthetic torch.randn BF16 on CPU",
+        "warmup_calls_per_operator": 10,
+        "timing_rounds": 3,
+        "replays_per_round": 100,
+        "relative_rms_limit": 0.01,
+        "graph_rtol": 0.016,
+        "graph_atol": 1e-05,
+        "draft_config_sha256": "494e5665481ff8216c4e857a531c401f72b7fb795434a8201f45252c0ad7568a",
+        "weight_name": "layers.0.self_attn.q_proj.weight",
+        "weight_file": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b/model.safetensors",
+        "shape_nk": [
+          4096,
+          2560
+        ],
+        "checkpoint_dtype": "torch.bfloat16",
+        "checkpoint_tensor_sha256": "085d67bcc6342ff6d648e7b62c2324a77f85ac1b04fe2674168d15ae8d25c4ce",
+        "bf16_weight_sha256": "085d67bcc6342ff6d648e7b62c2324a77f85ac1b04fe2674168d15ae8d25c4ce",
+        "int8_weight_sha256": "b3c58061c56dd4ebe7eb4fb9cb8cc09e46fe691c8f4194ab2429b0ba213139b9",
+        "bf16_scale_sha256": "85dc95e1ffc7f3c59373eafc5d3e4fe47002b665e143d8d80784a34fde7feffc",
+        "bf16_weight_bytes": 20971520,
+        "int8_weight_bytes": 10485760,
+        "scale_bytes": 8192,
+        "scale_dtype": "torch.bfloat16",
+        "batch": 16,
+        "rows": 112,
+        "mode": "eager",
+        "input_sha256": "4856021f1058e8c10d5265e3c9f1f8b1f715a34c7004aaf989fc886eb5e40c34",
+        "split_k_from_kernel_policy": 1,
+        "correctness_pass": true,
+        "quant_reference": {
+          "finite": true,
+          "relative_rms": 0.001661295747413928,
+          "max_abs": 0.031243324279785156,
+          "max_abs_over_reference_rms": 0.013185709678733913,
+          "reference_rms": 2.369483709335327
+        },
+        "original_bf16_diagnostic": {
+          "finite": true,
+          "relative_rms": 0.009383024551609807,
+          "max_abs": 0.1337890625,
+          "max_abs_over_reference_rms": 0.05645612158139356,
+          "reference_rms": 2.369788408279419
+        },
+        "graph_vs_eager": {
+          "bf16": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.369788408279419,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          },
+          "int8": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.369476318359375,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          }
+        },
+        "reference_order": "float32(x) @ float32(q).T, then multiply float32(BF16 scale)",
+        "bf16_ms_per_call": [
+          0.06625184059143066,
+          0.06628352165222168,
+          0.06618112087249756
+        ],
+        "int8_ms_per_call": [
+          0.08246272087097167,
+          0.08256511688232422,
+          0.08419327735900879
+        ],
+        "bf16_median_ms": 0.06625184059143066,
+        "int8_median_ms": 0.08256511688232422,
+        "timing_round_order": [
+          [
+            "eager/bf16",
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8"
+          ],
+          [
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16"
+          ],
+          [
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16",
+            "eager/int8"
+          ]
+        ]
+      },
+      "timing_complete": true,
+      "paired_bf16_over_int8": {
+        "values": [
+          0.8034156512382612,
+          0.8028029772754048,
+          0.7860618204740321
+        ],
+        "median": 0.8028029772754048,
+        "min": 0.7860618204740321,
+        "max": 0.8034156512382612
+      }
+    },
+    {
+      "source": "D:\\学习\\specdec-dspark-quant\\experiments\\20261105-dspark-quant\\evidence\\final-01\\results\\micro-01.jsonl",
+      "line": 18,
+      "record": {
+        "type": "micro",
+        "guard_id": "f87d2cb0-ac24-4cd5-974b-a7ceab54352b",
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "cuda_visible_devices": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "deadline_unix": 1793876530.3780227,
+        "engine_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+        "engine_dirty": false,
+        "device_name": "NVIDIA GeForce RTX 3090",
+        "torch_version": "2.10.0+cu128",
+        "torch_cuda_version": "12.8",
+        "draft_path": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b",
+        "seed": 20261105,
+        "input_distribution": "synthetic torch.randn BF16 on CPU",
+        "warmup_calls_per_operator": 10,
+        "timing_rounds": 3,
+        "replays_per_round": 100,
+        "relative_rms_limit": 0.01,
+        "graph_rtol": 0.016,
+        "graph_atol": 1e-05,
+        "draft_config_sha256": "494e5665481ff8216c4e857a531c401f72b7fb795434a8201f45252c0ad7568a",
+        "weight_name": "layers.0.self_attn.q_proj.weight",
+        "weight_file": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b/model.safetensors",
+        "shape_nk": [
+          4096,
+          2560
+        ],
+        "checkpoint_dtype": "torch.bfloat16",
+        "checkpoint_tensor_sha256": "085d67bcc6342ff6d648e7b62c2324a77f85ac1b04fe2674168d15ae8d25c4ce",
+        "bf16_weight_sha256": "085d67bcc6342ff6d648e7b62c2324a77f85ac1b04fe2674168d15ae8d25c4ce",
+        "int8_weight_sha256": "b3c58061c56dd4ebe7eb4fb9cb8cc09e46fe691c8f4194ab2429b0ba213139b9",
+        "bf16_scale_sha256": "85dc95e1ffc7f3c59373eafc5d3e4fe47002b665e143d8d80784a34fde7feffc",
+        "bf16_weight_bytes": 20971520,
+        "int8_weight_bytes": 10485760,
+        "scale_bytes": 8192,
+        "scale_dtype": "torch.bfloat16",
+        "batch": 16,
+        "rows": 112,
+        "mode": "graph",
+        "input_sha256": "4856021f1058e8c10d5265e3c9f1f8b1f715a34c7004aaf989fc886eb5e40c34",
+        "split_k_from_kernel_policy": 1,
+        "correctness_pass": true,
+        "quant_reference": {
+          "finite": true,
+          "relative_rms": 0.001661295747413928,
+          "max_abs": 0.031243324279785156,
+          "max_abs_over_reference_rms": 0.013185709678733913,
+          "reference_rms": 2.369483709335327
+        },
+        "original_bf16_diagnostic": {
+          "finite": true,
+          "relative_rms": 0.009383024551609807,
+          "max_abs": 0.1337890625,
+          "max_abs_over_reference_rms": 0.05645612158139356,
+          "reference_rms": 2.369788408279419
+        },
+        "graph_vs_eager": {
+          "bf16": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.369788408279419,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          },
+          "int8": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.369476318359375,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          }
+        },
+        "reference_order": "float32(x) @ float32(q).T, then multiply float32(BF16 scale)",
+        "bf16_ms_per_call": [
+          0.06524928092956543,
+          0.06520832061767579,
+          0.0652288007736206
+        ],
+        "int8_ms_per_call": [
+          0.08181759834289551,
+          0.08245247840881348,
+          0.08201215744018554
+        ],
+        "bf16_median_ms": 0.0652288007736206,
+        "int8_median_ms": 0.08201215744018554,
+        "timing_round_order": [
+          [
+            "eager/bf16",
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8"
+          ],
+          [
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16"
+          ],
+          [
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16",
+            "eager/int8"
+          ]
+        ]
+      },
+      "timing_complete": true,
+      "paired_bf16_over_int8": {
+        "values": [
+          0.7974968986025149,
+          0.7908594365637112,
+          0.795355259629578
+        ],
+        "median": 0.795355259629578,
+        "min": 0.7908594365637112,
+        "max": 0.7974968986025149
+      }
+    },
+    {
+      "source": "D:\\学习\\specdec-dspark-quant\\experiments\\20261105-dspark-quant\\evidence\\final-01\\results\\micro-01.jsonl",
+      "line": 19,
+      "record": {
+        "type": "micro",
+        "guard_id": "f87d2cb0-ac24-4cd5-974b-a7ceab54352b",
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "cuda_visible_devices": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "deadline_unix": 1793876530.3780227,
+        "engine_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+        "engine_dirty": false,
+        "device_name": "NVIDIA GeForce RTX 3090",
+        "torch_version": "2.10.0+cu128",
+        "torch_cuda_version": "12.8",
+        "draft_path": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b",
+        "seed": 20261105,
+        "input_distribution": "synthetic torch.randn BF16 on CPU",
+        "warmup_calls_per_operator": 10,
+        "timing_rounds": 3,
+        "replays_per_round": 100,
+        "relative_rms_limit": 0.01,
+        "graph_rtol": 0.016,
+        "graph_atol": 1e-05,
+        "draft_config_sha256": "494e5665481ff8216c4e857a531c401f72b7fb795434a8201f45252c0ad7568a",
+        "weight_name": "layers.0.self_attn.k_proj.weight",
+        "weight_file": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b/model.safetensors",
+        "shape_nk": [
+          1024,
+          2560
+        ],
+        "checkpoint_dtype": "torch.bfloat16",
+        "checkpoint_tensor_sha256": "a5d57a9bd3622bf6fb18a6521b234e3a54a54aee0f257518fac92bb692f1d4ac",
+        "bf16_weight_sha256": "a5d57a9bd3622bf6fb18a6521b234e3a54a54aee0f257518fac92bb692f1d4ac",
+        "int8_weight_sha256": "98221145546f65169ae8000ead07638ce7f2224e1cd4b085fb07bb41500982d7",
+        "bf16_scale_sha256": "dfe2f4e03a63a1ba9e176f8eb824c4a02863c001e5116e73501f8f1b17315ccc",
+        "bf16_weight_bytes": 5242880,
+        "int8_weight_bytes": 2621440,
+        "scale_bytes": 2048,
+        "scale_dtype": "torch.bfloat16",
+        "batch": 1,
+        "rows": 7,
+        "mode": "eager",
+        "input_sha256": "bec148aa266bd945e54f01b6cbff830d9103a4da9e63a2f79df48e3496c5d586",
+        "split_k_from_kernel_policy": 4,
+        "correctness_pass": true,
+        "quant_reference": {
+          "finite": true,
+          "relative_rms": 0.0016596505754372791,
+          "max_abs": 0.029954910278320312,
+          "max_abs_over_reference_rms": 0.012963066712435661,
+          "reference_rms": 2.310788869857788
+        },
+        "original_bf16_diagnostic": {
+          "finite": true,
+          "relative_rms": 0.009849918641044364,
+          "max_abs": 0.09765625,
+          "max_abs_over_reference_rms": 0.04224657726399779,
+          "reference_rms": 2.311577796936035
+        },
+        "graph_vs_eager": {
+          "bf16": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.311577796936035,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          },
+          "int8": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.3107380867004395,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          }
+        },
+        "reference_order": "float32(x) @ float32(q).T, then multiply float32(BF16 scale)",
+        "bf16_ms_per_call": [
+          0.021394879817962648,
+          0.021575679779052736,
+          0.020971519947052
+        ],
+        "int8_ms_per_call": [
+          0.07822336196899414,
+          0.07541759967803956,
+          0.07663616180419922
+        ],
+        "bf16_median_ms": 0.021394879817962648,
+        "int8_median_ms": 0.07663616180419922,
+        "timing_round_order": [
+          [
+            "eager/bf16",
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8"
+          ],
+          [
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16"
+          ],
+          [
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16",
+            "eager/int8"
+          ]
+        ]
+      },
+      "timing_complete": true,
+      "paired_bf16_over_int8": {
+        "values": [
+          0.27351010336839093,
+          0.2860828224600105,
+          0.27365044716922243
+        ],
+        "median": 0.27365044716922243,
+        "min": 0.27351010336839093,
+        "max": 0.2860828224600105
+      }
+    },
+    {
+      "source": "D:\\学习\\specdec-dspark-quant\\experiments\\20261105-dspark-quant\\evidence\\final-01\\results\\micro-01.jsonl",
+      "line": 20,
+      "record": {
+        "type": "micro",
+        "guard_id": "f87d2cb0-ac24-4cd5-974b-a7ceab54352b",
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "cuda_visible_devices": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "deadline_unix": 1793876530.3780227,
+        "engine_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+        "engine_dirty": false,
+        "device_name": "NVIDIA GeForce RTX 3090",
+        "torch_version": "2.10.0+cu128",
+        "torch_cuda_version": "12.8",
+        "draft_path": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b",
+        "seed": 20261105,
+        "input_distribution": "synthetic torch.randn BF16 on CPU",
+        "warmup_calls_per_operator": 10,
+        "timing_rounds": 3,
+        "replays_per_round": 100,
+        "relative_rms_limit": 0.01,
+        "graph_rtol": 0.016,
+        "graph_atol": 1e-05,
+        "draft_config_sha256": "494e5665481ff8216c4e857a531c401f72b7fb795434a8201f45252c0ad7568a",
+        "weight_name": "layers.0.self_attn.k_proj.weight",
+        "weight_file": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b/model.safetensors",
+        "shape_nk": [
+          1024,
+          2560
+        ],
+        "checkpoint_dtype": "torch.bfloat16",
+        "checkpoint_tensor_sha256": "a5d57a9bd3622bf6fb18a6521b234e3a54a54aee0f257518fac92bb692f1d4ac",
+        "bf16_weight_sha256": "a5d57a9bd3622bf6fb18a6521b234e3a54a54aee0f257518fac92bb692f1d4ac",
+        "int8_weight_sha256": "98221145546f65169ae8000ead07638ce7f2224e1cd4b085fb07bb41500982d7",
+        "bf16_scale_sha256": "dfe2f4e03a63a1ba9e176f8eb824c4a02863c001e5116e73501f8f1b17315ccc",
+        "bf16_weight_bytes": 5242880,
+        "int8_weight_bytes": 2621440,
+        "scale_bytes": 2048,
+        "scale_dtype": "torch.bfloat16",
+        "batch": 1,
+        "rows": 7,
+        "mode": "graph",
+        "input_sha256": "bec148aa266bd945e54f01b6cbff830d9103a4da9e63a2f79df48e3496c5d586",
+        "split_k_from_kernel_policy": 4,
+        "correctness_pass": true,
+        "quant_reference": {
+          "finite": true,
+          "relative_rms": 0.0016596505754372791,
+          "max_abs": 0.029954910278320312,
+          "max_abs_over_reference_rms": 0.012963066712435661,
+          "reference_rms": 2.310788869857788
+        },
+        "original_bf16_diagnostic": {
+          "finite": true,
+          "relative_rms": 0.009849918641044364,
+          "max_abs": 0.09765625,
+          "max_abs_over_reference_rms": 0.04224657726399779,
+          "reference_rms": 2.311577796936035
+        },
+        "graph_vs_eager": {
+          "bf16": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.311577796936035,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          },
+          "int8": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.3107380867004395,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          }
+        },
+        "reference_order": "float32(x) @ float32(q).T, then multiply float32(BF16 scale)",
+        "bf16_ms_per_call": [
+          0.012533760070800782,
+          0.012533760070800782,
+          0.012503039836883546
+        ],
+        "int8_ms_per_call": [
+          0.009410560131072998,
+          0.009390079975128173,
+          0.009400320053100587
+        ],
+        "bf16_median_ms": 0.012533760070800782,
+        "int8_median_ms": 0.009400320053100587,
+        "timing_round_order": [
+          [
+            "eager/bf16",
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8"
+          ],
+          [
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16"
+          ],
+          [
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16",
+            "eager/int8"
+          ]
+        ]
+      },
+      "timing_complete": true,
+      "paired_bf16_over_int8": {
+        "values": [
+          1.331882469930265,
+          1.3347873611299776,
+          1.3300653346116191
+        ],
+        "median": 1.331882469930265,
+        "min": 1.3300653346116191,
+        "max": 1.3347873611299776
+      }
+    },
+    {
+      "source": "D:\\学习\\specdec-dspark-quant\\experiments\\20261105-dspark-quant\\evidence\\final-01\\results\\micro-01.jsonl",
+      "line": 21,
+      "record": {
+        "type": "micro",
+        "guard_id": "f87d2cb0-ac24-4cd5-974b-a7ceab54352b",
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "cuda_visible_devices": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "deadline_unix": 1793876530.3780227,
+        "engine_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+        "engine_dirty": false,
+        "device_name": "NVIDIA GeForce RTX 3090",
+        "torch_version": "2.10.0+cu128",
+        "torch_cuda_version": "12.8",
+        "draft_path": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b",
+        "seed": 20261105,
+        "input_distribution": "synthetic torch.randn BF16 on CPU",
+        "warmup_calls_per_operator": 10,
+        "timing_rounds": 3,
+        "replays_per_round": 100,
+        "relative_rms_limit": 0.01,
+        "graph_rtol": 0.016,
+        "graph_atol": 1e-05,
+        "draft_config_sha256": "494e5665481ff8216c4e857a531c401f72b7fb795434a8201f45252c0ad7568a",
+        "weight_name": "layers.0.self_attn.k_proj.weight",
+        "weight_file": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b/model.safetensors",
+        "shape_nk": [
+          1024,
+          2560
+        ],
+        "checkpoint_dtype": "torch.bfloat16",
+        "checkpoint_tensor_sha256": "a5d57a9bd3622bf6fb18a6521b234e3a54a54aee0f257518fac92bb692f1d4ac",
+        "bf16_weight_sha256": "a5d57a9bd3622bf6fb18a6521b234e3a54a54aee0f257518fac92bb692f1d4ac",
+        "int8_weight_sha256": "98221145546f65169ae8000ead07638ce7f2224e1cd4b085fb07bb41500982d7",
+        "bf16_scale_sha256": "dfe2f4e03a63a1ba9e176f8eb824c4a02863c001e5116e73501f8f1b17315ccc",
+        "bf16_weight_bytes": 5242880,
+        "int8_weight_bytes": 2621440,
+        "scale_bytes": 2048,
+        "scale_dtype": "torch.bfloat16",
+        "batch": 8,
+        "rows": 56,
+        "mode": "eager",
+        "input_sha256": "803ca53b782e619dc655ae6a071da56166d4511dcd383acb4ce85906a3dcbd3e",
+        "split_k_from_kernel_policy": 4,
+        "correctness_pass": true,
+        "quant_reference": {
+          "finite": true,
+          "relative_rms": 0.0016630950845470788,
+          "max_abs": 0.03121662139892578,
+          "max_abs_over_reference_rms": 0.013332150805675033,
+          "reference_rms": 2.341454267501831
+        },
+        "original_bf16_diagnostic": {
+          "finite": true,
+          "relative_rms": 0.009708256245224698,
+          "max_abs": 0.140625,
+          "max_abs_over_reference_rms": 0.06003917350859417,
+          "reference_rms": 2.3422207832336426
+        },
+        "graph_vs_eager": {
+          "bf16": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.3422207832336426,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          },
+          "int8": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.341447114944458,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          }
+        },
+        "reference_order": "float32(x) @ float32(q).T, then multiply float32(BF16 scale)",
+        "bf16_ms_per_call": [
+          0.020917119979858397,
+          0.0214630389213562,
+          0.020981760025024415
+        ],
+        "int8_ms_per_call": [
+          0.07973887920379638,
+          0.08011775970458984,
+          0.07836671829223633
+        ],
+        "bf16_median_ms": 0.020981760025024415,
+        "int8_median_ms": 0.07973887920379638,
+        "timing_round_order": [
+          [
+            "eager/bf16",
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8"
+          ],
+          [
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16"
+          ],
+          [
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16",
+            "eager/int8"
+          ]
+        ]
+      },
+      "timing_complete": true,
+      "paired_bf16_over_int8": {
+        "values": [
+          0.26232021554251456,
+          0.267893648056245,
+          0.26773814805899615
+        ],
+        "median": 0.26773814805899615,
+        "min": 0.26232021554251456,
+        "max": 0.267893648056245
+      }
+    },
+    {
+      "source": "D:\\学习\\specdec-dspark-quant\\experiments\\20261105-dspark-quant\\evidence\\final-01\\results\\micro-01.jsonl",
+      "line": 22,
+      "record": {
+        "type": "micro",
+        "guard_id": "f87d2cb0-ac24-4cd5-974b-a7ceab54352b",
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "cuda_visible_devices": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "deadline_unix": 1793876530.3780227,
+        "engine_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+        "engine_dirty": false,
+        "device_name": "NVIDIA GeForce RTX 3090",
+        "torch_version": "2.10.0+cu128",
+        "torch_cuda_version": "12.8",
+        "draft_path": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b",
+        "seed": 20261105,
+        "input_distribution": "synthetic torch.randn BF16 on CPU",
+        "warmup_calls_per_operator": 10,
+        "timing_rounds": 3,
+        "replays_per_round": 100,
+        "relative_rms_limit": 0.01,
+        "graph_rtol": 0.016,
+        "graph_atol": 1e-05,
+        "draft_config_sha256": "494e5665481ff8216c4e857a531c401f72b7fb795434a8201f45252c0ad7568a",
+        "weight_name": "layers.0.self_attn.k_proj.weight",
+        "weight_file": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b/model.safetensors",
+        "shape_nk": [
+          1024,
+          2560
+        ],
+        "checkpoint_dtype": "torch.bfloat16",
+        "checkpoint_tensor_sha256": "a5d57a9bd3622bf6fb18a6521b234e3a54a54aee0f257518fac92bb692f1d4ac",
+        "bf16_weight_sha256": "a5d57a9bd3622bf6fb18a6521b234e3a54a54aee0f257518fac92bb692f1d4ac",
+        "int8_weight_sha256": "98221145546f65169ae8000ead07638ce7f2224e1cd4b085fb07bb41500982d7",
+        "bf16_scale_sha256": "dfe2f4e03a63a1ba9e176f8eb824c4a02863c001e5116e73501f8f1b17315ccc",
+        "bf16_weight_bytes": 5242880,
+        "int8_weight_bytes": 2621440,
+        "scale_bytes": 2048,
+        "scale_dtype": "torch.bfloat16",
+        "batch": 8,
+        "rows": 56,
+        "mode": "graph",
+        "input_sha256": "803ca53b782e619dc655ae6a071da56166d4511dcd383acb4ce85906a3dcbd3e",
+        "split_k_from_kernel_policy": 4,
+        "correctness_pass": true,
+        "quant_reference": {
+          "finite": true,
+          "relative_rms": 0.0016630950845470788,
+          "max_abs": 0.03121662139892578,
+          "max_abs_over_reference_rms": 0.013332150805675033,
+          "reference_rms": 2.341454267501831
+        },
+        "original_bf16_diagnostic": {
+          "finite": true,
+          "relative_rms": 0.009708256245224698,
+          "max_abs": 0.140625,
+          "max_abs_over_reference_rms": 0.06003917350859417,
+          "reference_rms": 2.3422207832336426
+        },
+        "graph_vs_eager": {
+          "bf16": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.3422207832336426,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          },
+          "int8": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.341447114944458,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          }
+        },
+        "reference_order": "float32(x) @ float32(q).T, then multiply float32(BF16 scale)",
+        "bf16_ms_per_call": [
+          0.01491968035697937,
+          0.01491968035697937,
+          0.016599040031433105
+        ],
+        "int8_ms_per_call": [
+          0.01738752007484436,
+          0.01738752007484436,
+          0.017367039918899537
+        ],
+        "bf16_median_ms": 0.01491968035697937,
+        "int8_median_ms": 0.01738752007484436,
+        "timing_round_order": [
+          [
+            "eager/bf16",
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8"
+          ],
+          [
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16"
+          ],
+          [
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16",
+            "eager/int8"
+          ]
+        ]
+      },
+      "timing_complete": true,
+      "paired_bf16_over_int8": {
+        "values": [
+          0.8580683325027259,
+          0.8580683325027259,
+          0.955778308160007
+        ],
+        "median": 0.8580683325027259,
+        "min": 0.8580683325027259,
+        "max": 0.955778308160007
+      }
+    },
+    {
+      "source": "D:\\学习\\specdec-dspark-quant\\experiments\\20261105-dspark-quant\\evidence\\final-01\\results\\micro-01.jsonl",
+      "line": 23,
+      "record": {
+        "type": "micro",
+        "guard_id": "f87d2cb0-ac24-4cd5-974b-a7ceab54352b",
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "cuda_visible_devices": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "deadline_unix": 1793876530.3780227,
+        "engine_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+        "engine_dirty": false,
+        "device_name": "NVIDIA GeForce RTX 3090",
+        "torch_version": "2.10.0+cu128",
+        "torch_cuda_version": "12.8",
+        "draft_path": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b",
+        "seed": 20261105,
+        "input_distribution": "synthetic torch.randn BF16 on CPU",
+        "warmup_calls_per_operator": 10,
+        "timing_rounds": 3,
+        "replays_per_round": 100,
+        "relative_rms_limit": 0.01,
+        "graph_rtol": 0.016,
+        "graph_atol": 1e-05,
+        "draft_config_sha256": "494e5665481ff8216c4e857a531c401f72b7fb795434a8201f45252c0ad7568a",
+        "weight_name": "layers.0.self_attn.k_proj.weight",
+        "weight_file": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b/model.safetensors",
+        "shape_nk": [
+          1024,
+          2560
+        ],
+        "checkpoint_dtype": "torch.bfloat16",
+        "checkpoint_tensor_sha256": "a5d57a9bd3622bf6fb18a6521b234e3a54a54aee0f257518fac92bb692f1d4ac",
+        "bf16_weight_sha256": "a5d57a9bd3622bf6fb18a6521b234e3a54a54aee0f257518fac92bb692f1d4ac",
+        "int8_weight_sha256": "98221145546f65169ae8000ead07638ce7f2224e1cd4b085fb07bb41500982d7",
+        "bf16_scale_sha256": "dfe2f4e03a63a1ba9e176f8eb824c4a02863c001e5116e73501f8f1b17315ccc",
+        "bf16_weight_bytes": 5242880,
+        "int8_weight_bytes": 2621440,
+        "scale_bytes": 2048,
+        "scale_dtype": "torch.bfloat16",
+        "batch": 16,
+        "rows": 112,
+        "mode": "eager",
+        "input_sha256": "4856021f1058e8c10d5265e3c9f1f8b1f715a34c7004aaf989fc886eb5e40c34",
+        "split_k_from_kernel_policy": 1,
+        "correctness_pass": true,
+        "quant_reference": {
+          "finite": true,
+          "relative_rms": 0.001662238985191475,
+          "max_abs": 0.030768394470214844,
+          "max_abs_over_reference_rms": 0.013249373680344846,
+          "reference_rms": 2.3222527503967285
+        },
+        "original_bf16_diagnostic": {
+          "finite": true,
+          "relative_rms": 0.009816740010573038,
+          "max_abs": 0.140625,
+          "max_abs_over_reference_rms": 0.06053418163949205,
+          "reference_rms": 2.3230676651000977
+        },
+        "graph_vs_eager": {
+          "bf16": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.3230676651000977,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          },
+          "int8": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.322230100631714,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          }
+        },
+        "reference_order": "float32(x) @ float32(q).T, then multiply float32(BF16 scale)",
+        "bf16_ms_per_call": [
+          0.027121920585632325,
+          0.027095038890838623,
+          0.026961920261383058
+        ],
+        "int8_ms_per_call": [
+          0.0522649621963501,
+          0.05145599842071533,
+          0.0516096019744873
+        ],
+        "bf16_median_ms": 0.027095038890838623,
+        "int8_median_ms": 0.0516096019744873,
+        "timing_round_order": [
+          [
+            "eager/bf16",
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8"
+          ],
+          [
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16"
+          ],
+          [
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16",
+            "eager/int8"
+          ]
+        ]
+      },
+      "timing_complete": true,
+      "paired_bf16_over_int8": {
+        "values": [
+          0.5189312198053474,
+          0.5265671587849438,
+          0.5224206199984146
+        ],
+        "median": 0.5224206199984146,
+        "min": 0.5189312198053474,
+        "max": 0.5265671587849438
+      }
+    },
+    {
+      "source": "D:\\学习\\specdec-dspark-quant\\experiments\\20261105-dspark-quant\\evidence\\final-01\\results\\micro-01.jsonl",
+      "line": 24,
+      "record": {
+        "type": "micro",
+        "guard_id": "f87d2cb0-ac24-4cd5-974b-a7ceab54352b",
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "cuda_visible_devices": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "deadline_unix": 1793876530.3780227,
+        "engine_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+        "engine_dirty": false,
+        "device_name": "NVIDIA GeForce RTX 3090",
+        "torch_version": "2.10.0+cu128",
+        "torch_cuda_version": "12.8",
+        "draft_path": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b",
+        "seed": 20261105,
+        "input_distribution": "synthetic torch.randn BF16 on CPU",
+        "warmup_calls_per_operator": 10,
+        "timing_rounds": 3,
+        "replays_per_round": 100,
+        "relative_rms_limit": 0.01,
+        "graph_rtol": 0.016,
+        "graph_atol": 1e-05,
+        "draft_config_sha256": "494e5665481ff8216c4e857a531c401f72b7fb795434a8201f45252c0ad7568a",
+        "weight_name": "layers.0.self_attn.k_proj.weight",
+        "weight_file": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b/model.safetensors",
+        "shape_nk": [
+          1024,
+          2560
+        ],
+        "checkpoint_dtype": "torch.bfloat16",
+        "checkpoint_tensor_sha256": "a5d57a9bd3622bf6fb18a6521b234e3a54a54aee0f257518fac92bb692f1d4ac",
+        "bf16_weight_sha256": "a5d57a9bd3622bf6fb18a6521b234e3a54a54aee0f257518fac92bb692f1d4ac",
+        "int8_weight_sha256": "98221145546f65169ae8000ead07638ce7f2224e1cd4b085fb07bb41500982d7",
+        "bf16_scale_sha256": "dfe2f4e03a63a1ba9e176f8eb824c4a02863c001e5116e73501f8f1b17315ccc",
+        "bf16_weight_bytes": 5242880,
+        "int8_weight_bytes": 2621440,
+        "scale_bytes": 2048,
+        "scale_dtype": "torch.bfloat16",
+        "batch": 16,
+        "rows": 112,
+        "mode": "graph",
+        "input_sha256": "4856021f1058e8c10d5265e3c9f1f8b1f715a34c7004aaf989fc886eb5e40c34",
+        "split_k_from_kernel_policy": 1,
+        "correctness_pass": true,
+        "quant_reference": {
+          "finite": true,
+          "relative_rms": 0.001662238985191475,
+          "max_abs": 0.030768394470214844,
+          "max_abs_over_reference_rms": 0.013249373680344846,
+          "reference_rms": 2.3222527503967285
+        },
+        "original_bf16_diagnostic": {
+          "finite": true,
+          "relative_rms": 0.009816740010573038,
+          "max_abs": 0.140625,
+          "max_abs_over_reference_rms": 0.06053418163949205,
+          "reference_rms": 2.3230676651000977
+        },
+        "graph_vs_eager": {
+          "bf16": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.3230676651000977,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          },
+          "int8": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.322230100631714,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          }
+        },
+        "reference_order": "float32(x) @ float32(q).T, then multiply float32(BF16 scale)",
+        "bf16_ms_per_call": [
+          0.025784320831298828,
+          0.025774080753326416,
+          0.025763840675354005
+        ],
+        "int8_ms_per_call": [
+          0.026634879112243652,
+          0.026613759994506835,
+          0.026624000072479247
+        ],
+        "bf16_median_ms": 0.025774080753326416,
+        "int8_median_ms": 0.026624000072479247,
+        "timing_round_order": [
+          [
+            "eager/bf16",
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8"
+          ],
+          [
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16"
+          ],
+          [
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16",
+            "eager/int8"
+          ]
+        ]
+      },
+      "timing_complete": true,
+      "paired_bf16_over_int8": {
+        "values": [
+          0.9680659980711595,
+          0.9684494321225663,
+          0.9676923304242936
+        ],
+        "median": 0.9680659980711595,
+        "min": 0.9676923304242936,
+        "max": 0.9684494321225663
+      }
+    },
+    {
+      "source": "D:\\学习\\specdec-dspark-quant\\experiments\\20261105-dspark-quant\\evidence\\final-01\\results\\micro-01.jsonl",
+      "line": 25,
+      "record": {
+        "type": "micro",
+        "guard_id": "f87d2cb0-ac24-4cd5-974b-a7ceab54352b",
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "cuda_visible_devices": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "deadline_unix": 1793876530.3780227,
+        "engine_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+        "engine_dirty": false,
+        "device_name": "NVIDIA GeForce RTX 3090",
+        "torch_version": "2.10.0+cu128",
+        "torch_cuda_version": "12.8",
+        "draft_path": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b",
+        "seed": 20261105,
+        "input_distribution": "synthetic torch.randn BF16 on CPU",
+        "warmup_calls_per_operator": 10,
+        "timing_rounds": 3,
+        "replays_per_round": 100,
+        "relative_rms_limit": 0.01,
+        "graph_rtol": 0.016,
+        "graph_atol": 1e-05,
+        "draft_config_sha256": "494e5665481ff8216c4e857a531c401f72b7fb795434a8201f45252c0ad7568a",
+        "weight_name": "layers.0.self_attn.o_proj.weight",
+        "weight_file": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b/model.safetensors",
+        "shape_nk": [
+          2560,
+          4096
+        ],
+        "checkpoint_dtype": "torch.bfloat16",
+        "checkpoint_tensor_sha256": "c1d8e9fddae62bd951cd0308e559de24e77f0bc2f909573c2ab6c9c833e6a522",
+        "bf16_weight_sha256": "c1d8e9fddae62bd951cd0308e559de24e77f0bc2f909573c2ab6c9c833e6a522",
+        "int8_weight_sha256": "b3b8e8a4d41759ae9597b6f55ab38d528dba51529219ae6ae3dca31b3b47dfc6",
+        "bf16_scale_sha256": "e61d02abe9beae28a3166d6b471ec03369bc72e620e6f5973834e69d5c09a38a",
+        "bf16_weight_bytes": 20971520,
+        "int8_weight_bytes": 10485760,
+        "scale_bytes": 5120,
+        "scale_dtype": "torch.bfloat16",
+        "batch": 1,
+        "rows": 7,
+        "mode": "eager",
+        "input_sha256": "4f0f8ecf7e1917201440a1ac1d0df1db089a304dc06fe26fdaf0c8364f2c3a41",
+        "split_k_from_kernel_policy": 4,
+        "correctness_pass": true,
+        "quant_reference": {
+          "finite": true,
+          "relative_rms": 0.0016627768987341773,
+          "max_abs": 0.10195159912109375,
+          "max_abs_over_reference_rms": 0.041919541215827076,
+          "reference_rms": 2.4320781230926514
+        },
+        "original_bf16_diagnostic": {
+          "finite": true,
+          "relative_rms": 0.009538442126209336,
+          "max_abs": 0.1875,
+          "max_abs_over_reference_rms": 0.07701522144304827,
+          "reference_rms": 2.4345836639404297
+        },
+        "graph_vs_eager": {
+          "bf16": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.4345836639404297,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          },
+          "int8": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.4320178031921387,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          }
+        },
+        "reference_order": "float32(x) @ float32(q).T, then multiply float32(BF16 scale)",
+        "bf16_ms_per_call": [
+          0.05410016059875488,
+          0.05477375984191894,
+          0.05393407821655274
+        ],
+        "int8_ms_per_call": [
+          0.08085503578186035,
+          0.0770969581604004,
+          0.07692287921905518
+        ],
+        "bf16_median_ms": 0.05410016059875488,
+        "int8_median_ms": 0.0770969581604004,
+        "timing_round_order": [
+          [
+            "eager/bf16",
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8"
+          ],
+          [
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16"
+          ],
+          [
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16",
+            "eager/int8"
+          ]
+        ]
+      },
+      "timing_complete": true,
+      "paired_bf16_over_int8": {
+        "values": [
+          0.6691006945406873,
+          0.7104529302954082,
+          0.7011448188641423
+        ],
+        "median": 0.7011448188641423,
+        "min": 0.6691006945406873,
+        "max": 0.7104529302954082
+      }
+    },
+    {
+      "source": "D:\\学习\\specdec-dspark-quant\\experiments\\20261105-dspark-quant\\evidence\\final-01\\results\\micro-01.jsonl",
+      "line": 26,
+      "record": {
+        "type": "micro",
+        "guard_id": "f87d2cb0-ac24-4cd5-974b-a7ceab54352b",
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "cuda_visible_devices": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "deadline_unix": 1793876530.3780227,
+        "engine_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+        "engine_dirty": false,
+        "device_name": "NVIDIA GeForce RTX 3090",
+        "torch_version": "2.10.0+cu128",
+        "torch_cuda_version": "12.8",
+        "draft_path": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b",
+        "seed": 20261105,
+        "input_distribution": "synthetic torch.randn BF16 on CPU",
+        "warmup_calls_per_operator": 10,
+        "timing_rounds": 3,
+        "replays_per_round": 100,
+        "relative_rms_limit": 0.01,
+        "graph_rtol": 0.016,
+        "graph_atol": 1e-05,
+        "draft_config_sha256": "494e5665481ff8216c4e857a531c401f72b7fb795434a8201f45252c0ad7568a",
+        "weight_name": "layers.0.self_attn.o_proj.weight",
+        "weight_file": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b/model.safetensors",
+        "shape_nk": [
+          2560,
+          4096
+        ],
+        "checkpoint_dtype": "torch.bfloat16",
+        "checkpoint_tensor_sha256": "c1d8e9fddae62bd951cd0308e559de24e77f0bc2f909573c2ab6c9c833e6a522",
+        "bf16_weight_sha256": "c1d8e9fddae62bd951cd0308e559de24e77f0bc2f909573c2ab6c9c833e6a522",
+        "int8_weight_sha256": "b3b8e8a4d41759ae9597b6f55ab38d528dba51529219ae6ae3dca31b3b47dfc6",
+        "bf16_scale_sha256": "e61d02abe9beae28a3166d6b471ec03369bc72e620e6f5973834e69d5c09a38a",
+        "bf16_weight_bytes": 20971520,
+        "int8_weight_bytes": 10485760,
+        "scale_bytes": 5120,
+        "scale_dtype": "torch.bfloat16",
+        "batch": 1,
+        "rows": 7,
+        "mode": "graph",
+        "input_sha256": "4f0f8ecf7e1917201440a1ac1d0df1db089a304dc06fe26fdaf0c8364f2c3a41",
+        "split_k_from_kernel_policy": 4,
+        "correctness_pass": true,
+        "quant_reference": {
+          "finite": true,
+          "relative_rms": 0.0016627768987341773,
+          "max_abs": 0.10195159912109375,
+          "max_abs_over_reference_rms": 0.041919541215827076,
+          "reference_rms": 2.4320781230926514
+        },
+        "original_bf16_diagnostic": {
+          "finite": true,
+          "relative_rms": 0.009538442126209336,
+          "max_abs": 0.1875,
+          "max_abs_over_reference_rms": 0.07701522144304827,
+          "reference_rms": 2.4345836639404297
+        },
+        "graph_vs_eager": {
+          "bf16": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.4345836639404297,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          },
+          "int8": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.4320178031921387,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          }
+        },
+        "reference_order": "float32(x) @ float32(q).T, then multiply float32(BF16 scale)",
+        "bf16_ms_per_call": [
+          0.05302271842956543,
+          0.053002238273620605,
+          0.05298175811767578
+        ],
+        "int8_ms_per_call": [
+          0.020848639011383056,
+          0.020848639011383056,
+          0.020858559608459473
+        ],
+        "bf16_median_ms": 0.053002238273620605,
+        "int8_median_ms": 0.020848639011383056,
+        "timing_round_order": [
+          [
+            "eager/bf16",
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8"
+          ],
+          [
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16"
+          ],
+          [
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16",
+            "eager/int8"
+          ]
+        ]
+      },
+      "timing_complete": true,
+      "paired_bf16_over_int8": {
+        "values": [
+          2.543222049200228,
+          2.5422397234026715,
+          2.5400487431638523
+        ],
+        "median": 2.5422397234026715,
+        "min": 2.5400487431638523,
+        "max": 2.543222049200228
+      }
+    },
+    {
+      "source": "D:\\学习\\specdec-dspark-quant\\experiments\\20261105-dspark-quant\\evidence\\final-01\\results\\micro-01.jsonl",
+      "line": 27,
+      "record": {
+        "type": "micro",
+        "guard_id": "f87d2cb0-ac24-4cd5-974b-a7ceab54352b",
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "cuda_visible_devices": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "deadline_unix": 1793876530.3780227,
+        "engine_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+        "engine_dirty": false,
+        "device_name": "NVIDIA GeForce RTX 3090",
+        "torch_version": "2.10.0+cu128",
+        "torch_cuda_version": "12.8",
+        "draft_path": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b",
+        "seed": 20261105,
+        "input_distribution": "synthetic torch.randn BF16 on CPU",
+        "warmup_calls_per_operator": 10,
+        "timing_rounds": 3,
+        "replays_per_round": 100,
+        "relative_rms_limit": 0.01,
+        "graph_rtol": 0.016,
+        "graph_atol": 1e-05,
+        "draft_config_sha256": "494e5665481ff8216c4e857a531c401f72b7fb795434a8201f45252c0ad7568a",
+        "weight_name": "layers.0.self_attn.o_proj.weight",
+        "weight_file": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b/model.safetensors",
+        "shape_nk": [
+          2560,
+          4096
+        ],
+        "checkpoint_dtype": "torch.bfloat16",
+        "checkpoint_tensor_sha256": "c1d8e9fddae62bd951cd0308e559de24e77f0bc2f909573c2ab6c9c833e6a522",
+        "bf16_weight_sha256": "c1d8e9fddae62bd951cd0308e559de24e77f0bc2f909573c2ab6c9c833e6a522",
+        "int8_weight_sha256": "b3b8e8a4d41759ae9597b6f55ab38d528dba51529219ae6ae3dca31b3b47dfc6",
+        "bf16_scale_sha256": "e61d02abe9beae28a3166d6b471ec03369bc72e620e6f5973834e69d5c09a38a",
+        "bf16_weight_bytes": 20971520,
+        "int8_weight_bytes": 10485760,
+        "scale_bytes": 5120,
+        "scale_dtype": "torch.bfloat16",
+        "batch": 8,
+        "rows": 56,
+        "mode": "eager",
+        "input_sha256": "d01136c0859be7cdd249bae1054978d1f801aad421b5986ee66206c000447fc7",
+        "split_k_from_kernel_policy": 4,
+        "correctness_pass": true,
+        "quant_reference": {
+          "finite": true,
+          "relative_rms": 0.0016566664433047332,
+          "max_abs": 0.11224365234375,
+          "max_abs_over_reference_rms": 0.04617978751475047,
+          "reference_rms": 2.430579662322998
+        },
+        "original_bf16_diagnostic": {
+          "finite": true,
+          "relative_rms": 0.009452584118117006,
+          "max_abs": 0.3125,
+          "max_abs_over_reference_rms": 0.12842110584884694,
+          "reference_rms": 2.4334006309509277
+        },
+        "graph_vs_eager": {
+          "bf16": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.4334006309509277,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          },
+          "int8": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.4305522441864014,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          }
+        },
+        "reference_order": "float32(x) @ float32(q).T, then multiply float32(BF16 scale)",
+        "bf16_ms_per_call": [
+          0.05461056232452392,
+          0.05460991859436035,
+          0.05597184181213379
+        ],
+        "int8_ms_per_call": [
+          0.07958528041839599,
+          0.07748608112335205,
+          0.07754752159118652
+        ],
+        "bf16_median_ms": 0.05461056232452392,
+        "int8_median_ms": 0.07754752159118652,
+        "timing_round_order": [
+          [
+            "eager/bf16",
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8"
+          ],
+          [
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16"
+          ],
+          [
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16",
+            "eager/int8"
+          ]
+        ]
+      },
+      "timing_complete": true,
+      "paired_bf16_over_int8": {
+        "values": [
+          0.6861892304384064,
+          0.7047706865885428,
+          0.7217747345583142
+        ],
+        "median": 0.7047706865885428,
+        "min": 0.6861892304384064,
+        "max": 0.7217747345583142
+      }
+    },
+    {
+      "source": "D:\\学习\\specdec-dspark-quant\\experiments\\20261105-dspark-quant\\evidence\\final-01\\results\\micro-01.jsonl",
+      "line": 28,
+      "record": {
+        "type": "micro",
+        "guard_id": "f87d2cb0-ac24-4cd5-974b-a7ceab54352b",
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "cuda_visible_devices": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "deadline_unix": 1793876530.3780227,
+        "engine_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+        "engine_dirty": false,
+        "device_name": "NVIDIA GeForce RTX 3090",
+        "torch_version": "2.10.0+cu128",
+        "torch_cuda_version": "12.8",
+        "draft_path": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b",
+        "seed": 20261105,
+        "input_distribution": "synthetic torch.randn BF16 on CPU",
+        "warmup_calls_per_operator": 10,
+        "timing_rounds": 3,
+        "replays_per_round": 100,
+        "relative_rms_limit": 0.01,
+        "graph_rtol": 0.016,
+        "graph_atol": 1e-05,
+        "draft_config_sha256": "494e5665481ff8216c4e857a531c401f72b7fb795434a8201f45252c0ad7568a",
+        "weight_name": "layers.0.self_attn.o_proj.weight",
+        "weight_file": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b/model.safetensors",
+        "shape_nk": [
+          2560,
+          4096
+        ],
+        "checkpoint_dtype": "torch.bfloat16",
+        "checkpoint_tensor_sha256": "c1d8e9fddae62bd951cd0308e559de24e77f0bc2f909573c2ab6c9c833e6a522",
+        "bf16_weight_sha256": "c1d8e9fddae62bd951cd0308e559de24e77f0bc2f909573c2ab6c9c833e6a522",
+        "int8_weight_sha256": "b3b8e8a4d41759ae9597b6f55ab38d528dba51529219ae6ae3dca31b3b47dfc6",
+        "bf16_scale_sha256": "e61d02abe9beae28a3166d6b471ec03369bc72e620e6f5973834e69d5c09a38a",
+        "bf16_weight_bytes": 20971520,
+        "int8_weight_bytes": 10485760,
+        "scale_bytes": 5120,
+        "scale_dtype": "torch.bfloat16",
+        "batch": 8,
+        "rows": 56,
+        "mode": "graph",
+        "input_sha256": "d01136c0859be7cdd249bae1054978d1f801aad421b5986ee66206c000447fc7",
+        "split_k_from_kernel_policy": 4,
+        "correctness_pass": true,
+        "quant_reference": {
+          "finite": true,
+          "relative_rms": 0.0016566664433047332,
+          "max_abs": 0.11224365234375,
+          "max_abs_over_reference_rms": 0.04617978751475047,
+          "reference_rms": 2.430579662322998
+        },
+        "original_bf16_diagnostic": {
+          "finite": true,
+          "relative_rms": 0.009452584118117006,
+          "max_abs": 0.3125,
+          "max_abs_over_reference_rms": 0.12842110584884694,
+          "reference_rms": 2.4334006309509277
+        },
+        "graph_vs_eager": {
+          "bf16": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.4334006309509277,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          },
+          "int8": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.4305522441864014,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          }
+        },
+        "reference_order": "float32(x) @ float32(q).T, then multiply float32(BF16 scale)",
+        "bf16_ms_per_call": [
+          0.055531520843505856,
+          0.05340159893035889,
+          0.05341184139251709
+        ],
+        "int8_ms_per_call": [
+          0.04160511970520019,
+          0.04157440185546875,
+          0.04157440185546875
+        ],
+        "bf16_median_ms": 0.05341184139251709,
+        "int8_median_ms": 0.04157440185546875,
+        "timing_round_order": [
+          [
+            "eager/bf16",
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8"
+          ],
+          [
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16"
+          ],
+          [
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16",
+            "eager/int8"
+          ]
+        ]
+      },
+      "timing_complete": true,
+      "paired_bf16_over_int8": {
+        "values": [
+          1.3347280632043228,
+          1.284482675565767,
+          1.284729040196431
+        ],
+        "median": 1.284729040196431,
+        "min": 1.284482675565767,
+        "max": 1.3347280632043228
+      }
+    },
+    {
+      "source": "D:\\学习\\specdec-dspark-quant\\experiments\\20261105-dspark-quant\\evidence\\final-01\\results\\micro-01.jsonl",
+      "line": 29,
+      "record": {
+        "type": "micro",
+        "guard_id": "f87d2cb0-ac24-4cd5-974b-a7ceab54352b",
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "cuda_visible_devices": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "deadline_unix": 1793876530.3780227,
+        "engine_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+        "engine_dirty": false,
+        "device_name": "NVIDIA GeForce RTX 3090",
+        "torch_version": "2.10.0+cu128",
+        "torch_cuda_version": "12.8",
+        "draft_path": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b",
+        "seed": 20261105,
+        "input_distribution": "synthetic torch.randn BF16 on CPU",
+        "warmup_calls_per_operator": 10,
+        "timing_rounds": 3,
+        "replays_per_round": 100,
+        "relative_rms_limit": 0.01,
+        "graph_rtol": 0.016,
+        "graph_atol": 1e-05,
+        "draft_config_sha256": "494e5665481ff8216c4e857a531c401f72b7fb795434a8201f45252c0ad7568a",
+        "weight_name": "layers.0.self_attn.o_proj.weight",
+        "weight_file": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b/model.safetensors",
+        "shape_nk": [
+          2560,
+          4096
+        ],
+        "checkpoint_dtype": "torch.bfloat16",
+        "checkpoint_tensor_sha256": "c1d8e9fddae62bd951cd0308e559de24e77f0bc2f909573c2ab6c9c833e6a522",
+        "bf16_weight_sha256": "c1d8e9fddae62bd951cd0308e559de24e77f0bc2f909573c2ab6c9c833e6a522",
+        "int8_weight_sha256": "b3b8e8a4d41759ae9597b6f55ab38d528dba51529219ae6ae3dca31b3b47dfc6",
+        "bf16_scale_sha256": "e61d02abe9beae28a3166d6b471ec03369bc72e620e6f5973834e69d5c09a38a",
+        "bf16_weight_bytes": 20971520,
+        "int8_weight_bytes": 10485760,
+        "scale_bytes": 5120,
+        "scale_dtype": "torch.bfloat16",
+        "batch": 16,
+        "rows": 112,
+        "mode": "eager",
+        "input_sha256": "f9d4100da85bbb747da439905bf0bb1723c1008bcdd1a0ccd6fd805a0487979d",
+        "split_k_from_kernel_policy": 1,
+        "correctness_pass": true,
+        "quant_reference": {
+          "finite": true,
+          "relative_rms": 0.0016578845726957052,
+          "max_abs": 0.12422943115234375,
+          "max_abs_over_reference_rms": 0.05132123195146971,
+          "reference_rms": 2.4206244945526123
+        },
+        "original_bf16_diagnostic": {
+          "finite": true,
+          "relative_rms": 0.009665349458419608,
+          "max_abs": 0.5,
+          "max_abs_over_reference_rms": 0.2063284830141098,
+          "reference_rms": 2.4233202934265137
+        },
+        "graph_vs_eager": {
+          "bf16": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.4233202934265137,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          },
+          "int8": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.4206066131591797,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          }
+        },
+        "reference_order": "float32(x) @ float32(q).T, then multiply float32(BF16 scale)",
+        "bf16_ms_per_call": [
+          0.06546720027923585,
+          0.06544384002685547,
+          0.06540287971496582
+        ],
+        "int8_ms_per_call": [
+          0.07179264068603515,
+          0.07170048236846924,
+          0.07174143791198731
+        ],
+        "bf16_median_ms": 0.06544384002685547,
+        "int8_median_ms": 0.07174143791198731,
+        "timing_round_order": [
+          [
+            "eager/bf16",
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8"
+          ],
+          [
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16"
+          ],
+          [
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16",
+            "eager/int8"
+          ]
+        ]
+      },
+      "timing_complete": true,
+      "paired_bf16_over_int8": {
+        "values": [
+          0.9118929134469111,
+          0.9127391875906657,
+          0.9116471821376418
+        ],
+        "median": 0.9118929134469111,
+        "min": 0.9116471821376418,
+        "max": 0.9127391875906657
+      }
+    },
+    {
+      "source": "D:\\学习\\specdec-dspark-quant\\experiments\\20261105-dspark-quant\\evidence\\final-01\\results\\micro-01.jsonl",
+      "line": 30,
+      "record": {
+        "type": "micro",
+        "guard_id": "f87d2cb0-ac24-4cd5-974b-a7ceab54352b",
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "cuda_visible_devices": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "deadline_unix": 1793876530.3780227,
+        "engine_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+        "engine_dirty": false,
+        "device_name": "NVIDIA GeForce RTX 3090",
+        "torch_version": "2.10.0+cu128",
+        "torch_cuda_version": "12.8",
+        "draft_path": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b",
+        "seed": 20261105,
+        "input_distribution": "synthetic torch.randn BF16 on CPU",
+        "warmup_calls_per_operator": 10,
+        "timing_rounds": 3,
+        "replays_per_round": 100,
+        "relative_rms_limit": 0.01,
+        "graph_rtol": 0.016,
+        "graph_atol": 1e-05,
+        "draft_config_sha256": "494e5665481ff8216c4e857a531c401f72b7fb795434a8201f45252c0ad7568a",
+        "weight_name": "layers.0.self_attn.o_proj.weight",
+        "weight_file": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b/model.safetensors",
+        "shape_nk": [
+          2560,
+          4096
+        ],
+        "checkpoint_dtype": "torch.bfloat16",
+        "checkpoint_tensor_sha256": "c1d8e9fddae62bd951cd0308e559de24e77f0bc2f909573c2ab6c9c833e6a522",
+        "bf16_weight_sha256": "c1d8e9fddae62bd951cd0308e559de24e77f0bc2f909573c2ab6c9c833e6a522",
+        "int8_weight_sha256": "b3b8e8a4d41759ae9597b6f55ab38d528dba51529219ae6ae3dca31b3b47dfc6",
+        "bf16_scale_sha256": "e61d02abe9beae28a3166d6b471ec03369bc72e620e6f5973834e69d5c09a38a",
+        "bf16_weight_bytes": 20971520,
+        "int8_weight_bytes": 10485760,
+        "scale_bytes": 5120,
+        "scale_dtype": "torch.bfloat16",
+        "batch": 16,
+        "rows": 112,
+        "mode": "graph",
+        "input_sha256": "f9d4100da85bbb747da439905bf0bb1723c1008bcdd1a0ccd6fd805a0487979d",
+        "split_k_from_kernel_policy": 1,
+        "correctness_pass": true,
+        "quant_reference": {
+          "finite": true,
+          "relative_rms": 0.0016578845726957052,
+          "max_abs": 0.12422943115234375,
+          "max_abs_over_reference_rms": 0.05132123195146971,
+          "reference_rms": 2.4206244945526123
+        },
+        "original_bf16_diagnostic": {
+          "finite": true,
+          "relative_rms": 0.009665349458419608,
+          "max_abs": 0.5,
+          "max_abs_over_reference_rms": 0.2063284830141098,
+          "reference_rms": 2.4233202934265137
+        },
+        "graph_vs_eager": {
+          "bf16": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.4233202934265137,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          },
+          "int8": {
+            "finite": true,
+            "relative_rms": 0.0,
+            "max_abs": 0.0,
+            "max_abs_over_reference_rms": 0.0,
+            "reference_rms": 2.4206066131591797,
+            "close": true,
+            "rtol": 0.016,
+            "atol": 1e-05
+          }
+        },
+        "reference_order": "float32(x) @ float32(q).T, then multiply float32(BF16 scale)",
+        "bf16_ms_per_call": [
+          0.06384640216827392,
+          0.06384640216827392,
+          0.06379519939422608
+        ],
+        "int8_ms_per_call": [
+          0.07036928176879882,
+          0.07036928176879882,
+          0.07038976192474365
+        ],
+        "bf16_median_ms": 0.06384640216827392,
+        "int8_median_ms": 0.07036928176879882,
+        "timing_round_order": [
+          [
+            "eager/bf16",
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8"
+          ],
+          [
+            "eager/int8",
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16"
+          ],
+          [
+            "graph/bf16",
+            "graph/int8",
+            "eager/bf16",
+            "eager/int8"
+          ]
+        ]
+      },
+      "timing_complete": true,
+      "paired_bf16_over_int8": {
+        "values": [
+          0.9073050138275378,
+          0.9073050138275378,
+          0.9063136122328689
+        ],
+        "median": 0.9073050138275378,
+        "min": 0.9063136122328689,
+        "max": 0.9073050138275378
+      }
+    }
+  ],
+  "failures": [],
+  "completions": [
+    {
+      "source": "D:\\学习\\specdec-dspark-quant\\experiments\\20261105-dspark-quant\\evidence\\final-01\\results\\micro-01.jsonl",
+      "line": 31,
+      "record": {
+        "type": "complete",
+        "guard_id": "f87d2cb0-ac24-4cd5-974b-a7ceab54352b",
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "cuda_visible_devices": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "deadline_unix": 1793876530.3780227,
+        "engine_commit": "2ac595ee1565e1218bfabad8c827c32784a130b5",
+        "engine_dirty": false,
+        "device_name": "NVIDIA GeForce RTX 3090",
+        "torch_version": "2.10.0+cu128",
+        "torch_cuda_version": "12.8",
+        "draft_path": "/home/ziru/nano-vllm/dspark-integration-20261101/models/dspark-4b",
+        "seed": 20261105,
+        "input_distribution": "synthetic torch.randn BF16 on CPU",
+        "warmup_calls_per_operator": 10,
+        "timing_rounds": 3,
+        "replays_per_round": 100,
+        "relative_rms_limit": 0.01,
+        "graph_rtol": 0.016,
+        "graph_atol": 1e-05,
+        "draft_config_sha256": "494e5665481ff8216c4e857a531c401f72b7fb795434a8201f45252c0ad7568a",
+        "cases": 15,
+        "mode_records": 30
+      }
+    }
+  ],
+  "other": [],
+  "parse_errors": []
+}
