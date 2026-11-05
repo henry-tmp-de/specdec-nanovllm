@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import json
 from pathlib import Path
 import subprocess
 import sys
@@ -88,7 +89,9 @@ def runtime_inventory(runner, preset):
                               ("lm_head_weight", model.lm_head_weight))]
     if model.fc.weight.dtype != torch.bfloat16 or any(x["dtype"] != "torch.bfloat16" for x in shared):
         raise RuntimeError("fc and target-shared tensors must remain BF16")
-    return {"preset": preset, "loading": "BF16 device checkpoint then CPU row-chunk PTQ",
+    return {"preset": preset,
+            "loading": ("BF16 device checkpoint; no PTQ" if preset == "none" else
+                        "BF16 device checkpoint then CPU row-chunk PTQ"),
             "quantize_host_wall_s": runner.dspark_quant_host_s,
             "quantized_modules": len(selected), "candidate_modules": candidates,
             "candidate_total_bytes": sum(x["total_bytes"] for x in candidates),
@@ -96,6 +99,8 @@ def runtime_inventory(runner, preset):
             "noncandidate_parameter_bytes": sum(x["bytes"] for x in noncandidate),
             "shared_target_weights": shared,
             "shared_bytes_note": "listed for identity; already counted in target, do not add to DSpark",
+            "byte_accounting_note": ("old memory.unique_parameter_bytes excludes quant buffers; "
+                                     "candidate_total_bytes includes INT8 weights and scales"),
             "loading_stats": runner.dspark_quant_stats}
 
 
@@ -105,6 +110,19 @@ def main():
     args, rest = parser.parse_known_args()
     bench = load_bench()
     original_options, original_run = bench.options_for, bench.run_once
+    class RecordJSON:
+        """Add preset to every raw record, even when initial model loading fails."""
+        inventory = None
+        loads = staticmethod(json.loads)
+
+        def dumps(self, row, *a, **kw):
+            if isinstance(row, dict) and row.get("type") in ("warmup", "run", "failure"):
+                row = {**row, "dspark_quant_preset": args.dspark_quant_preset}
+                if self.inventory is not None:
+                    row.setdefault("dspark_quant", self.inventory)
+            return json.dumps(row, *a, **kw)
+
+    records = RecordJSON()
 
     def options(arm, batch, ctx, output_tokens, window, *a, **kw):
         if arm != "dspark_ring" or batch not in (1, 8, 16) or ctx != 1024 or output_tokens != 128 or window != 512:
@@ -115,6 +133,7 @@ def main():
 
     def run_once(llm, *a, **kw):
         inventory = runtime_inventory(llm.model_runner, args.dspark_quant_preset)
+        records.inventory = inventory
         result = original_run(llm, *a, **kw)
         result["dspark_quant"] = inventory
         return result
@@ -122,6 +141,7 @@ def main():
     bench.options_for = options
     bench.run_once = run_once
     bench.git_provenance = git_provenance
+    bench.json = records
     sys.argv = [sys.argv[0], *rest]
     bench.main()
 

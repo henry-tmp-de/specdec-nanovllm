@@ -1,5 +1,6 @@
 """CPU-only contracts: real quantizer and explicitly simulated kernel dispatch."""
 import importlib.util
+import json
 from pathlib import Path
 import sys
 import types
@@ -249,9 +250,19 @@ def test_bench_wrapper_forwards_preset_and_attaches_raw_inventory(modules, monke
         mp.setattr(sys, "argv", ["bench_formal.py", "--dspark-quant-preset", "attention", "--phase", "pilot"])
         wrapper.main()
         assert sys.argv == ["bench_formal.py", "--phase", "pilot"]
+        assert fake.json.loads("{}") == {}
+        failed = json.loads(fake.json.dumps({"type": "failure", "message": "load failed"}))
+        assert failed["dspark_quant_preset"] == "attention" and "dspark_quant" not in failed
         options = fake.options_for("dspark_ring", 1, 1024, 128, 512, "target", "ar", "ds", 1024)
         assert options == {"original": True, "dspark_quant_preset": "attention"}
         with pytest.raises(ValueError, match="pilot"):
             fake.options_for("dspark_ring", 2, 1024, 128, 512, "target", "ar", "ds", 2048)
         result = fake.run_once(SimpleNamespace(model_runner=object()))
         assert result == {"wall_s": 1.0, "dspark_quant": {"preset": "attention"}}
+        run = json.loads(fake.json.dumps({"type": "run", **result}))
+        assert run["dspark_quant_preset"] == run["dspark_quant"]["preset"] == "attention"
+        warmup = json.loads(fake.json.dumps({"type": "warmup"}))
+        assert warmup["dspark_quant_preset"] == "attention"
+        assert warmup["dspark_quant"]["preset"] == "attention"
+        failure = json.loads(fake.json.dumps({"type": "failure", "message": "later failure"}))
+        assert failure["dspark_quant_preset"] == failure["dspark_quant"]["preset"] == "attention"

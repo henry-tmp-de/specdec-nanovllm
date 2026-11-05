@@ -8,7 +8,7 @@
       "import numpy, pytest; raise SystemExit(pytest.main(['-q'] + ['tests/test_dspark_quant.py', 'tests/test_dspark_contract.py', 'tests/test_dspark_window_config.py', 'tests/test_dspark_window_runner.py', 'tests/test_dspark_window.py', 'tests/test_dspark_pad.py']))"
     ],
     "exit_code": 0,
-    "seconds": 5.708,
+    "seconds": 8.019,
     "log": "cpu-evidence/dspark_quant_and_window.log"
   },
   {
@@ -20,7 +20,7 @@
       "import numpy, pytest; raise SystemExit(pytest.main(['-q'] + ['experiments/20261105-dspark-window-resume/tests_bench_formal.py', 'experiments/20261105-dspark-window-resume/tests_gpu_control.py']))"
     ],
     "exit_code": 0,
-    "seconds": 1.226,
+    "seconds": 1.934,
     "log": "cpu-evidence/existing_bench_and_guard.log"
   }
 ]
