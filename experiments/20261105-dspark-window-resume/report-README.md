@@ -8,7 +8,7 @@
 D:\Anaconda\python.exe -B experiments\20261105-dspark-window-resume\tests_report_results.py -v
 ```
 
-本次 14 项 CPU fixture 和对既有 B11/UUID 诊断 raw 的只读解析见 [CPU-REPORT-CHECKS.txt](CPU-REPORT-CHECKS.txt)，不表示新增 GPU 结果。
+本次 15 项 CPU fixture 和对既有 B11/UUID 诊断 raw 的只读解析见 [CPU-REPORT-CHECKS.txt](CPU-REPORT-CHECKS.txt)，不表示新增 GPU 结果。
 
 Linux 示例（仅传已经存在的输入、manifest 和计划；`--input` / `--input-glob` / `--manifest` / `--plan` 均可重复）：
 

@@ -972,14 +972,15 @@ def markdown(report):
              ]
     fill_4k = [m.get("wiki_fraction") for cell in report["cells"] if cell["scope"].get("ctx") == 4096
                for group in cell["variants"] for run in group["runs"]
+               if run.get("valid") is True
                for m in (run.get("input_metadata") if isinstance(run.get("input_metadata"), list) else [])
                if isinstance(m, dict) and type(m.get("wiki_fraction")) in (int, float)
-               and math.isfinite(m["wiki_fraction"])]
+               and math.isfinite(m["wiki_fraction"]) and 0 <= m["wiki_fraction"] <= 1]
     if fill_4k:
         boundary = "，已记录请求均超过95%" if min(fill_4k) > 0.95 else ""
-        lines.extend([f"已记录的4K请求 Wiki 补齐比例为 {min(fill_4k):.2%}–{max(fill_4k):.2%}{boundary}；这是合成固定长度吞吐负载，不是自然4K任务或任务质量测量。", ""])
+        lines.extend([f"已核验的4K请求 Wiki 补齐比例为 {min(fill_4k):.2%}–{max(fill_4k):.2%}{boundary}；这是合成固定长度吞吐负载，不是自然4K任务或任务质量测量。", ""])
     else:
-        lines.extend(["4K 输入的实际填充比例未采集；该补齐面板是合成吞吐负载，不是自然4K任务或任务质量测量。", ""])
+        lines.extend(["4K 输入的填充比例尚无已核验记录；该补齐面板是合成吞吐负载，不是自然4K任务或任务质量测量。", ""])
     lines += [
              "## 各预算计划覆盖", "",
              "| 计划 | phase | GPU预算 | 完整/计划 | 缺测 | 部分或失败 | 完整正式矩阵 |",
@@ -1007,24 +1008,28 @@ def markdown(report):
                          values_text(metrics.get("full_batch_prefix_tps")))) + " |")
     lines += ["", "## 条件与负载边界", "",
               "target/draft 身份以路径、配置哈希和权重文件名/大小记录；不表示本轮重新哈希权重内容。填充比例逐请求列出，实际任务截断数按 manifest 记录。", "",
-              "| phase/ctx/B/panel/arm/W | k / 输出 / T | GPU / 源码提交 | target / draft 路径 | 图策略 / prefix / 显存预算 | Wiki 填充比例 / 任务截断数 |",
-              "|---|---|---|---|---|---|"]
+              "invalid 或未验证的原始条件仍列出，明确标注状态；它们不进入上面的已核验填充范围。", "",
+              "| phase/ctx/B/panel/arm/W | 审计状态 | k / 输出 / T | GPU / 源码提交 | target / draft 路径 | 图策略 / prefix / 显存预算 | 逐次 Wiki 比例 / 任务截断数 |",
+              "|---|---|---|---|---|---|---|"]
     for cell in report["cells"]:
         s = cell["scope"]
         for group in cell["variants"]:
             cfg = group["configuration"]
-            rows = group["runs"][0].get("input_metadata") if group["runs"] else None
-            metadata_ok = isinstance(rows, list) and all(isinstance(r, dict) for r in rows)
-            fills = [r.get("wiki_fraction") for r in rows] if metadata_ok else None
-            truncated = sum(r.get("task_truncated_from_left") is True for r in rows) if metadata_ok else None
+            input_details = []
+            for run in group["runs"]:
+                rows = run.get("input_metadata")
+                metadata_ok = isinstance(rows, list) and all(isinstance(r, dict) for r in rows)
+                input_details.append({"repeat": run.get("repeat"), "valid": run.get("valid"),
+                                      "wiki_fractions": [r.get("wiki_fraction") for r in rows] if metadata_ok else None,
+                                      "task_truncated": sum(r.get("task_truncated_from_left") is True for r in rows) if metadata_ok else None})
             target = cfg.get("target_provenance") if isinstance(cfg.get("target_provenance"), dict) else {}
             draft = cfg.get("draft_provenance") if isinstance(cfg.get("draft_provenance"), dict) else {}
             label = f"{s.get('phase')}/{s.get('ctx')}/{s.get('requested_batch')}/{s.get('panel')}/{s.get('arm')}/{s.get('window')}"
-            data = (label, f"{fmt(cfg.get('spec_k'))} / {fmt(cfg.get('output_tokens'))} / {fmt(cfg.get('temperature'))}",
+            data = (label, cell["status"], f"{fmt(cfg.get('spec_k'))} / {fmt(cfg.get('output_tokens'))} / {fmt(cfg.get('temperature'))}",
                     f"{fmt(cfg.get('gpu_uuid'))} / {fmt(cfg.get('engine_commit'))}",
                     f"{fmt(target.get('path'))} / {fmt(draft.get('path'))}",
                     f"{compact_json(cfg.get('graph_policy'))} / {fmt(cfg.get('prefix_lookup'))} / {fmt(cfg.get('gpu_memory_utilization'))}",
-                    f"{compact_json(fills)} / {fmt(truncated)}")
+                    compact_json(input_details))
             lines.append("| " + " | ".join(str(x).replace("|", "\\|") for x in data) + " |")
     lines += ["", "## 逐次延迟与内存", "",
               "单位：延迟秒；缓存和 allocator 字节为采集值，具名图池 reserved 可能共享；模型权重文件大小不能证明权重内容一致。详情和全量图/窗口统计见 JSON。", "",

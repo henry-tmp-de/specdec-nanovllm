@@ -300,6 +300,26 @@ class ReportChecks(unittest.TestCase):
         errors = ring["variants"][0]["runs"][0]["validation_errors"]
         self.assertTrue(any("warmup/run identity mismatch" in e for e in errors))
 
+    def test_invalid_4k_fill_never_contaminates_verified_range(self):
+        records, ledger, manifests, plans = fixture()
+        result = report.build_report(records, ledger, manifests, plans)
+        for cell in result["cells"]:
+            cell["scope"]["ctx"] = 4096
+            for group in cell["variants"]:
+                for run in group["runs"]:
+                    run["input_metadata"] = deepcopy(run["input_metadata"])
+                    run["input_metadata"][0]["wiki_fraction"] = 0.96
+        bad_cell = result["cells"][0]
+        bad_cell["status"] = "unverified_or_invalid"
+        bad = bad_cell["variants"][0]["runs"][0]
+        bad["valid"] = False
+        bad["input_metadata"][0]["wiki_fraction"] = 1.2
+        text = report.markdown(result)
+        self.assertIn("已核验的4K请求 Wiki 补齐比例为 96.00%–96.00%", text)
+        self.assertNotIn("120.00%", text)
+        self.assertIn('"wiki_fractions":[1.2]', text)
+        self.assertIn("unverified_or_invalid", text)
+
     def test_missing_runtime_counter_or_scratch_is_not_treated_as_zero(self):
         records, ledger, manifests, plans = fixture()
         row = next(r for _, _, r in records if r.get("type") == "run" and r["arm"] == "dspark_ring" and r["repeat"] == 0)

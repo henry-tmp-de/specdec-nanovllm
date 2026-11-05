@@ -7,6 +7,7 @@ test_curve_does_not_join_different_draft_models (__main__.ReportChecks.test_curv
 test_decode_span_includes_inter_round_gap_and_prefix_is_contiguous (__main__.ReportChecks.test_decode_span_includes_inter_round_gap_and_prefix_is_contiguous) ... ok
 test_full_plan_budget_consistency_and_legacy_070 (__main__.ReportChecks.test_full_plan_budget_consistency_and_legacy_070) ... ok
 test_global_budget_or_unfinished_guard_blocks_comparisons (__main__.ReportChecks.test_global_budget_or_unfinished_guard_blocks_comparisons) ... ok
+test_invalid_4k_fill_never_contaminates_verified_range (__main__.ReportChecks.test_invalid_4k_fill_never_contaminates_verified_range) ... ok
 test_matched_three_repeats_and_output_hash_differences (__main__.ReportChecks.test_matched_three_repeats_and_output_hash_differences) ... ok
 test_missing_curve_points_break_segments_and_never_become_zero (__main__.ReportChecks.test_missing_curve_points_break_segments_and_never_become_zero) ... ok
 test_missing_draft_or_reused_guard_identity_invalidates_run (__main__.ReportChecks.test_missing_draft_or_reused_guard_identity_invalidates_run) ... ok
@@ -17,7 +18,7 @@ test_unmatched_and_failed_attempts_never_become_comparable (__main__.ReportCheck
 test_warmup_identity_mismatch_blocks_the_run (__main__.ReportChecks.test_warmup_identity_mismatch_blocks_the_run) ... ok
 
 ----------------------------------------------------------------------
-Ran 14 tests in 0.034s
+Ran 15 tests in 0.036s
 
 OK
 
