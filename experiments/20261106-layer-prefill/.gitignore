@@ -1,0 +1,3 @@
+# Keep token-bearing workloads and complete raw evidence local.
+/data/
+/evidence/

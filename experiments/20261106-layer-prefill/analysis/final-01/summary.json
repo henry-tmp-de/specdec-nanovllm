@@ -1,0 +1,844 @@
+{
+  "smoke": {
+    "valid": true,
+    "errors": [],
+    "failures": [],
+    "logit_checks": 102,
+    "kv_checks": 2592,
+    "modes": {
+      "full": {
+        "target_kv_blocks": 241,
+        "kv_block_size": 256,
+        "load_initial_graph_s": 7.8477625120431185,
+        "layer_delta": null,
+        "graph_delta": {
+          "verify_hits": 0,
+          "verify_padded_hits": 0,
+          "verify_exact_hits": 0,
+          "verify_fallbacks": {},
+          "decode_graph_hits": 16,
+          "decode_graph_exact_hits": 16,
+          "decode_graph_padded_hits": 0,
+          "decode_graph_bucket_histogram": {
+            "2": 16
+          },
+          "decode_graph_fallbacks": {}
+        }
+      },
+      "serial": {
+        "target_kv_blocks": 240,
+        "kv_block_size": 256,
+        "load_initial_graph_s": 3.0966170951724052,
+        "layer_delta": {
+          "prefill_steps": 1,
+          "fallback_steps": 0,
+          "planned_tasks": 8,
+          "layer_ops_enqueued": 288,
+          "same_chunk_waits": 280,
+          "previous_chunk_waits": 216,
+          "source_waits": 1,
+          "join_waits": 8,
+          "single_chunk_steps": 0,
+          "completed_steps": 1,
+          "completed_tasks": 8,
+          "fallback_reasons": {},
+          "stream_task_counts": {
+            "0": 8
+          }
+        },
+        "graph_delta": {
+          "verify_hits": 0,
+          "verify_padded_hits": 0,
+          "verify_exact_hits": 0,
+          "verify_fallbacks": {},
+          "decode_graph_hits": 16,
+          "decode_graph_exact_hits": 16,
+          "decode_graph_padded_hits": 0,
+          "decode_graph_bucket_histogram": {
+            "2": 16
+          },
+          "decode_graph_fallbacks": {}
+        }
+      },
+      "pipeline": {
+        "target_kv_blocks": 239,
+        "kv_block_size": 256,
+        "load_initial_graph_s": 3.0105958431959152,
+        "layer_delta": {
+          "prefill_steps": 1,
+          "fallback_steps": 0,
+          "planned_tasks": 8,
+          "layer_ops_enqueued": 288,
+          "same_chunk_waits": 280,
+          "previous_chunk_waits": 216,
+          "source_waits": 2,
+          "join_waits": 8,
+          "single_chunk_steps": 0,
+          "completed_steps": 1,
+          "completed_tasks": 8,
+          "fallback_reasons": {},
+          "stream_task_counts": {
+            "1": 4,
+            "0": 4
+          }
+        },
+        "graph_delta": {
+          "verify_hits": 0,
+          "verify_padded_hits": 0,
+          "verify_exact_hits": 0,
+          "verify_fallbacks": {},
+          "decode_graph_hits": 16,
+          "decode_graph_exact_hits": 16,
+          "decode_graph_padded_hits": 0,
+          "decode_graph_bucket_histogram": {
+            "2": 16
+          },
+          "decode_graph_fallbacks": {}
+        }
+      }
+    },
+    "identity": {
+      "engine_commit": "b98fc8ff1e194aa7727167327ee8dc8b8b9e260e",
+      "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+      "target_provenance": {
+        "path": "/home/ziru/nano-vllm/models/Qwen3-4B",
+        "config_sha256": "8ba006f74fecfaaeb392872a60f4a480e7ec9860153d2e1b769ec81f9a147f8a",
+        "weight_files": [
+          {
+            "name": "model-00001-of-00003.safetensors",
+            "bytes": 3957900840
+          },
+          {
+            "name": "model-00002-of-00003.safetensors",
+            "bytes": 3987450520
+          },
+          {
+            "name": "model-00003-of-00003.safetensors",
+            "bytes": 99630640
+          }
+        ],
+        "weight_content_hash_note": "file sizes only; full contents not rehashed"
+      },
+      "budget": 0.7,
+      "chunk": 128
+    }
+  },
+  "performance": {
+    "full": {
+      "mode": "full",
+      "valid": true,
+      "errors": [],
+      "failures": [],
+      "identity": {
+        "engine_commit": "b98fc8ff1e194aa7727167327ee8dc8b8b9e260e",
+        "engine_dirty": false,
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "guard_id": "09815b37-8f10-4f6c-bb1a-622a134293ec",
+        "target_provenance": {
+          "path": "/home/ziru/nano-vllm/models/Qwen3-4B",
+          "config_sha256": "8ba006f74fecfaaeb392872a60f4a480e7ec9860153d2e1b769ec81f9a147f8a",
+          "weight_files": [
+            {
+              "name": "model-00001-of-00003.safetensors",
+              "bytes": 3957900840
+            },
+            {
+              "name": "model-00002-of-00003.safetensors",
+              "bytes": 3987450520
+            },
+            {
+              "name": "model-00003-of-00003.safetensors",
+              "bytes": 99630640
+            }
+          ],
+          "weight_content_hash_note": "file sizes only; full contents not rehashed"
+        },
+        "budget": 0.7,
+        "chunk": 128,
+        "ctx": 4096,
+        "batch": 4,
+        "output_tokens": 128,
+        "panel": "code",
+        "seed": 20261106,
+        "input_metadata": [
+          {
+            "dataset": "humaneval.jsonl",
+            "row": 0,
+            "input_sha256": "5b239f31e547cb3f81966f57214547e825ec4d290120c6057117fb40104343d8",
+            "task_tokens": 150,
+            "wiki_tokens": 3946,
+            "task_truncated_from_left": false,
+            "wiki_fraction": 0.96337890625,
+            "wiki_slice_start": 0,
+            "wiki_slice_end": 3946,
+            "synthetic_context": true,
+            "source_context_tokens": 4096,
+            "actual_context_tokens": 4096,
+            "actual_input_sha256": "5b239f31e547cb3f81966f57214547e825ec4d290120c6057117fb40104343d8",
+            "trimmed_from_left": 0,
+            "fill_metadata_note": "source prompt metadata"
+          },
+          {
+            "dataset": "humaneval.jsonl",
+            "row": 1,
+            "input_sha256": "7cc5d2aa1e76fa8a47996f241fdce64cab4778dccd9d6133ba9b1c9d76d5a90a",
+            "task_tokens": 141,
+            "wiki_tokens": 3955,
+            "task_truncated_from_left": false,
+            "wiki_fraction": 0.965576171875,
+            "wiki_slice_start": 4096,
+            "wiki_slice_end": 8051,
+            "synthetic_context": true,
+            "source_context_tokens": 4096,
+            "actual_context_tokens": 4096,
+            "actual_input_sha256": "7cc5d2aa1e76fa8a47996f241fdce64cab4778dccd9d6133ba9b1c9d76d5a90a",
+            "trimmed_from_left": 0,
+            "fill_metadata_note": "source prompt metadata"
+          },
+          {
+            "dataset": "humaneval.jsonl",
+            "row": 2,
+            "input_sha256": "c4fd5b332387a45e4be32eeae9e403d6b8e0447d851fa2e59a72efe089e0fb9a",
+            "task_tokens": 111,
+            "wiki_tokens": 3985,
+            "task_truncated_from_left": false,
+            "wiki_fraction": 0.972900390625,
+            "wiki_slice_start": 8192,
+            "wiki_slice_end": 12177,
+            "synthetic_context": true,
+            "source_context_tokens": 4096,
+            "actual_context_tokens": 4096,
+            "actual_input_sha256": "c4fd5b332387a45e4be32eeae9e403d6b8e0447d851fa2e59a72efe089e0fb9a",
+            "trimmed_from_left": 0,
+            "fill_metadata_note": "source prompt metadata"
+          },
+          {
+            "dataset": "humaneval.jsonl",
+            "row": 3,
+            "input_sha256": "2f1e8e716aaf5a1204abda413ffaa4f40801a994c0c44906589b07a708b5e6f0",
+            "task_tokens": 145,
+            "wiki_tokens": 3951,
+            "task_truncated_from_left": false,
+            "wiki_fraction": 0.964599609375,
+            "wiki_slice_start": 12288,
+            "wiki_slice_end": 16239,
+            "synthetic_context": true,
+            "source_context_tokens": 4096,
+            "actual_context_tokens": 4096,
+            "actual_input_sha256": "2f1e8e716aaf5a1204abda413ffaa4f40801a994c0c44906589b07a708b5e6f0",
+            "trimmed_from_left": 0,
+            "fill_metadata_note": "source prompt metadata"
+          }
+        ],
+        "max_inflight": 2,
+        "graph_policy": "exact_all",
+        "decode_graph_buckets": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "metrics": {
+        "valid": true,
+        "errors": [],
+        "wall_s": 4.8601762522011995,
+        "full_request_tps": 105.34597377371088,
+        "prefill_s": 2.5950890965759754,
+        "decode_s": 2.2642179504036903,
+        "decode_tps": 224.36002678515467,
+        "full_batch_decode_tps": 224.36002678515467,
+        "tail_batch_decode_tps": null,
+        "ttft_s": {
+          "n": 4,
+          "p50": 2.595089338719845,
+          "p95": 2.595090391114354,
+          "p99": 2.595090391114354
+        },
+        "tpot_s": {
+          "n": 4,
+          "p50": 0.017833999394783823,
+          "p95": 0.017834033553055892,
+          "p99": 0.017834033553055892
+        },
+        "delivery_batch_gap_s": {
+          "n": 508,
+          "p50": 0.017824457958340645,
+          "p95": 0.01797344721853733,
+          "p99": 0.018050003796815872
+        },
+        "delivery_gap_definition": "one gap between actual delivery batches; not SSE or interpolated tokens",
+        "proposed_tokens": 0,
+        "accepted_prefix_tokens": 0,
+        "acceptance_fraction": null,
+        "tau_delivered_per_decode_sequence_round": 1.0,
+        "tail_overproposal_sequence_rounds": 0,
+        "active_batch_rounds": {
+          "4": 127
+        },
+        "output_tokens": 512,
+        "input_tokens": 16384,
+        "prefill_only_input_tps": null,
+        "full_request_output_tps": 105.34597377371088,
+        "decode_span_s": 2.264907030388713
+      },
+      "layer_delta": null,
+      "warm_layer_delta": null,
+      "target_decode_graph": {
+        "exact": 127,
+        "padded": 0,
+        "fallbacks": {},
+        "bucket_histogram": {
+          "4": 127
+        }
+      },
+      "target_kv_blocks": 207,
+      "load_initial_graph_s": 8.206463176757097,
+      "warmup_s": 3.5328753795474768,
+      "memory_after_run": {
+        "allocated_bytes": 15953732096,
+        "reserved_bytes": 18048090112,
+        "peak_allocated_bytes": 17329793024,
+        "peak_reserved_bytes": 18048090112,
+        "named_tensors": {
+          "runner.kv_cache": {
+            "shape": [
+              2,
+              36,
+              207,
+              256,
+              8,
+              128
+            ],
+            "dtype": "torch.bfloat16",
+            "bytes": 7813988352
+          }
+        },
+        "unique_parameter_bytes": {
+          "model": 8044936192,
+          "draft_model": 0,
+          "dspark_model": 0
+        },
+        "allocator_segment_bytes_by_pool_id": {
+          "(0, 0)": 18025021440,
+          "(1, 0)": 23068672
+        },
+        "named_graph_pools": {
+          "target_decode": {
+            "pool_id": [
+              1,
+              0
+            ],
+            "reserved_bytes": 23068672
+          }
+        },
+        "engine_graph_mem_gb": {
+          "decode_graphs_gb": 0.008
+        },
+        "accounting_note": "allocator pool totals overlap tensor/weight values; unnamed temporaries are included in allocator totals"
+      }
+    },
+    "serial": {
+      "mode": "serial",
+      "valid": true,
+      "errors": [],
+      "failures": [],
+      "identity": {
+        "engine_commit": "b98fc8ff1e194aa7727167327ee8dc8b8b9e260e",
+        "engine_dirty": false,
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "guard_id": "d82535c1-c0b6-4af8-b8bb-06585dd8a951",
+        "target_provenance": {
+          "path": "/home/ziru/nano-vllm/models/Qwen3-4B",
+          "config_sha256": "8ba006f74fecfaaeb392872a60f4a480e7ec9860153d2e1b769ec81f9a147f8a",
+          "weight_files": [
+            {
+              "name": "model-00001-of-00003.safetensors",
+              "bytes": 3957900840
+            },
+            {
+              "name": "model-00002-of-00003.safetensors",
+              "bytes": 3987450520
+            },
+            {
+              "name": "model-00003-of-00003.safetensors",
+              "bytes": 99630640
+            }
+          ],
+          "weight_content_hash_note": "file sizes only; full contents not rehashed"
+        },
+        "budget": 0.7,
+        "chunk": 128,
+        "ctx": 4096,
+        "batch": 4,
+        "output_tokens": 128,
+        "panel": "code",
+        "seed": 20261106,
+        "input_metadata": [
+          {
+            "dataset": "humaneval.jsonl",
+            "row": 0,
+            "input_sha256": "5b239f31e547cb3f81966f57214547e825ec4d290120c6057117fb40104343d8",
+            "task_tokens": 150,
+            "wiki_tokens": 3946,
+            "task_truncated_from_left": false,
+            "wiki_fraction": 0.96337890625,
+            "wiki_slice_start": 0,
+            "wiki_slice_end": 3946,
+            "synthetic_context": true,
+            "source_context_tokens": 4096,
+            "actual_context_tokens": 4096,
+            "actual_input_sha256": "5b239f31e547cb3f81966f57214547e825ec4d290120c6057117fb40104343d8",
+            "trimmed_from_left": 0,
+            "fill_metadata_note": "source prompt metadata"
+          },
+          {
+            "dataset": "humaneval.jsonl",
+            "row": 1,
+            "input_sha256": "7cc5d2aa1e76fa8a47996f241fdce64cab4778dccd9d6133ba9b1c9d76d5a90a",
+            "task_tokens": 141,
+            "wiki_tokens": 3955,
+            "task_truncated_from_left": false,
+            "wiki_fraction": 0.965576171875,
+            "wiki_slice_start": 4096,
+            "wiki_slice_end": 8051,
+            "synthetic_context": true,
+            "source_context_tokens": 4096,
+            "actual_context_tokens": 4096,
+            "actual_input_sha256": "7cc5d2aa1e76fa8a47996f241fdce64cab4778dccd9d6133ba9b1c9d76d5a90a",
+            "trimmed_from_left": 0,
+            "fill_metadata_note": "source prompt metadata"
+          },
+          {
+            "dataset": "humaneval.jsonl",
+            "row": 2,
+            "input_sha256": "c4fd5b332387a45e4be32eeae9e403d6b8e0447d851fa2e59a72efe089e0fb9a",
+            "task_tokens": 111,
+            "wiki_tokens": 3985,
+            "task_truncated_from_left": false,
+            "wiki_fraction": 0.972900390625,
+            "wiki_slice_start": 8192,
+            "wiki_slice_end": 12177,
+            "synthetic_context": true,
+            "source_context_tokens": 4096,
+            "actual_context_tokens": 4096,
+            "actual_input_sha256": "c4fd5b332387a45e4be32eeae9e403d6b8e0447d851fa2e59a72efe089e0fb9a",
+            "trimmed_from_left": 0,
+            "fill_metadata_note": "source prompt metadata"
+          },
+          {
+            "dataset": "humaneval.jsonl",
+            "row": 3,
+            "input_sha256": "2f1e8e716aaf5a1204abda413ffaa4f40801a994c0c44906589b07a708b5e6f0",
+            "task_tokens": 145,
+            "wiki_tokens": 3951,
+            "task_truncated_from_left": false,
+            "wiki_fraction": 0.964599609375,
+            "wiki_slice_start": 12288,
+            "wiki_slice_end": 16239,
+            "synthetic_context": true,
+            "source_context_tokens": 4096,
+            "actual_context_tokens": 4096,
+            "actual_input_sha256": "2f1e8e716aaf5a1204abda413ffaa4f40801a994c0c44906589b07a708b5e6f0",
+            "trimmed_from_left": 0,
+            "fill_metadata_note": "source prompt metadata"
+          }
+        ],
+        "max_inflight": 2,
+        "graph_policy": "exact_all",
+        "decode_graph_buckets": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "metrics": {
+        "valid": true,
+        "errors": [],
+        "wall_s": 7.08076393045485,
+        "full_request_tps": 72.30858210056304,
+        "prefill_s": 4.8146409541368484,
+        "decode_s": 2.265137853100896,
+        "decode_tps": 224.26891118550046,
+        "full_batch_decode_tps": 224.26891118550046,
+        "tail_batch_decode_tps": null,
+        "ttft_s": {
+          "n": 4,
+          "p50": 4.814612312242389,
+          "p95": 4.814641393721104,
+          "p99": 4.814641393721104
+        },
+        "tpot_s": {
+          "n": 4,
+          "p50": 0.017841750154579717,
+          "p95": 0.017841855137366948,
+          "p99": 0.017841855137366948
+        },
+        "delivery_batch_gap_s": {
+          "n": 508,
+          "p50": 0.017831990495324135,
+          "p95": 0.017897523939609528,
+          "p99": 0.01795637607574463
+        },
+        "delivery_gap_definition": "one gap between actual delivery batches; not SSE or interpolated tokens",
+        "proposed_tokens": 0,
+        "accepted_prefix_tokens": 0,
+        "acceptance_fraction": null,
+        "tau_delivered_per_decode_sequence_round": 1.0,
+        "tail_overproposal_sequence_rounds": 0,
+        "active_batch_rounds": {
+          "4": 127
+        },
+        "output_tokens": 512,
+        "input_tokens": 16384,
+        "prefill_only_input_tps": null,
+        "full_request_output_tps": 72.30858210056304,
+        "decode_span_s": 2.265873594209552
+      },
+      "layer_delta": {
+        "prefill_steps": 1,
+        "fallback_steps": 0,
+        "planned_tasks": 128,
+        "layer_ops_enqueued": 4608,
+        "same_chunk_waits": 4480,
+        "previous_chunk_waits": 4464,
+        "source_waits": 1,
+        "join_waits": 128,
+        "single_chunk_steps": 0,
+        "completed_steps": 1,
+        "completed_tasks": 128,
+        "fallback_reasons": {},
+        "stream_task_counts": {
+          "0": 128
+        }
+      },
+      "warm_layer_delta": {
+        "prefill_steps": 1,
+        "fallback_steps": 0,
+        "planned_tasks": 128,
+        "layer_ops_enqueued": 4608,
+        "same_chunk_waits": 4480,
+        "previous_chunk_waits": 4464,
+        "source_waits": 1,
+        "join_waits": 128,
+        "single_chunk_steps": 0,
+        "completed_steps": 1,
+        "completed_tasks": 128,
+        "fallback_reasons": {},
+        "stream_task_counts": {
+          "0": 128
+        }
+      },
+      "target_decode_graph": {
+        "exact": 127,
+        "padded": 0,
+        "fallbacks": {},
+        "bucket_histogram": {
+          "4": 127
+        }
+      },
+      "target_kv_blocks": 207,
+      "load_initial_graph_s": 8.311235452070832,
+      "warmup_s": 5.930929007008672,
+      "memory_after_run": {
+        "allocated_bytes": 15962251776,
+        "reserved_bytes": 16273899520,
+        "peak_allocated_bytes": 16215672320,
+        "peak_reserved_bytes": 16273899520,
+        "named_tensors": {
+          "runner.kv_cache": {
+            "shape": [
+              2,
+              36,
+              207,
+              256,
+              8,
+              128
+            ],
+            "dtype": "torch.bfloat16",
+            "bytes": 7813988352
+          }
+        },
+        "unique_parameter_bytes": {
+          "model": 8044936192,
+          "draft_model": 0,
+          "dspark_model": 0
+        },
+        "allocator_segment_bytes_by_pool_id": {
+          "(0, 0)": 16250830848,
+          "(1, 0)": 23068672
+        },
+        "named_graph_pools": {
+          "target_decode": {
+            "pool_id": [
+              1,
+              0
+            ],
+            "reserved_bytes": 23068672
+          }
+        },
+        "engine_graph_mem_gb": {
+          "decode_graphs_gb": 0.008
+        },
+        "accounting_note": "allocator pool totals overlap tensor/weight values; unnamed temporaries are included in allocator totals"
+      }
+    },
+    "pipeline": {
+      "mode": "pipeline",
+      "valid": true,
+      "errors": [],
+      "failures": [],
+      "identity": {
+        "engine_commit": "b98fc8ff1e194aa7727167327ee8dc8b8b9e260e",
+        "engine_dirty": false,
+        "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+        "guard_id": "5e04574f-9987-4da8-8d78-33acb00856ef",
+        "target_provenance": {
+          "path": "/home/ziru/nano-vllm/models/Qwen3-4B",
+          "config_sha256": "8ba006f74fecfaaeb392872a60f4a480e7ec9860153d2e1b769ec81f9a147f8a",
+          "weight_files": [
+            {
+              "name": "model-00001-of-00003.safetensors",
+              "bytes": 3957900840
+            },
+            {
+              "name": "model-00002-of-00003.safetensors",
+              "bytes": 3987450520
+            },
+            {
+              "name": "model-00003-of-00003.safetensors",
+              "bytes": 99630640
+            }
+          ],
+          "weight_content_hash_note": "file sizes only; full contents not rehashed"
+        },
+        "budget": 0.7,
+        "chunk": 128,
+        "ctx": 4096,
+        "batch": 4,
+        "output_tokens": 128,
+        "panel": "code",
+        "seed": 20261106,
+        "input_metadata": [
+          {
+            "dataset": "humaneval.jsonl",
+            "row": 0,
+            "input_sha256": "5b239f31e547cb3f81966f57214547e825ec4d290120c6057117fb40104343d8",
+            "task_tokens": 150,
+            "wiki_tokens": 3946,
+            "task_truncated_from_left": false,
+            "wiki_fraction": 0.96337890625,
+            "wiki_slice_start": 0,
+            "wiki_slice_end": 3946,
+            "synthetic_context": true,
+            "source_context_tokens": 4096,
+            "actual_context_tokens": 4096,
+            "actual_input_sha256": "5b239f31e547cb3f81966f57214547e825ec4d290120c6057117fb40104343d8",
+            "trimmed_from_left": 0,
+            "fill_metadata_note": "source prompt metadata"
+          },
+          {
+            "dataset": "humaneval.jsonl",
+            "row": 1,
+            "input_sha256": "7cc5d2aa1e76fa8a47996f241fdce64cab4778dccd9d6133ba9b1c9d76d5a90a",
+            "task_tokens": 141,
+            "wiki_tokens": 3955,
+            "task_truncated_from_left": false,
+            "wiki_fraction": 0.965576171875,
+            "wiki_slice_start": 4096,
+            "wiki_slice_end": 8051,
+            "synthetic_context": true,
+            "source_context_tokens": 4096,
+            "actual_context_tokens": 4096,
+            "actual_input_sha256": "7cc5d2aa1e76fa8a47996f241fdce64cab4778dccd9d6133ba9b1c9d76d5a90a",
+            "trimmed_from_left": 0,
+            "fill_metadata_note": "source prompt metadata"
+          },
+          {
+            "dataset": "humaneval.jsonl",
+            "row": 2,
+            "input_sha256": "c4fd5b332387a45e4be32eeae9e403d6b8e0447d851fa2e59a72efe089e0fb9a",
+            "task_tokens": 111,
+            "wiki_tokens": 3985,
+            "task_truncated_from_left": false,
+            "wiki_fraction": 0.972900390625,
+            "wiki_slice_start": 8192,
+            "wiki_slice_end": 12177,
+            "synthetic_context": true,
+            "source_context_tokens": 4096,
+            "actual_context_tokens": 4096,
+            "actual_input_sha256": "c4fd5b332387a45e4be32eeae9e403d6b8e0447d851fa2e59a72efe089e0fb9a",
+            "trimmed_from_left": 0,
+            "fill_metadata_note": "source prompt metadata"
+          },
+          {
+            "dataset": "humaneval.jsonl",
+            "row": 3,
+            "input_sha256": "2f1e8e716aaf5a1204abda413ffaa4f40801a994c0c44906589b07a708b5e6f0",
+            "task_tokens": 145,
+            "wiki_tokens": 3951,
+            "task_truncated_from_left": false,
+            "wiki_fraction": 0.964599609375,
+            "wiki_slice_start": 12288,
+            "wiki_slice_end": 16239,
+            "synthetic_context": true,
+            "source_context_tokens": 4096,
+            "actual_context_tokens": 4096,
+            "actual_input_sha256": "2f1e8e716aaf5a1204abda413ffaa4f40801a994c0c44906589b07a708b5e6f0",
+            "trimmed_from_left": 0,
+            "fill_metadata_note": "source prompt metadata"
+          }
+        ],
+        "max_inflight": 2,
+        "graph_policy": "exact_all",
+        "decode_graph_buckets": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "metrics": {
+        "valid": true,
+        "errors": [],
+        "wall_s": 7.212215581908822,
+        "full_request_tps": 70.99066773382438,
+        "prefill_s": 4.945917988196015,
+        "decode_s": 2.2651743441820145,
+        "decode_tps": 224.26529830022676,
+        "full_batch_decode_tps": 224.26529830022676,
+        "tail_batch_decode_tps": null,
+        "ttft_s": {
+          "n": 4,
+          "p50": 4.945892591029406,
+          "p95": 4.945915864780545,
+          "p99": 4.945915864780545
+        },
+        "tpot_s": {
+          "n": 4,
+          "p50": 0.017842221183805015,
+          "p95": 0.01784245697708111,
+          "p99": 0.01784245697708111
+        },
+        "delivery_batch_gap_s": {
+          "n": 508,
+          "p50": 0.017824063077569008,
+          "p95": 0.017969492822885513,
+          "p99": 0.018024636432528496
+        },
+        "delivery_gap_definition": "one gap between actual delivery batches; not SSE or interpolated tokens",
+        "proposed_tokens": 0,
+        "accepted_prefix_tokens": 0,
+        "acceptance_fraction": null,
+        "tau_delivered_per_decode_sequence_round": 1.0,
+        "tail_overproposal_sequence_rounds": 0,
+        "active_batch_rounds": {
+          "4": 127
+        },
+        "output_tokens": 512,
+        "input_tokens": 16384,
+        "prefill_only_input_tps": null,
+        "full_request_output_tps": 70.99066773382438,
+        "decode_span_s": 2.265903901308775
+      },
+      "layer_delta": {
+        "prefill_steps": 1,
+        "fallback_steps": 0,
+        "planned_tasks": 128,
+        "layer_ops_enqueued": 4608,
+        "same_chunk_waits": 4480,
+        "previous_chunk_waits": 4464,
+        "source_waits": 2,
+        "join_waits": 128,
+        "single_chunk_steps": 0,
+        "completed_steps": 1,
+        "completed_tasks": 128,
+        "fallback_reasons": {},
+        "stream_task_counts": {
+          "1": 64,
+          "0": 64
+        }
+      },
+      "warm_layer_delta": {
+        "prefill_steps": 1,
+        "fallback_steps": 0,
+        "planned_tasks": 128,
+        "layer_ops_enqueued": 4608,
+        "same_chunk_waits": 4480,
+        "previous_chunk_waits": 4464,
+        "source_waits": 2,
+        "join_waits": 128,
+        "single_chunk_steps": 0,
+        "completed_steps": 1,
+        "completed_tasks": 128,
+        "fallback_reasons": {},
+        "stream_task_counts": {
+          "1": 64,
+          "0": 64
+        }
+      },
+      "target_decode_graph": {
+        "exact": 127,
+        "padded": 0,
+        "fallbacks": {},
+        "bucket_histogram": {
+          "4": 127
+        }
+      },
+      "target_kv_blocks": 207,
+      "load_initial_graph_s": 8.325878661125898,
+      "warmup_s": 6.100488713011146,
+      "memory_after_run": {
+        "allocated_bytes": 15970771456,
+        "reserved_bytes": 16301162496,
+        "peak_allocated_bytes": 16224192000,
+        "peak_reserved_bytes": 16301162496,
+        "named_tensors": {
+          "runner.kv_cache": {
+            "shape": [
+              2,
+              36,
+              207,
+              256,
+              8,
+              128
+            ],
+            "dtype": "torch.bfloat16",
+            "bytes": 7813988352
+          }
+        },
+        "unique_parameter_bytes": {
+          "model": 8044936192,
+          "draft_model": 0,
+          "dspark_model": 0
+        },
+        "allocator_segment_bytes_by_pool_id": {
+          "(0, 0)": 16278093824,
+          "(1, 0)": 23068672
+        },
+        "named_graph_pools": {
+          "target_decode": {
+            "pool_id": [
+              1,
+              0
+            ],
+            "reserved_bytes": 23068672
+          }
+        },
+        "engine_graph_mem_gb": {
+          "decode_graphs_gb": 0.008
+        },
+        "accounting_note": "allocator pool totals overlap tensor/weight values; unnamed temporaries are included in allocator totals"
+      }
+    }
+  },
+  "single_sample_only": true,
+  "guard_ledger_checked": false,
+  "note": "one timed run per mode; no CI; smoke raw has metrics but not full logits/KV tensors",
+  "ratios": {
+    "serial_over_full": 0.6863915108505805,
+    "pipeline_over_full": 0.673881166890311,
+    "pipeline_over_serial": 0.9817737490011106
+  }
+}
