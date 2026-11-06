@@ -25,12 +25,15 @@ def ledger(path, elapsed, kind):
 
 def test_wrapper_sets_new_limits_without_gpu_access():
     guard = wrapper.load_guard()
-    assert guard.TOTAL_LIMIT_S == 1800 and guard.SMOKE_LIMIT_S == 300
+    assert guard.TOTAL_LIMIT_S == 600 and guard.SMOKE_LIMIT_S == 300
     assert guard.CLEANUP_RESERVE_S == 45
     assert guard.normalize_gpu_uuid(GPU.lower()) == GPU
+    with patch.object(wrapper, "load_guard", side_effect=AssertionError("must fail before loading guard")):
+        with pytest.raises(SystemExit):
+            wrapper.main(["--stage-timeout-s", "601"])
 
 
-@pytest.mark.parametrize("elapsed,previous_kind,next_kind", [(1755, "pilot", "pilot"), (255, "smoke", "smoke")])
+@pytest.mark.parametrize("elapsed,previous_kind,next_kind", [(555, "pilot", "pilot"), (255, "smoke", "smoke")])
 def test_exhausted_budget_stops_before_gpu_query(tmp_path, elapsed, previous_kind, next_kind):
     guard = wrapper.load_guard()
     path = tmp_path / "ledger.jsonl"
