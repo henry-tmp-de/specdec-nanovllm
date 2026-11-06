@@ -52,6 +52,12 @@ class Config:
     dspark_quant_preset: str = "none"  # none | ffn | attention | all | q_o | down | q_o_down
     # Disable lookup and registration for matched cache-policy comparisons.
     enable_prefix_cache: bool = True
+    # Opt-in internal layer wavefront for target-only BF16 prefill.
+    enable_layer_prefill: bool = False
+    layer_prefill_chunk_tokens: int = 128
+    layer_prefill_max_inflight: int = 2
+    layer_prefill_mode: str = "pipeline"  # pipeline | serial
+    layer_prefill_nvtx: bool = False  # diagnostic traces only
     #   True  = 同一候选位置把 B 条请求一起前向（k 次批量前向）
     #   False = 逐请求循环（B×k 次单序列前向）—— 消融 S1 的对照开关（= C 组行为）
     spec_batch_verify_graph: bool = True
@@ -207,6 +213,19 @@ class Config:
     #     那是「每条请求要算几个」真的变了，不是 batch 维度的问题，继续退回 eager。
 
     def __post_init__(self):
+        if type(self.enable_layer_prefill) is not bool or type(self.layer_prefill_nvtx) is not bool:
+            raise ValueError("layer-prefill enable and NVTX flags must be boolean")
+        if (type(self.layer_prefill_chunk_tokens) is not int or self.layer_prefill_chunk_tokens <= 0 or
+                type(self.layer_prefill_max_inflight) is not int or self.layer_prefill_max_inflight not in (1, 2) or
+                self.layer_prefill_mode not in ("pipeline", "serial")):
+            raise ValueError("invalid layer-prefill chunk size, inflight limit, or mode")
+        if self.enable_layer_prefill:
+            if self.tensor_parallel_size != 1 or self.enable_prefix_cache or self.spec_overlap_mixed:
+                raise ValueError("layer-prefill requires TP=1, prefix cache off, and no mixed overlap")
+            if self.spec_k != 0 or self.spec_method != "ngram" or self.draft_model:
+                raise ValueError("layer-prefill requires target-only decoding with no draft or speculation")
+            if self.quant_weights or self.draft_quant_weights or self.dspark_quant_preset != "none":
+                raise ValueError("layer-prefill requires unquantized BF16 target weights")
         if self.dspark_quant_preset not in ("none", "ffn", "attention", "all", "q_o", "down", "q_o_down"):
             raise ValueError("invalid dspark_quant_preset")
         if self.dspark_quant_preset != "none" and (self.spec_method != "dspark" or self.spec_k != 7):
@@ -244,12 +263,19 @@ class Config:
         assert self.kvcache_block_size % 256 == 0
         assert 1 <= self.tensor_parallel_size <= 8
         self.hf_config = AutoConfig.from_pretrained(self.model)
+        if self.enable_layer_prefill:
+            import torch
+            if (getattr(self.hf_config, "model_type", None) != "qwen3" or
+                    getattr(self.hf_config, "dtype", None) != torch.bfloat16):
+                raise ValueError("layer-prefill supports only BF16 Qwen3 targets")
         self.max_model_len = min(self.max_model_len, self.hf_config.max_position_embeddings)
         # ---------- INT8 权重量化：自动识别（不需要用户逐层指定）----------
         (self.quant_weights, self.quant_granularity, self.quant_group_size,
          self.quant_modules, self.quant_config) = _resolve_quant(
             self.model, self.quant_weights, self.quant_granularity,
             self.quant_group_size)
+        if self.enable_layer_prefill and self.quant_weights:
+            raise ValueError("layer-prefill does not support auto-detected target quantization")
         if self.draft_model:
             (self.draft_quant_weights, self.draft_quant_granularity,
              self.draft_quant_group_size, self.draft_quant_modules,

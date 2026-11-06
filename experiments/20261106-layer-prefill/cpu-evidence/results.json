@@ -1,0 +1,74 @@
+[
+  {
+    "name": "layer_prefill",
+    "command": [
+      "D:\\Anaconda\\python.exe",
+      "-B",
+      "-c",
+      "import numpy,pytest; raise SystemExit(pytest.main(['-q'] + ['tests/test_layer_prefill.py']))"
+    ],
+    "exit_code": 0,
+    "seconds": 4.592,
+    "log": "cpu-evidence/layer_prefill.log"
+  },
+  {
+    "name": "dspark_window_and_quant",
+    "command": [
+      "D:\\Anaconda\\python.exe",
+      "-B",
+      "-c",
+      "import numpy,pytest; raise SystemExit(pytest.main(['-q'] + ['tests/test_dspark_quant.py', 'tests/test_dspark_contract.py', 'tests/test_dspark_window_config.py', 'tests/test_dspark_window_runner.py', 'tests/test_dspark_window.py', 'tests/test_dspark_pad.py']))"
+    ],
+    "exit_code": 0,
+    "seconds": 6.091,
+    "log": "cpu-evidence/dspark_window_and_quant.log"
+  },
+  {
+    "name": "prefill_chunk_gate",
+    "command": [
+      "D:\\Anaconda\\python.exe",
+      "-B",
+      "-c",
+      "import numpy,runpy; runpy.run_path('tests/test_prefill_chunk_gate.py', run_name='__main__')"
+    ],
+    "exit_code": 0,
+    "seconds": 0.246,
+    "log": "cpu-evidence/prefill_chunk_gate.log"
+  },
+  {
+    "name": "prefill_multiseq",
+    "command": [
+      "D:\\Anaconda\\python.exe",
+      "-B",
+      "-c",
+      "import numpy,runpy; runpy.run_path('tests/test_prefill_multiseq.py', run_name='__main__')"
+    ],
+    "exit_code": 0,
+    "seconds": 0.251,
+    "log": "cpu-evidence/prefill_multiseq.log"
+  },
+  {
+    "name": "block_alloc",
+    "command": [
+      "D:\\Anaconda\\python.exe",
+      "-B",
+      "-c",
+      "import numpy,runpy; runpy.run_path('tests/test_block_alloc.py', run_name='__main__')"
+    ],
+    "exit_code": 0,
+    "seconds": 0.259,
+    "log": "cpu-evidence/block_alloc.log"
+  },
+  {
+    "name": "graph_pad",
+    "command": [
+      "D:\\Anaconda\\python.exe",
+      "-B",
+      "-c",
+      "import numpy,runpy; runpy.run_path('tests/test_graph_pad.py', run_name='__main__')"
+    ],
+    "exit_code": 0,
+    "seconds": 4.782,
+    "log": "cpu-evidence/graph_pad.log"
+  }
+]

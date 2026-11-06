@@ -28,3 +28,11 @@ def set_context(is_prefill, cu_seqlens_q=None, cu_seqlens_k=None, max_seqlen_q=0
 def reset_context():
     global _CONTEXT
     _CONTEXT = Context()
+
+
+def restore_context(context):
+    """Restore a saved context object after an internal, sequential dispatch."""
+    if not isinstance(context, Context):
+        raise TypeError("expected a saved Context")
+    global _CONTEXT
+    _CONTEXT = context

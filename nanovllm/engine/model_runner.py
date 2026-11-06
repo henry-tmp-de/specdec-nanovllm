@@ -128,6 +128,12 @@ class ModelRunner:
         self.dspark_model = None
         self.dspark_quant_stats = []
         self.dspark_quant_host_s = 0.0
+        if config.enable_layer_prefill:
+            from nanovllm.engine.layer_prefill import new_stats
+            self.layer_prefill_stats = new_stats(config.layer_prefill_mode, config.layer_prefill_chunk_tokens,
+                                                 config.layer_prefill_max_inflight)
+            self.layer_prefill_stats["nvtx_enabled"] = config.layer_prefill_nvtx
+            self.layer_prefill_executor = None
         self.dspark_target_layers = None
         self._dspark_prefill = None
         self.dspark_window_stats = dict(prefill_target_rows=0, prefill_feature_rows=0,
@@ -1085,7 +1091,33 @@ class ModelRunner:
                 torch.tensor(slots, device=input_ids.device, dtype=torch.int32))
             self._dspark_pending_prefill_ranges = ranges
         try:
-            logits = self.run_model(input_ids, positions, True)
+            if getattr(self.config, "enable_layer_prefill", False):
+                self.layer_prefill_stats["prefill_steps"] += 1
+                if not hasattr(self, "kv_cache") and all(not seq.block_table for seq in seqs):
+                    # Startup warmup precedes KV allocation; keep the old full forward.
+                    self.layer_prefill_stats["fallback_steps"] += 1
+                    reasons = self.layer_prefill_stats["fallback_reasons"]
+                    reasons["warmup_no_kv"] = reasons.get("warmup_no_kv", 0) + 1
+                    logits = self.run_model(input_ids, positions, True)
+                else:
+                    if any(not seq.block_table for seq in seqs) or not hasattr(self, "kv_cache"):
+                        raise RuntimeError("layer-prefill cannot run without all target KV tables")
+                    if any(not layer.self_attn.attn.k_cache.numel() or not layer.self_attn.attn.v_cache.numel()
+                           for layer in self.model.model.layers):
+                        raise RuntimeError("layer-prefill target KV caches are not bound")
+                    if self.layer_prefill_executor is None:
+                        from nanovllm.engine.layer_prefill import LayerPrefillExecutor
+                        self.layer_prefill_executor = LayerPrefillExecutor(
+                            self.model, self.kv_cache, self.block_size,
+                            self.config.layer_prefill_chunk_tokens, self.config.layer_prefill_max_inflight,
+                            self.config.layer_prefill_mode, self.layer_prefill_stats,
+                            nvtx_enabled=self.config.layer_prefill_nvtx)
+                    with torch.inference_mode():
+                        hidden = self.layer_prefill_executor.forward(seqs, input_ids, positions)
+                        # Executor restores the original full-step context for LM-head row selection.
+                        logits = self.model.compute_logits(hidden)
+            else:
+                logits = self.run_model(input_ids, positions, True)
         finally:
             self._dspark_prefill = None
         return logits, temperatures
@@ -1164,6 +1196,8 @@ class ModelRunner:
             #   自己把重叠取消掉）。理由与不变量见 engine/mixed_batch.py。
             logits, temperatures = self._prefill_forward(seqs)
             token_ids = self.sampler(logits, temperatures).tolist() if self.rank == 0 else None
+            if getattr(self.config, "enable_layer_prefill", False) and self.layer_prefill_executor is not None:
+                self.layer_prefill_executor.mark_completed()
             if (int(getattr(self.config, "dspark_window_tokens", 0)) and
                     self.dspark_model is not None and self.dspark_model.cache is not None):
                 from nanovllm.spec_decode.dspark_window import mark_confirmed

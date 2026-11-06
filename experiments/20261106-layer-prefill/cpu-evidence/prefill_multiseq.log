@@ -1,0 +1,76 @@
+======================================================================
+§1 不变量：一轮内同一条序列不许被调度两次 + 进 token 数 ≤ 本轮预算
+======================================================================
+  [PASS] 无重复调度 (chunk=8 lens=[32, 32, 32] run=1 maxbt=1024 rotate=True)
+  [PASS] 进 token 数 ≤ 预算 1024 (chunk=8 lens=[32, 32, 32] run=1 maxbt=1024 rotate=True)
+  [PASS] 每序列每轮 ≤ chunk=8 (chunk=8 lens=[32, 32, 32] run=1 maxbt=1024 rotate=True)
+  [PASS] 无重复调度 (chunk=8 lens=[32, 32, 32] run=1 maxbt=16 rotate=True)
+  [PASS] 进 token 数 ≤ 预算 16 (chunk=8 lens=[32, 32, 32] run=1 maxbt=16 rotate=True)
+  [PASS] 每序列每轮 ≤ chunk=8 (chunk=8 lens=[32, 32, 32] run=1 maxbt=16 rotate=True)
+  [PASS] 无重复调度 (chunk=8 lens=[32, 32, 32] run=1 maxbt=8 rotate=True)
+  [PASS] 进 token 数 ≤ 预算 8 (chunk=8 lens=[32, 32, 32] run=1 maxbt=8 rotate=True)
+  [PASS] 每序列每轮 ≤ chunk=8 (chunk=8 lens=[32, 32, 32] run=1 maxbt=8 rotate=True)
+  [PASS] 无重复调度 (chunk=8 lens=[32, 32, 32] run=1 maxbt=1024 rotate=False)
+  [PASS] 进 token 数 ≤ 预算 1024 (chunk=8 lens=[32, 32, 32] run=1 maxbt=1024 rotate=False)
+  [PASS] 每序列每轮 ≤ chunk=8 (chunk=8 lens=[32, 32, 32] run=1 maxbt=1024 rotate=False)
+  [PASS] 无重复调度 (chunk=8 lens=[32, 32, 32] run=1 maxbt=16 rotate=False)
+  [PASS] 进 token 数 ≤ 预算 16 (chunk=8 lens=[32, 32, 32] run=1 maxbt=16 rotate=False)
+  [PASS] 每序列每轮 ≤ chunk=8 (chunk=8 lens=[32, 32, 32] run=1 maxbt=16 rotate=False)
+  [PASS] 无重复调度 (chunk=0 lens=[20, 20, 20] run=1 maxbt=1024 rotate=False)
+  [PASS] 进 token 数 ≤ 预算 1024 (chunk=0 lens=[20, 20, 20] run=1 maxbt=1024 rotate=False)
+  [PASS] 无重复调度 (chunk=0 lens=[20, 20, 20] run=0 maxbt=24 rotate=False)
+  [PASS] 进 token 数 ≤ 预算 24 (chunk=0 lens=[20, 20, 20] run=0 maxbt=24 rotate=False)
+  [PASS] 无重复调度 (chunk=4 lens=[17, 33, 9] run=2 maxbt=128 rotate=True)
+  [PASS] 进 token 数 ≤ 预算 128 (chunk=4 lens=[17, 33, 9] run=2 maxbt=128 rotate=True)
+  [PASS] 每序列每轮 ≤ chunk=4 (chunk=4 lens=[17, 33, 9] run=2 maxbt=128 rotate=True)
+
+======================================================================
+§2 轮转：3 条长序列【同一轮】推进，而不是串成 1×/2×/3× 的时间
+======================================================================
+  [PASS] rotate=False：三条首尾相衔地串行完成 [4,7,10]（最后一条等 2.5 倍，老行为）   got=[4, 7, 10]
+  [PASS] rotate=True：三条【都在第 4 轮】完成（= 轮转的目标）   got=[4, 4, 4]
+  [PASS] rotate=True：总进 token 数不变（3×32，一分不多）   got=[32, 32, 32]
+  [PASS] rotate=True：4 条 24 token（3 块）都在第 3 轮完成   got=[3, 3, 3, 3]
+
+======================================================================
+§3 公平准入：预算不够时【轮着来】，不许总从队首开始（不饿死）
+======================================================================
+  [PASS] rotate=True：完成轮次 [4,4,5]（差 ≤ 1 = 公平轮转；且预算用满，9 块只用 5 轮）   got=[4, 4, 5]
+  [PASS] rotate=False：同样场景下 [3,6,9]（差 6；队首独占 + 每轮白白剩 8 个 token）   got=[3, 6, 9]
+  [PASS] rotate=True：队首是超长请求时，后面的短请求不被饿死（≤3 轮完成）   rounds=[25, 2, 2]
+  [PASS] rotate=False：同样场景下短请求要等到长请求拼完（老行为，作对照）   rounds=[25, 26, 27]
+
+======================================================================
+§4 预算不足：给 min(剩余预算, chunk)，不超预算、不空转
+======================================================================
+  [PASS] 预算 12/chunk 8：这一轮进 8 + 4 = 12（用满预算但不超过）   gives=[8, 4]
+  [PASS] 预算 12/chunk 8：没有空转的序列（每条都 >0）
+  [PASS] 预算 12/chunk 8：一轮内不重复
+  [PASS] 预算 3/chunk 8：只服务 1 条、给它 3 个 token   gives=[3]
+  [PASS] 预算 24 = 3×chunk 8：正好每条一块、一轮结束（不重复绕圈）   n=3
+
+======================================================================
+§5 默认关闭时逐值等于老逻辑
+======================================================================
+  [PASS] 属性缺失 ≡ rotate=False（chunk=8 lens=[32, 32, 32] maxbt=1024）   rounds=10/10
+  [PASS] 属性缺失 ≡ rotate=False（chunk=8 lens=[32, 32, 32] maxbt=16）   rounds=12/12
+  [PASS] 属性缺失 ≡ rotate=False（chunk=0 lens=[20, 20] maxbt=1024）   rounds=1/1
+  [PASS] 属性缺失 ≡ rotate=False（chunk=4 lens=[17, 33, 9] maxbt=128）   rounds=15/15
+  [PASS] chunk=0：两条短序列一轮里一起 prefill（老行为）   n=2
+  [PASS] chunk=8/len=20：一次只拼 8 个 token，拼不完就收工（老行为）
+  [PASS] chunk=8：上一轮没拼完 ⇒ 这一轮让路给 decode（老行为）
+  [PASS] chunk=8 但 running 空：不分块，一次拼完（P12 门控，老行为）
+  [PASS] rotate=True 但 chunk=0：不轮转（没有「每条每块」的上限就无所谓轮转）   rounds=1/1
+
+======================================================================
+§6 PrefillRotation 单测（策略本身，不铺 Scheduler）
+======================================================================
+  [PASS] next() 取队首
+  [PASS] yield_turn 后队列左移一位（A 到环尾）
+  [PASS] next() 取到 B（不会重复取 A）
+  [PASS] mark 过的序列不再被取到（即使还在队列里）   A 已服务、B 已服务 ⇒ 环头 C 应可服务
+  [PASS] served 的环头 ⇒ next() 返回 None（= 本轮结束）
+  [PASS] reset() 后重新可用
+  [PASS] 空队列 ⇒ next() 返回 None
+
+✓ 全部通过
