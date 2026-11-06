@@ -59,3 +59,14 @@ def test_identity_wrapper_preserves_strict_uuid_check():
     assert module.normalize_gpu_uuid(GPU) == GPU
     with pytest.raises((TypeError, ValueError)):
         module.normalize_gpu_uuid([0] * 15)
+
+
+def test_full_guard_argv_is_forwarded_without_abbreviation_or_child_reparse():
+    argv = ["--gpu", "0", "--uuid", GPU, "--stage", "layer-smoke-01", "--kind", "smoke",
+            "--ledger", "ledger.jsonl", "--log", "stage.log", "--stage-timeout-s", "300", "--",
+            "python", "worker.py", "--stage-timeout-s", "999"]
+    fake = types.SimpleNamespace(main=lambda values: calls.append(values))
+    calls = []
+    with patch.object(wrapper, "load_guard", return_value=fake):
+        wrapper.main(argv)
+    assert calls == [argv]

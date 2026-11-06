@@ -28,9 +28,11 @@ def load_guard():
 def main(argv=None):
     # The reused guard enforces the overridden limit but its old error text
     # says 14400. Fail early with this experiment's actual limit instead.
-    parser = argparse.ArgumentParser(add_help=False)
+    parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     parser.add_argument("--stage-timeout-s", type=float)
-    args, _ = parser.parse_known_args(argv)
+    values = list(sys.argv[1:] if argv is None else argv)
+    outer = values[:values.index("--")] if "--" in values else values
+    args, _ = parser.parse_known_args(outer)
     if args.stage_timeout_s is not None and not 45 < args.stage_timeout_s <= TOTAL_LIMIT_S:
         parser.error("stage-timeout-s must be greater than 45 and at most 600")
     load_guard().main(argv)
