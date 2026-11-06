@@ -1,0 +1,21 @@
+{
+  "file": "/home/ziru/nano-vllm/layer-prefill-20261106/final-evidence-01.tar.gz",
+  "bytes": 505312,
+  "sha256": "190bb1678b3bbdfba80d502752a928f8742e7c99b7d22d358020dfb612ecfcc7",
+  "members": [
+    "results",
+    "logs",
+    "data",
+    "CODE-GATE-02.json",
+    "CODE-GATE.json",
+    "FINAL-RELEASE.json",
+    "PILOT-GATE.json",
+    "PILOT-LAUNCH-01.json",
+    "PILOT-STATUS.json",
+    "PRELAUNCH-FAILURE-01.json",
+    "SMOKE-LAUNCH-01.json",
+    "SMOKE-LAUNCH-02.json",
+    "operator-small-pilot-01.py"
+  ],
+  "contains_model_weights": false
+}

@@ -1,0 +1,61 @@
+{
+  "source": "b98fc8ff1e194aa7727167327ee8dc8b8b9e260e",
+  "core": "6a5c61b",
+  "primary_modes": 3,
+  "primary_repeats_each": 1,
+  "warmup_cohorts_each": 1,
+  "requests": 12,
+  "output_tokens": 1536,
+  "metrics": {
+    "full": {
+      "wall_s": 4.8601762522011995,
+      "output_tps": 105.34597377371088,
+      "prefill_s": 2.5950890965759754,
+      "decode_span_s": 2.264907030388713,
+      "target_kv_blocks": 207,
+      "output_hashes": [
+        "67592947af929d976b3fe7feb27e3610c8f438bb709ee089a977792c1a759862",
+        "10d9e777cc04275d2740c5cb3548ff7675d78b1bcd764d9a118817cbfe25fd5c",
+        "a8b050061a98c720793937b5e524eb0a72a3b5f8978e5216626284c644840453",
+        "05a749f04e77436a3ca417da30522e14478b31b31321562720e74b116264b2f7"
+      ]
+    },
+    "serial": {
+      "wall_s": 7.08076393045485,
+      "output_tps": 72.30858210056304,
+      "prefill_s": 4.8146409541368484,
+      "decode_span_s": 2.265873594209552,
+      "target_kv_blocks": 207,
+      "output_hashes": [
+        "67592947af929d976b3fe7feb27e3610c8f438bb709ee089a977792c1a759862",
+        "10d9e777cc04275d2740c5cb3548ff7675d78b1bcd764d9a118817cbfe25fd5c",
+        "a8b050061a98c720793937b5e524eb0a72a3b5f8978e5216626284c644840453",
+        "05a749f04e77436a3ca417da30522e14478b31b31321562720e74b116264b2f7"
+      ]
+    },
+    "pipeline": {
+      "wall_s": 7.212215581908822,
+      "output_tps": 70.99066773382438,
+      "prefill_s": 4.945917988196015,
+      "decode_span_s": 2.265903901308775,
+      "target_kv_blocks": 207,
+      "output_hashes": [
+        "67592947af929d976b3fe7feb27e3610c8f438bb709ee089a977792c1a759862",
+        "10d9e777cc04275d2740c5cb3548ff7675d78b1bcd764d9a118817cbfe25fd5c",
+        "a8b050061a98c720793937b5e524eb0a72a3b5f8978e5216626284c644840453",
+        "05a749f04e77436a3ca417da30522e14478b31b31321562720e74b116264b2f7"
+      ]
+    }
+  },
+  "pipeline_vs_full_tps_ratio": 0.6738811668903109,
+  "pipeline_vs_serial_tps_ratio": 0.9817737490011106,
+  "smoke_logit_records": 102,
+  "smoke_kv_records": 2592,
+  "smoke_all_recorded_pass": true,
+  "smoke_serial_pipeline_max_kl": 0.0,
+  "smoke_serial_pipeline_max_kv_rms": 0,
+  "stages": 4,
+  "gpu_stage_wall_s": 107.14282196760178,
+  "no_nsys_or_stable_claim": true,
+  "boundary": "single filled-workload point, not production comparison; KV/logit vectors not persisted so raw audit checks metrics+coverage"
+}

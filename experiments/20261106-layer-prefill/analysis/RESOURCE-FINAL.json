@@ -1,0 +1,44 @@
+{
+  "created_utc": "2026-11-06T00:49:21.930700+00:00",
+  "gpu_uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+  "stages": 4,
+  "all_stages_ok": true,
+  "total_gpu_stage_wall_s": 107.14282196760178,
+  "smoke_s": 26.388443982228637,
+  "limit_s": 600,
+  "prelaunch_failure_gpu_cost_s": 0,
+  "observed_owned_identity_count": 136,
+  "owned_alive": [],
+  "all_controller_identities_gone": true,
+  "gpu_after": {
+    "index": 0,
+    "uuid": "GPU-f1619d21-c909-7c21-34f1-05c39a7b0c91",
+    "name": "NVIDIA GeForce RTX 3090",
+    "used_mib": 15,
+    "total_mib": 24576,
+    "util_pct": 0,
+    "compute_processes": []
+  },
+  "primary_runs": 3,
+  "primary_requests": 12,
+  "primary_output_tokens": 1536,
+  "warmup_cohorts": 3,
+  "primary_repeats_per_mode": 1,
+  "nsys_collected": false,
+  "no_more_gpu_work_scheduled": true,
+  "compiler_warnings": {
+    "full": {
+      "recompile_limit_warning": false,
+      "warning_lines": []
+    },
+    "serial": {
+      "recompile_limit_warning": false,
+      "warning_lines": []
+    },
+    "pipeline": {
+      "recompile_limit_warning": false,
+      "warning_lines": []
+    }
+  },
+  "cost_definition": "sum guarded stage wall incl loading, compilation, warmup and cleanup; excludes zero-GPU prelaunch parser failure"
+}
