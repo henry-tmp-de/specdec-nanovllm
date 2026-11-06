@@ -193,12 +193,15 @@ def audit_perf(rows, expected_mode):
     warm, run, end = records["warmup"][0], records["run"][0], records["complete"][0]
     if (run.get("mode") != expected_mode or run.get("batch") != 4 or run.get("ctx") != 4096
             or run.get("output_tokens") != 128 or run.get("chunk") != 128 or run.get("repeat") != 0
+            or run.get("max_inflight") != 2 or run.get("graph_policy") != "exact_all"
+            or run.get("decode_graph_buckets") != [1, 2, 3, 4]
             or run.get("primary_timing_repeats") != 1 or run.get("warmup_cohorts") != 1
             or run.get("temperature") != 1.0 or run.get("diagnostic_instrumented") is not False
             or run.get("engine_dirty") is not False or end.get("repeats_per_panel") != 1
             or any(not same_source(run, x) or run.get("guard_id") != x.get("guard_id") for x in (warm, end))):
         errors.append("performance source, scope, guard or single-run identity mismatch")
-    if any(any(run.get(k) != other.get(k) for k in ("mode", "batch", "ctx", "output_tokens", "panel", "seed", "input_metadata"))
+    if any(any(run.get(k) != other.get(k) for k in ("mode", "batch", "ctx", "output_tokens", "panel", "seed",
+                                                     "input_metadata", "max_inflight", "graph_policy", "decode_graph_buckets"))
            for other in (warm, end)):
         errors.append("warmup/run/complete input identity differs")
     inputs = run.get("input_metadata")
@@ -230,7 +233,8 @@ def audit_perf(rows, expected_mode):
         metrics = None
     return {"mode": expected_mode, "valid": not errors, "errors": errors, "failures": failures,
             "identity": {k: run.get(k) for k in ("engine_commit", "engine_dirty", "gpu_uuid", "guard_id",
-                         "target_provenance", "budget", "chunk", "ctx", "batch", "output_tokens", "panel", "seed", "input_metadata")},
+                         "target_provenance", "budget", "chunk", "ctx", "batch", "output_tokens", "panel", "seed",
+                         "input_metadata", "max_inflight", "graph_policy", "decode_graph_buckets")},
             "metrics": metrics, "layer_delta": delta, "warm_layer_delta": warm_delta,
             "target_decode_graph": run.get("target_decode_graph"), "target_kv_blocks": run.get("target_kv_blocks"),
             "load_initial_graph_s": run.get("load_initial_graph_s"), "warmup_s": warm.get("warmup_s"),
@@ -245,7 +249,7 @@ def summarize(smoke, perf):
         return result
     first = perf["full"]["identity"]
     fields = ("engine_commit", "engine_dirty", "gpu_uuid", "target_provenance", "budget", "chunk", "ctx", "batch",
-              "output_tokens", "panel", "seed", "input_metadata")
+              "output_tokens", "panel", "seed", "input_metadata", "max_inflight", "graph_policy", "decode_graph_buckets")
     if any(any(perf[mode]["identity"].get(k) != first.get(k) for k in fields) for mode in MODES):
         result["comparison_error"] = "modes do not share the same inputs/source/conditions"
         return result

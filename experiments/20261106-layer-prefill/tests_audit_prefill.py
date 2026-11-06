@@ -81,6 +81,7 @@ def perf_rows(mode, wall):
     before, after, delta = snapshots(mode, [length] * b, layers)
     identity = {**common(), "mode": mode, "batch": b, "ctx": length, "output_tokens": output, "panel": "code",
                 "seed": 20261106, "temperature": 1.0, "diagnostic_instrumented": False,
+                "max_inflight": 2, "graph_policy": "exact_all", "decode_graph_buckets": [1, 2, 3, 4],
                 "input_metadata": [{"actual_input_sha256": str(i) * 64, "actual_context_tokens": length} for i in range(b)],
                 "primary_timing_repeats": 1, "warmup_cohorts": 1}
     requests = []
@@ -138,4 +139,13 @@ def test_duplicate_timing_or_mixed_graph_fails_closed():
     assert not audit.audit_perf(rows, "pipeline")["valid"]
     rows = perf_rows("pipeline", 180)
     rows[1][1]["target_decode_graph"]["fallbacks"] = {"missing": 1}
+    assert not audit.audit_perf(rows, "pipeline")["valid"]
+
+
+@pytest.mark.parametrize("field,bad", [("max_inflight", 1), ("graph_policy", "padded"),
+                                      ("decode_graph_buckets", [1, 2, 4])])
+def test_wrong_predeclared_graph_or_inflight_never_counts(field, bad):
+    rows = perf_rows("pipeline", 180)
+    for _, row in rows:
+        row[field] = bad
     assert not audit.audit_perf(rows, "pipeline")["valid"]
